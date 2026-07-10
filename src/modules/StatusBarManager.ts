@@ -23,11 +23,10 @@ export function initStatusBar(context: vscode.ExtensionContext): void {
   // Register command leetplus.showDailyPlan
   context.subscriptions.push(
     vscode.commands.registerCommand("leetplus.showDailyPlan", () => {
-      vscode.window.showInformationMessage(
-        "Daily practice plan is being loaded... (View implementation in upcoming Phase 3)."
-      );
+      void vscode.commands.executeCommand("leetplus-daily-plan.focus");
     })
   );
+
 
   // Watch for state changes reactively
   setupStateWatcher(context);
