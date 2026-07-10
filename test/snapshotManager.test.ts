@@ -108,4 +108,104 @@ describe("SnapshotManager", () => {
     assert.ok(latest);
     assert.strictEqual(latest.notes, "Used a map approach");
   });
+
+  describe("diffRetention strategies", () => {
+    const setupProblemWorkspace = async (workspaceRoot: string) => {
+      fs.mkdirSync(workspaceRoot, { recursive: true });
+      const problems = [
+        {
+          id: 1,
+          title: "Two Sum",
+          slug: "two-sum",
+          difficulty: "Easy",
+          category: "Arrays",
+          status: "pending" as const,
+          scheduledDate: new Date().toISOString(),
+          nextRepetitionDate: null,
+          repetitionLevel: 0,
+          completionHistory: [],
+          patterns: [],
+        },
+      ];
+      await initState(workspaceRoot, "NeetCode 150", problems);
+
+      const solutionFile = path.join(workspaceRoot, "1.two-sum.ts");
+      fs.writeFileSync(solutionFile, "function twoSum() {}", "utf-8");
+
+      // Set up a mock diff patch file
+      const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", "1");
+      fs.mkdirSync(diffsDir, { recursive: true });
+      fs.writeFileSync(path.join(diffsDir, "test.patch"), "mock patch diff content", "utf-8");
+
+      return { solutionFile, diffsDir };
+    };
+
+    it("should handle 'session' retention: copy patch to snapshots and remove diffs directory", async () => {
+      const workspaceRoot = path.join(TEST_DIR, "retention-session");
+      const { solutionFile, diffsDir } = await setupProblemWorkspace(workspaceRoot);
+
+      // Write config.json specifying retention
+      const leetplusDir = path.join(workspaceRoot, ".leetplus");
+      fs.writeFileSync(
+        path.join(leetplusDir, "config.json"),
+        JSON.stringify({ diffRetention: "session" }),
+        "utf-8"
+      );
+
+      await captureSnapshot(workspaceRoot, 1, "two-sum", solutionFile, 2, "notes");
+
+      // Verify patch is in snapshots
+      const snapshotsDir = path.join(leetplusDir, "snapshots", "1");
+      const snapshotFiles = fs.readdirSync(snapshotsDir);
+      assert.ok(snapshotFiles.includes("test.patch"), "test.patch should be copied to snapshots directory");
+
+      // Verify diffs/1/ is deleted
+      assert.strictEqual(fs.existsSync(diffsDir), false, "diffs directory should be deleted");
+    });
+
+    it("should handle 'all' retention: copy patch to snapshots and retain diffs directory", async () => {
+      const workspaceRoot = path.join(TEST_DIR, "retention-all");
+      const { solutionFile, diffsDir } = await setupProblemWorkspace(workspaceRoot);
+
+      const leetplusDir = path.join(workspaceRoot, ".leetplus");
+      fs.writeFileSync(
+        path.join(leetplusDir, "config.json"),
+        JSON.stringify({ diffRetention: "all" }),
+        "utf-8"
+      );
+
+      await captureSnapshot(workspaceRoot, 1, "two-sum", solutionFile, 2, "notes");
+
+      // Verify patch is in snapshots
+      const snapshotsDir = path.join(leetplusDir, "snapshots", "1");
+      const snapshotFiles = fs.readdirSync(snapshotsDir);
+      assert.ok(snapshotFiles.includes("test.patch"), "test.patch should be copied to snapshots directory");
+
+      // Verify diffs/1/ is retained
+      assert.strictEqual(fs.existsSync(diffsDir), true, "diffs directory should be retained");
+      assert.strictEqual(fs.existsSync(path.join(diffsDir, "test.patch")), true, "test.patch should remain in diffs");
+    });
+
+    it("should handle 'none' retention: remove diffs directory without copying", async () => {
+      const workspaceRoot = path.join(TEST_DIR, "retention-none");
+      const { solutionFile, diffsDir } = await setupProblemWorkspace(workspaceRoot);
+
+      const leetplusDir = path.join(workspaceRoot, ".leetplus");
+      fs.writeFileSync(
+        path.join(leetplusDir, "config.json"),
+        JSON.stringify({ diffRetention: "none" }),
+        "utf-8"
+      );
+
+      await captureSnapshot(workspaceRoot, 1, "two-sum", solutionFile, 2, "notes");
+
+      // Verify patch is NOT in snapshots
+      const snapshotsDir = path.join(leetplusDir, "snapshots", "1");
+      const snapshotFiles = fs.readdirSync(snapshotsDir);
+      assert.strictEqual(snapshotFiles.includes("test.patch"), false, "test.patch should NOT be copied");
+
+      // Verify diffs/1/ is deleted
+      assert.strictEqual(fs.existsSync(diffsDir), false, "diffs directory should be deleted");
+    });
+  });
 });

@@ -130,6 +130,43 @@ export async function captureSnapshot(
   // 10. Persist state.json
   await writeState(workspaceRoot, state);
 
+  // 11. Handle Diff Patch Retention
+  let diffRetention = "session";
+  const configPath = path.join(workspaceRoot, ".leetplus", "config.json");
+  if (fs.existsSync(configPath)) {
+    try {
+      const configContent = fs.readFileSync(configPath, "utf-8");
+      const parsedConfig = JSON.parse(configContent);
+      if (parsedConfig && typeof parsedConfig === "object" && typeof parsedConfig.diffRetention === "string") {
+        diffRetention = parsedConfig.diffRetention;
+      }
+    } catch {
+      // Ignore parse errors and use default
+    }
+  }
+
+  const problemDiffsDir = path.join(workspaceRoot, ".leetplus", "diffs", String(problemId));
+  if (fs.existsSync(problemDiffsDir)) {
+    if (diffRetention === "session" || diffRetention === "all") {
+      // Copy all patches to snapshots directory
+      const patchFiles = fs.readdirSync(problemDiffsDir).filter(f => f.endsWith(".patch"));
+      for (const patchFile of patchFiles) {
+        const srcPath = path.join(problemDiffsDir, patchFile);
+        const destPath = path.join(problemSnapshotsDir, patchFile);
+        fs.copyFileSync(srcPath, destPath);
+      }
+    }
+    
+    if (diffRetention === "session" || diffRetention === "none") {
+      // Delete the diffs directory for this problem
+      const files = fs.readdirSync(problemDiffsDir);
+      for (const file of files) {
+        fs.unlinkSync(path.join(problemDiffsDir, file));
+      }
+      fs.rmdirSync(problemDiffsDir);
+    }
+  }
+
   return snapshotRecord;
 }
 

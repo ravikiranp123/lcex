@@ -19,9 +19,27 @@ const DEFAULTS: LeetPlusConfig = {
   showQotd: true,
   qotdMonths: 6,
   problemViewMode: "ui",
+  srs: {
+    enabled: true,
+    intervals: [1, 7, 16, 35, 90],
+    problemsPerDay: 5,
+    defaultMode: "interleaved"
+  },
+  diffLogger: {
+    enabled: true,
+    triggerMode: "smart",
+    debounceMs: 10000,
+    charThreshold: 100,
+    trackedExtensions: [".py", ".ts", ".js", ".cpp", ".java", ".go"]
+  },
+  autoRating: {
+    enabled: true,
+    requireConfirmation: true
+  },
+  diffRetention: "session",
 };
 
-function parseConfig(text: string): LeetPlusConfig {
+export function parseConfig(text: string): LeetPlusConfig {
   const trimmed = text.trim();
   if (!trimmed) return { ...DEFAULTS };
   try {
@@ -74,13 +92,59 @@ function parseConfig(text: string): LeetPlusConfig {
     if (parsed.problemViewMode === "ui" || parsed.problemViewMode === "text") {
       config.problemViewMode = parsed.problemViewMode;
     }
+    
+    // Parse srs
+    if (parsed.srs && typeof parsed.srs === "object") {
+      const s = parsed.srs as any;
+      config.srs = {
+        enabled: typeof s.enabled === "boolean" ? s.enabled : DEFAULTS.srs!.enabled,
+        problemsPerDay: typeof s.problemsPerDay === "number" ? s.problemsPerDay : DEFAULTS.srs!.problemsPerDay,
+        defaultMode: ["interleaved", "review-first", "push", "recap"].includes(s.defaultMode) ? s.defaultMode : DEFAULTS.srs!.defaultMode,
+        intervals: Array.isArray(s.intervals) ? s.intervals.map(Number) : DEFAULTS.srs!.intervals
+      };
+    } else {
+      config.srs = DEFAULTS.srs;
+    }
+
+    // Parse diffLogger
+    if (parsed.diffLogger && typeof parsed.diffLogger === "object") {
+      const dl = parsed.diffLogger as any;
+      config.diffLogger = {
+        enabled: typeof dl.enabled === "boolean" ? dl.enabled : DEFAULTS.diffLogger!.enabled,
+        triggerMode: ["smart", "time", "change"].includes(dl.triggerMode) ? dl.triggerMode : DEFAULTS.diffLogger!.triggerMode,
+        debounceMs: typeof dl.debounceMs === "number" ? dl.debounceMs : DEFAULTS.diffLogger!.debounceMs,
+        charThreshold: typeof dl.charThreshold === "number" ? dl.charThreshold : DEFAULTS.diffLogger!.charThreshold,
+        trackedExtensions: Array.isArray(dl.trackedExtensions) ? dl.trackedExtensions.map(String) : DEFAULTS.diffLogger!.trackedExtensions
+      };
+    } else {
+      config.diffLogger = DEFAULTS.diffLogger;
+    }
+
+    // Parse autoRating
+    if (parsed.autoRating && typeof parsed.autoRating === "object") {
+      const ar = parsed.autoRating as any;
+      config.autoRating = {
+        enabled: typeof ar.enabled === "boolean" ? ar.enabled : DEFAULTS.autoRating!.enabled,
+        requireConfirmation: typeof ar.requireConfirmation === "boolean" ? ar.requireConfirmation : DEFAULTS.autoRating!.requireConfirmation
+      };
+    } else {
+      config.autoRating = DEFAULTS.autoRating;
+    }
+
+    // Parse diffRetention
+    if (["session", "all", "none"].includes(String(parsed.diffRetention))) {
+      config.diffRetention = parsed.diffRetention as LeetPlusConfig["diffRetention"];
+    } else {
+      config.diffRetention = DEFAULTS.diffRetention;
+    }
+
     return config;
   } catch {
     return { ...DEFAULTS };
   }
 }
 
-function configToJson(config: LeetPlusConfig): string {
+export function configToJson(config: LeetPlusConfig): string {
   return JSON.stringify(config, null, 2);
 }
 
@@ -334,6 +398,76 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
       <input type="number" id="qotdMonths" value="${config.qotdMonths ?? 6}" min="1" max="24" />
     </div>
   </div>
+  <div class="section">
+    <h2>Spaced Repetition (SRS)</h2>
+    <div class="toggle-row">
+      <label>Enable Spaced Repetition (SRS)</label>
+      <input type="checkbox" id="srsEnabled" ${config.srs?.enabled !== false ? "checked" : ""} />
+    </div>
+    <div class="field">
+      <label>Problems per day</label>
+      <input type="number" id="srsProblemsPerDay" value="${config.srs?.problemsPerDay ?? 5}" min="1" max="50" />
+    </div>
+    <div class="field">
+      <label>Default scheduling mode</label>
+      <select id="srsDefaultMode">
+        <option value="interleaved" ${(config.srs?.defaultMode ?? "interleaved") === "interleaved" ? "selected" : ""}>Interleaved (reviews & new mixed)</option>
+        <option value="review-first" ${config.srs?.defaultMode === "review-first" ? "selected" : ""}>Review-first (maximize SRS)</option>
+        <option value="push" ${config.srs?.defaultMode === "push" ? "selected" : ""}>Push (progress-first)</option>
+        <option value="recap" ${config.srs?.defaultMode === "recap" ? "selected" : ""}>Recap (only reviews)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Repetition intervals (days, comma separated)</label>
+      <input type="text" id="srsIntervals" value="${(config.srs?.intervals ?? [1, 7, 16, 35, 90]).join(",")}" placeholder="1,7,16,35,90" />
+    </div>
+  </div>
+  <div class="section">
+    <h2>Diff Logger</h2>
+    <div class="toggle-row">
+      <label>Enable Diff Logger</label>
+      <input type="checkbox" id="diffLoggerEnabled" ${config.diffLogger?.enabled !== false ? "checked" : ""} />
+    </div>
+    <div class="field">
+      <label>Trigger mode</label>
+      <select id="diffLoggerTriggerMode">
+        <option value="smart" ${(config.diffLogger?.triggerMode ?? "smart") === "smart" ? "selected" : ""}>Smart (Time OR Change)</option>
+        <option value="time" ${config.diffLogger?.triggerMode === "time" ? "selected" : ""}>Time-based (Inactivity)</option>
+        <option value="change" ${config.diffLogger?.triggerMode === "change" ? "selected" : ""}>Change-based (Char count)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Debounce timer (milliseconds)</label>
+      <input type="number" id="diffLoggerDebounceMs" value="${config.diffLogger?.debounceMs ?? 10000}" min="1000" />
+    </div>
+    <div class="field">
+      <label>Character change threshold</label>
+      <input type="number" id="diffLoggerCharThreshold" value="${config.diffLogger?.charThreshold ?? 100}" min="1" />
+    </div>
+    <div class="field">
+      <label>Tracked extensions (comma separated)</label>
+      <input type="text" id="diffLoggerTrackedExtensions" value="${(config.diffLogger?.trackedExtensions ?? [".py", ".ts", ".js", ".cpp", ".java", ".go"]).join(",")}" placeholder=".py,.ts,.js,.cpp,.java,.go" />
+    </div>
+  </div>
+  <div class="section">
+    <h2>AI & Auto Rating</h2>
+    <div class="toggle-row">
+      <label>Enable AI Auto-Rating</label>
+      <input type="checkbox" id="autoRatingEnabled" ${config.autoRating?.enabled !== false ? "checked" : ""} />
+    </div>
+    <div class="toggle-row">
+      <label>Require confirmation (Review Dialog)</label>
+      <input type="checkbox" id="autoRatingRequireConfirmation" ${config.autoRating?.requireConfirmation !== false ? "checked" : ""} />
+    </div>
+    <div class="field">
+      <label>Diff patch retention</label>
+      <select id="diffRetention">
+        <option value="session" ${(config.diffRetention ?? "session") === "session" ? "selected" : ""}>Session (clean up after solve)</option>
+        <option value="all" ${config.diffRetention === "all" ? "selected" : ""}>All (keep all patches forever)</option>
+        <option value="none" ${config.diffRetention === "none" ? "selected" : ""}>None (discard patches after submit)</option>
+      </select>
+    </div>
+  </div>
   <script>
     const vscode = acquireVsCodeApi();
     function escapeHtml(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -370,7 +504,25 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
         agentPromptHint: document.getElementById('agentPromptHint').value.trim() || undefined,
         agentPromptAnalyze: document.getElementById('agentPromptAnalyze').value.trim() || undefined,
         agentPromptExplain: document.getElementById('agentPromptExplain').value.trim() || undefined,
-        problemViewMode: document.getElementById('problemViewMode').value === 'text' ? 'text' : 'ui'
+        problemViewMode: document.getElementById('problemViewMode').value === 'text' ? 'text' : 'ui',
+        srs: {
+          enabled: document.getElementById('srsEnabled').checked,
+          problemsPerDay: Math.max(1, parseInt(document.getElementById('srsProblemsPerDay').value, 10) || 5),
+          defaultMode: document.getElementById('srsDefaultMode').value,
+          intervals: (document.getElementById('srsIntervals').value || '1,7,16,35,90').split(',').map(x => parseInt(x.trim(), 10) || 1)
+        },
+        diffLogger: {
+          enabled: document.getElementById('diffLoggerEnabled').checked,
+          triggerMode: document.getElementById('diffLoggerTriggerMode').value,
+          debounceMs: Math.max(1000, parseInt(document.getElementById('diffLoggerDebounceMs').value, 10) || 10000),
+          charThreshold: Math.max(1, parseInt(document.getElementById('diffLoggerCharThreshold').value, 10) || 100),
+          trackedExtensions: (document.getElementById('diffLoggerTrackedExtensions').value || '.py,.ts,.js,.cpp,.java,.go').split(',').map(x => x.trim())
+        },
+        autoRating: {
+          enabled: document.getElementById('autoRatingEnabled').checked,
+          requireConfirmation: document.getElementById('autoRatingRequireConfirmation').checked
+        },
+        diffRetention: document.getElementById('diffRetention').value
       };
     }
     function notifyChange() { vscode.postMessage({ type: 'update', config: collectConfig() }); }
@@ -412,6 +564,8 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
     document.getElementById('agentPromptHint').oninput = notifyChange;
     document.getElementById('agentPromptAnalyze').oninput = notifyChange;
     document.getElementById('agentPromptExplain').oninput = notifyChange;
+    document.getElementById('srsIntervals').oninput = notifyChange;
+    document.getElementById('diffLoggerTrackedExtensions').oninput = notifyChange;
   </script>
 </body>
 </html>`;

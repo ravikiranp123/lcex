@@ -1496,6 +1496,38 @@ export async function activate(context: vscode.ExtensionContext) {
     Logger.logError("Cursor LCX plugin install skipped", e);
   });
 
+  // Register toggleDiffLogger command
+  context.subscriptions.push(
+    vscode.commands.registerCommand("leetplus.toggleDiffLogger", async () => {
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders || folders.length === 0) {
+        vscode.window.showErrorMessage("No active workspace folder found.");
+        return;
+      }
+      const workspaceRoot = folders[0].uri.fsPath;
+      const configPath = path.join(workspaceRoot, ".leetplus", "config.json");
+      if (!fs.existsSync(configPath)) {
+        vscode.window.showErrorMessage("LeetPlus workspace config not found. Please initialize workspace first.");
+        return;
+      }
+      try {
+        const content = fs.readFileSync(configPath, "utf-8");
+        const config = JSON.parse(content);
+        if (!config.diffLogger) {
+          config.diffLogger = {};
+        }
+        const currentEnabled = config.diffLogger.enabled !== false;
+        config.diffLogger.enabled = !currentEnabled;
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
+
+        const msg = config.diffLogger.enabled ? "Diff Logger enabled." : "Diff Logger disabled.";
+        vscode.window.showInformationMessage(msg);
+      } catch (err) {
+        vscode.window.showErrorMessage("Failed to toggle Diff Logger: " + err);
+      }
+    })
+  );
+
   // Register initialization command
   context.subscriptions.push(
     vscode.commands.registerCommand("leetplus.initializeWorkspace", async () => {

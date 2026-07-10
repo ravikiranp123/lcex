@@ -21,7 +21,8 @@
     "workspaceContains:**/.leetcode",
     "onView:leetplus.onboardingView",
     "onCommand:leetplus.initializeWorkspace",
-    "onCommand:leetplus.showDailyPlan"
+    "onCommand:leetplus.showDailyPlan",
+    "onCommand:leetplus.toggleDiffLogger"
   ],
   "main": "./out/extension.js",
   "repository": {
@@ -362,6 +363,11 @@
       {
         "command": "leetplus.showDailyPlan",
         "title": "Show Daily Plan",
+        "category": "LeetPlus"
+      },
+      {
+        "command": "leetplus.toggleDiffLogger",
+        "title": "Toggle Diff Logger",
         "category": "LeetPlus"
       }
     ],

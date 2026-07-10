@@ -49,6 +49,24 @@ export interface LeetPlusConfig {
   editorFontFamily?: string;
   /** Whether to apply cursive italic textMate rules for comments and keywords. Defaults to true. */
   editorCursiveItalics?: boolean;
+  srs?: {
+    enabled?: boolean;
+    intervals?: number[];
+    problemsPerDay?: number;
+    defaultMode?: "interleaved" | "review-first" | "push" | "recap";
+  };
+  diffLogger?: {
+    enabled?: boolean;
+    triggerMode?: "smart" | "time" | "change";
+    debounceMs?: number;
+    charThreshold?: number;
+    trackedExtensions?: string[];
+  };
+  autoRating?: {
+    enabled?: boolean;
+    requireConfirmation?: boolean;
+  };
+  diffRetention?: "session" | "all" | "none";
 }
 
 const DEFAULTS: Required<
@@ -86,6 +104,24 @@ const DEFAULTS: Required<
   applyWorkspaceFontSettings: false,
   editorFontFamily: "Fira Code iScript",
   editorCursiveItalics: true,
+  srs: {
+    enabled: true,
+    intervals: [1, 7, 16, 35, 90],
+    problemsPerDay: 5,
+    defaultMode: "interleaved"
+  },
+  diffLogger: {
+    enabled: true,
+    triggerMode: "smart",
+    debounceMs: 10000,
+    charThreshold: 100,
+    trackedExtensions: [".py", ".ts", ".js", ".cpp", ".java", ".go"]
+  },
+  autoRating: {
+    enabled: true,
+    requireConfirmation: true
+  },
+  diffRetention: "session",
 };
 
 function isValidStudyPlanEntry(obj: unknown): obj is { slug: string; name: string; path?: string } {
