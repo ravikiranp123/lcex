@@ -20,7 +20,8 @@
     "workspaceContains:**/.leetplus/config.json",
     "workspaceContains:**/.leetcode",
     "onView:leetplus.onboardingView",
-    "onCommand:leetplus.initializeWorkspace"
+    "onCommand:leetplus.initializeWorkspace",
+    "onCommand:leetplus.showDailyPlan"
   ],
   "main": "./out/extension.js",
   "repository": {
@@ -356,6 +357,11 @@
       {
         "command": "leetplus.toggleAnalytics",
         "title": "Toggle anonymous analytics",
+        "category": "LeetPlus"
+      },
+      {
+        "command": "leetplus.showDailyPlan",
+        "title": "Show Daily Plan",
         "category": "LeetPlus"
       }
     ],

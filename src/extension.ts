@@ -121,6 +121,7 @@ import {
 } from "./modules/LeetPlusConfig";
 import { LeetPlusConfigEditorProvider } from "./modules/LeetPlusConfigEditor";
 import { initState } from "./modules/StateManager";
+import { initStatusBar } from "./modules/StatusBarManager";
 import { initProblemTimer, disposeProblemTimer, TIMER_BY_DAY_KEY } from "./modules/ProblemTimer";
 import {
   addBonusXp,
@@ -1434,6 +1435,7 @@ export async function activate(context: vscode.ExtensionContext) {
     () => updateGamificationStatusBars(context)
   );
   context.subscriptions.push({ dispose: () => disposeProblemTimer() });
+  initStatusBar(context);
   context.subscriptions.push(
     vscode.window.registerWebviewPanelSerializer(PROBLEM_WEBVIEW_VIEWTYPE, {
       deserializeWebviewPanel(panel, state) {
