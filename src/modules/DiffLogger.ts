@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import { execSync } from "child_process";
-import { readState } from "./StateManager";
+import { readState, writeState } from "./StateManager";
 import { problemKeyFromSolutionFileBase } from "./language/LanguageStrategy";
 
 // Configuration interface
@@ -228,6 +228,17 @@ export async function saveDiff(
       const timestamp = new Date().toISOString().replace(/:/g, "-");
       const diffPath = path.join(diffsDir, `${timestamp}.patch`);
       fs.writeFileSync(diffPath, patch, "utf-8");
+
+      // Update state lastActivityDate to track active typing sessions
+      try {
+        const state = await readState(workspaceRoot);
+        if (state) {
+          state.lastActivityDate = new Date().toISOString();
+          await writeState(workspaceRoot, state);
+        }
+      } catch {
+        // Ignore state write errors
+      }
     }
 
     // Update baseline in memory

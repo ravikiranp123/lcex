@@ -83,6 +83,7 @@ export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem>
   private _onDidChangeTreeData = new vscode.EventEmitter<DailyPlanItem | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
   private mismatchNotificationShown = false;
+  private welcomeBackShown = false;
   public activeCategoryFilter: string | undefined = undefined;
 
   constructor(
@@ -124,7 +125,11 @@ export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem>
 
     const config = getEffectiveConfig(folders);
     const studyPlans = config.studyPlans ?? [];
-    const workspaceStudySlug = this.context.workspaceState.get<string>("leetplus.selectedStudyPlan")?.trim();
+    let workspaceStudySlug = this.context.workspaceState.get<string>("leetplus.selectedStudyPlan")?.trim();
+    if (config.activeStudyPlan && config.activeStudyPlan !== workspaceStudySlug && studyPlans.some((p) => p.slug === config.activeStudyPlan)) {
+      await this.context.workspaceState.update("leetplus.selectedStudyPlan", config.activeStudyPlan);
+      workspaceStudySlug = config.activeStudyPlan;
+    }
     const savedStudySlug =
       workspaceStudySlug && studyPlans.some((p) => p.slug === workspaceStudySlug)
         ? workspaceStudySlug
@@ -153,6 +158,22 @@ export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem>
           void vscode.commands.executeCommand("leetplus.switchStudyPlan", savedStudySlug);
         }
       });
+    }
+
+    if (state && !this.welcomeBackShown) {
+      this.welcomeBackShown = true;
+      const lastActivityStr = state.lastActivityDate;
+      if (lastActivityStr) {
+        const lastActivity = new Date(lastActivityStr);
+        const completedProblems = state.problems.filter((p) => p.status === "completed");
+        if (completedProblems.length > 0) {
+          const diffMs = Date.now() - lastActivity.getTime();
+          const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+          if (diffDays > 7) {
+            void this.triggerWelcomeBackFlow(state, diffDays);
+          }
+        }
+      }
     }
 
 
@@ -282,6 +303,49 @@ export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem>
     }
 
     return children;
+  }
+
+  private async triggerWelcomeBackFlow(state: LPState, diffDays: number): Promise<void> {
+    const confirm = await vscode.window.showInformationMessage(
+      `Welcome back! It's been ${diffDays} days since your last LeetPlus practice. Let's trigger a personalized AI recap plan to ease you back into coding.`,
+      "Generate AI Recap Plan",
+      "Cancel"
+    );
+
+    if (confirm !== "Generate AI Recap Plan") return;
+
+    // Collect lowest mastery patterns
+    const mastery = state.patternMastery || {};
+    const lowestPatterns = Object.entries(mastery)
+      .map(([pattern, score]) => ({ pattern, score }))
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 3);
+
+    // Collect overdue reviews
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const overdueSlugs = state.problems
+      .filter((p) => p.status === "completed" && p.nextRepetitionDate && p.nextRepetitionDate.slice(0, 10) <= todayStr)
+      .map((p) => p.slug)
+      .filter(Boolean) as string[];
+
+    const completedSlugs = state.problems
+      .filter((p) => p.status === "completed")
+      .map((p) => p.slug)
+      .filter(Boolean) as string[];
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    const prompt = `Load **lp-recap-planner** and follow its instructions to generate a comeback recap plan.
+Here is the context about my progress:
+- Days Inactive: ${diffDays} days
+- Last Activity Date: ${state.lastActivityDate}
+- Decayed/Weak Patterns: ${JSON.stringify(lowestPatterns)}
+- Overdue Review Problems: ${JSON.stringify(overdueSlugs)}
+- Completed Problems: ${JSON.stringify(completedSlugs)}
+
+Please generate the study plan JSON and write it to \".leetplus/plans/ai-recap-${dateStr}.json\" in my workspace. Then register it in \".leetplus/config.json\" under \"studyPlans\" (slug: \"ai-recap-${dateStr}\", name: \"AI Recap Plan ${new Date().toLocaleDateString()}\", path: \".leetplus/plans/ai-recap-${dateStr}.json\") and set it as the \"activeStudyPlan\" to active it.`;
+
+    await vscode.commands.executeCommand("leetplus.openChatWithPrompt", prompt);
   }
 
   private isSolvedToday(problem: LPProblem): boolean {

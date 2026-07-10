@@ -265,4 +265,83 @@ describe("DailyPlanProvider", () => {
       vscode.workspace.workspaceFolders = originalWorkspaceFolders;
     }
   });
+
+  it("should trigger welcome-back flow if inactive for >7 days with completed problems", async () => {
+    const workspaceRoot = path.join(TEST_DIR, "workspace3");
+    fs.mkdirSync(workspaceRoot, { recursive: true });
+
+    const originalWorkspaceFolders = vscode.workspace.workspaceFolders;
+    vscode.workspace.workspaceFolders = [
+      {
+        uri: { fsPath: workspaceRoot } as any,
+        name: "TestWorkspace",
+        index: 0
+      }
+    ];
+
+    try {
+      const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+      const problems = [
+        {
+          id: 1,
+          title: "Two Sum",
+          slug: "two-sum",
+          difficulty: "Easy",
+          category: "Arrays",
+          status: "completed" as const,
+          scheduledDate: tenDaysAgo.slice(0, 10),
+          nextRepetitionDate: tenDaysAgo.slice(0, 10),
+          repetitionLevel: 1,
+          completionHistory: [{ date: tenDaysAgo, rating: 2, notes: "", timeSpentSeconds: 10, hintsUsed: 0, patternsDetected: [] }]
+        }
+      ];
+
+      const state = await initState(workspaceRoot, "Test RoadMap", problems);
+      state.lastActivityDate = tenDaysAgo;
+      await fs.promises.writeFile(
+        path.join(workspaceRoot, ".leetplus", "state.json"),
+        JSON.stringify(state, null, 2),
+        "utf-8"
+      );
+
+      // Mock showInformationMessage to click "Generate AI Recap Plan"
+      let showInfoCalled = false;
+      vscode.window.showInformationMessage = (msg: string, ...items: any[]) => {
+        if (msg.includes("Welcome back!")) {
+          showInfoCalled = true;
+          return Promise.resolve("Generate AI Recap Plan");
+        }
+        return Promise.resolve(undefined);
+      };
+
+      // Mock executeCommand to intercept openChatWithPrompt call
+      let executedCommand = "";
+      let executedPrompt = "";
+      vscode.commands.executeCommand = (cmd: string, ...args: any[]) => {
+        if (cmd === "leetplus.openChatWithPrompt") {
+          executedCommand = cmd;
+          executedPrompt = args[0];
+        }
+        return Promise.resolve();
+      };
+
+      const mockContext = {
+        subscriptions: [],
+        workspaceState: {
+          get: () => undefined,
+          update: () => Promise.resolve()
+        }
+      } as any;
+
+      const provider = new DailyPlanProvider(mockContext);
+      await provider.getChildren();
+
+      assert.strictEqual(showInfoCalled, true, "Should show welcome-back popup");
+      assert.strictEqual(executedCommand, "leetplus.openChatWithPrompt", "Should trigger chat prompt");
+      assert.ok(executedPrompt.includes("lp-recap-planner"), "Prompt should ask to load recap-planner");
+      assert.ok(executedPrompt.includes("10 days"), "Prompt should state correct inactive days count");
+    } finally {
+      vscode.workspace.workspaceFolders = originalWorkspaceFolders;
+    }
+  });
 });

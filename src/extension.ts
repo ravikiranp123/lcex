@@ -1321,6 +1321,7 @@ async function migrateWorkspaces() {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
+  let dailyPlanProvider: DailyPlanProvider;
   extensionContextForBars = context;
   const outputChannel = vscode.window.createOutputChannel("LeetPlus");
   context.subscriptions.push(outputChannel);
@@ -1393,11 +1394,16 @@ export async function activate(context: vscode.ExtensionContext) {
   leetcodeWatcher.onDidCreate(() => {
     updateHasMarkerContext();
     void applyLeetcodeWorkspaceAppearanceIfNeeded(context);
+    dailyPlanProvider.refresh();
   });
-  leetcodeWatcher.onDidDelete(() => updateHasMarkerContext());
+  leetcodeWatcher.onDidDelete(() => {
+    updateHasMarkerContext();
+    dailyPlanProvider.refresh();
+  });
   leetcodeWatcher.onDidChange(() => {
     updateHasMarkerContext();
     void applyLeetcodeWorkspaceAppearanceIfNeeded(context);
+    dailyPlanProvider.refresh();
   });
   context.subscriptions.push(leetcodeWatcher);
 
@@ -3221,7 +3227,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       topicTags: p.topicTags,
     }));
   };
-  const dailyPlanProvider = new DailyPlanProvider(context, fetchStudyPlanProblems);
+  dailyPlanProvider = new DailyPlanProvider(context, fetchStudyPlanProblems);
 
   const dailyPlanView = vscode.window.createTreeView("leetplus-daily-plan", {
     treeDataProvider: dailyPlanProvider,
@@ -3417,6 +3423,13 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       dailyPlanProvider.activeCategoryFilter = choice.value;
       dailyPlanView.description = `Focus: ${choice.value}`;
       dailyPlanProvider.refresh();
+    })
+  );
+
+  // Command to open chat panel with a prompt
+  context.subscriptions.push(
+    vscode.commands.registerCommand("leetplus.openChatWithPrompt", async (prompt: string) => {
+      await openChatWithPrompt(prompt);
     })
   );
 

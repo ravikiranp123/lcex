@@ -188,6 +188,44 @@ When you update the file, **preserve** any existing \`coaching\` object unless t
 **In-editor:** **Ask agent — Analyze** clears analysis fields then runs this flow.
 `;
 
+const RECAP_PLANNER_SKILL_MD = `---
+name: lp-recap-planner
+description: Generates a structured JSON study plan to recap key topics for users returning after a long absence.
+---
+
+You are an expert DSA Coach and Study Planner. Your goal is to analyze a user's practice history and build a custom "Comeback Plan" (recap study plan) to help them ease back into coding practice after a long absence (>7 days).
+
+### Input Context
+You will be provided with:
+1. **Days Absent**: The number of days the user has been inactive.
+2. **Decayed Patterns**: Patterns whose mastery scores have decayed or are lowest.
+3. **Overdue Reviews**: Problems that are due for review under the Spaced Repetition (SRS) schedule.
+4. **Recent Work**: Problems the user was working on before their break.
+
+### Output Requirements
+You must generate a valid JSON document representing the recap study plan.
+The JSON must be a simple object mapping category headings (e.g. "Recap: Sliding Window") to lists of LeetCode problem slugs that already exist in the user's study plan or state history.
+
+#### Format:
+\`\`\`json
+{
+  "Recap: <Topic Name>": [
+    "slug-1",
+    "slug-2"
+  ]
+}
+\`\`\`
+
+#### Rules:
+1. Output ONLY valid JSON inside markdown block code. Do not output conversational text or explanations.
+2. Select 3 to 8 problems in total.
+3. Focus on:
+   - 1 or 2 easy problems from their lowest mastery patterns to build confidence.
+   - 2 or 3 of their most overdue review problems that match the low mastery categories.
+4. Categorize them logically.
+5. All problem slugs must match existing slugs in the user's state.
+`;
+
 const PLUGIN_JSON = `{
   "name": "lcex-leetcode-practice",
   "displayName": "LeetCode Practice (LCX)",
@@ -213,14 +251,18 @@ export async function ensureCursorLeetPlusPluginInstalled(_context: vscode.Exten
   const interviewSkillPath = path.join(PLUGIN_ROOT, "skills", "lp-interview-generator", "SKILL.md");
   const dsaHintSkillPath = path.join(PLUGIN_ROOT, "skills", "lp-dsa-hint", "SKILL.md");
   const dsaAnalyzeSkillPath = path.join(PLUGIN_ROOT, "skills", "lp-dsa-analyze", "SKILL.md");
+  const recapPlannerSkillPath = path.join(PLUGIN_ROOT, "skills", "lp-recap-planner", "SKILL.md");
   const metaPath = path.join(PLUGIN_ROOT, ".cursor-plugin", "plugin.json");
+
   const r1 = await writeIfDifferent(interviewSkillPath, SKILL_MD);
   const r2 = await writeIfDifferent(dsaHintSkillPath, DSA_HINT_SKILL_MD);
   const r4 = await writeIfDifferent(dsaAnalyzeSkillPath, DSA_ANALYZE_SKILL_MD);
+  const r5 = await writeIfDifferent(recapPlannerSkillPath, RECAP_PLANNER_SKILL_MD);
   const r3 = await writeIfDifferent(metaPath, PLUGIN_JSON);
-  if (r1 !== "unchanged" || r2 !== "unchanged" || r3 !== "unchanged" || r4 !== "unchanged") {
+
+  if (r1 !== "unchanged" || r2 !== "unchanged" || r3 !== "unchanged" || r4 !== "unchanged" || r5 !== "unchanged") {
     Logger.log(
-      `Cursor LCX plugin: interview ${r1}, dsa-hint ${r2}, dsa-analyze ${r4}, plugin.json ${r3} at ${PLUGIN_ROOT}`
+      `Cursor LCX plugin: interview ${r1}, dsa-hint ${r2}, dsa-analyze ${r4}, recap-planner ${r5}, plugin.json ${r3} at ${PLUGIN_ROOT}`
     );
   }
 
@@ -233,10 +275,12 @@ export async function ensureCursorLeetPlusPluginInstalled(_context: vscode.Exten
     const agyInterviewSkillPath = path.join(wsRoot, ".agents", "skills", "lp-interview-generator", "SKILL.md");
     const agyDsaHintSkillPath = path.join(wsRoot, ".agents", "skills", "lp-dsa-hint", "SKILL.md");
     const agyDsaAnalyzeSkillPath = path.join(wsRoot, ".agents", "skills", "lp-dsa-analyze", "SKILL.md");
+    const agyRecapPlannerSkillPath = path.join(wsRoot, ".agents", "skills", "lp-recap-planner", "SKILL.md");
     
     await writeIfDifferent(agyInterviewSkillPath, SKILL_MD);
     await writeIfDifferent(agyDsaHintSkillPath, DSA_HINT_SKILL_MD);
     await writeIfDifferent(agyDsaAnalyzeSkillPath, DSA_ANALYZE_SKILL_MD);
+    await writeIfDifferent(agyRecapPlannerSkillPath, RECAP_PLANNER_SKILL_MD);
 
     // VS Code Copilot
     const copilotInstructionsPath = path.join(wsRoot, ".github", "copilot-instructions.md");
@@ -247,7 +291,9 @@ export async function ensureCursorLeetPlusPluginInstalled(_context: vscode.Exten
       "## lp-dsa-hint",
       DSA_HINT_SKILL_MD.replace(/---[\s\S]*?---/, ""),
       "## lp-interview-generator",
-      SKILL_MD.replace(/---[\s\S]*?---/, "")
+      SKILL_MD.replace(/---[\s\S]*?---/, ""),
+      "## lp-recap-planner",
+      RECAP_PLANNER_SKILL_MD.replace(/---[\s\S]*?---/, "")
     ].join("\n\n");
     await writeIfDifferent(copilotInstructionsPath, copilotContent);
   }
