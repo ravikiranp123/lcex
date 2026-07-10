@@ -236,7 +236,7 @@ export function buildComplexityInlineItems(
 }
 
 function buildHover(estimate: ComplexityEstimate, budget: Budget | null, verdict: Verdict): string {
-  const lines: string[] = ["**lcex: complexity budget**", ""];
+  const lines: string[] = ["**leetplus: complexity budget**", ""];
   if (budget) {
     lines.push(`- size cap: \`${budget.maxSizeLabel}\` (max ${formatSize(budget.maxSize)})`);
     lines.push(`- target: \`${budget.targetLabel}\``);

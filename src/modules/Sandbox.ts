@@ -23,7 +23,7 @@ function readSandboxMode(): SandboxMode {
     // Lazy require so this module stays importable in non-vscode contexts.
     const vscode = require("vscode") as typeof import("vscode");
     const v = vscode.workspace
-      .getConfiguration("leetcodePractice")
+      .getConfiguration("leetplus")
       .get<string>("runExamples.sandbox");
     if (v === "off" || v === "sandbox" || v === "auto") return v;
   } catch {
@@ -78,7 +78,7 @@ function execWithTimeout(
       resolve({
         stdout,
         stderr: timedOut
-          ? `${stderr}\nlcex: process killed after ${timeout}ms timeout`.trimStart()
+          ? `${stderr}\nleetplus: process killed after ${timeout}ms timeout`.trimStart()
           : stderr,
         exitCode: timedOut ? null : code,
       });
@@ -129,7 +129,7 @@ ${subpathRules}
 }
 
 const SANDBOX_HINT =
-  'lcex: this may be blocked by the sandbox. Set `leetcodePractice.runExamples.sandbox` to "off" to disable.';
+  'leetplus: this may be blocked by the sandbox. Set `leetplus.runExamples.sandbox` to "off" to disable.';
 
 // Tell-tale fragments from kernel/runtime errors when the sandbox denies a
 // file-write or network syscall. Matched case-insensitively against combined
@@ -173,7 +173,7 @@ export async function runSandboxed(
     return {
       stdout: "",
       stderr:
-        "lcex: leetcodePractice.runExamples.sandbox is set to 'sandbox' but no sandbox backend is available on this platform. Set it to 'auto' or 'off'.",
+        "leetplus: leetplus.runExamples.sandbox is set to 'sandbox' but no sandbox backend is available on this platform. Set it to 'auto' or 'off'.",
       exitCode: null,
     };
   }

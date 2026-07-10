@@ -18,7 +18,7 @@ export interface FuzzOutcome {
   ranCases: number;
 }
 
-const HARNESS_DIR = path.join(os.homedir(), ".lcex", "fuzz");
+const HARNESS_DIR = path.join(os.homedir(), ".leetplus", "fuzz");
 
 function ensureHarnessDir(): void {
   fs.mkdirSync(HARNESS_DIR, { recursive: true });

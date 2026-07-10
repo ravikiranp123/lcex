@@ -114,12 +114,12 @@ import {
   track as trackAnalytics,
 } from "./modules/cloud/analytics";
 import {
-  parseLeetcodeConfig,
+  parseLeetPlusConfig,
   getEffectiveConfig,
   resolveDefaultStudyPlanSlug,
   resolveDefaultProblemListSlug,
-} from "./modules/LeetcodeConfig";
-import { LeetcodeConfigEditorProvider } from "./modules/LeetcodeConfigEditor";
+} from "./modules/LeetPlusConfig";
+import { LeetPlusConfigEditorProvider } from "./modules/LeetPlusConfigEditor";
 import { initProblemTimer, disposeProblemTimer, TIMER_BY_DAY_KEY } from "./modules/ProblemTimer";
 import {
   addBonusXp,
@@ -159,14 +159,14 @@ import {
   writeInterviewReportAtPath,
   getReportPathForInterviewFile,
   getReportPathForAttempt,
-} from "./modules/LcexInterviewReportStore";
+} from "./modules/LeetPlusInterviewReportStore";
 import type { LcInterviewFileV1 } from "./modules/LcInterviewFile";
 import { defaultInterviewNameFromDate, parseLcInterviewFile, serializeLcInterviewFile } from "./modules/LcInterviewFile";
 import { LeetcodeInterviewEditorProvider } from "./modules/LcInterviewEditorProvider";
 import { LcInterviewReportEditorProvider } from "./modules/LcInterviewReportEditorProvider";
-import { ensureCursorLcexPluginInstalled } from "./modules/CursorLcexPluginInstall";
-import { ensureLcexBundledFontsInstalled } from "./modules/LcexFontInstall";
-import { applyLcexEditorFontAndTokenSettingsIfNeeded } from "./modules/LeetcodePracticeEditorSettings";
+import { ensureCursorLeetPlusPluginInstalled } from "./modules/CursorLeetPlusPluginInstall";
+import { ensureLeetPlusBundledFontsInstalled } from "./modules/LeetPlusFontInstall";
+import { applyLeetPlusEditorFontAndTokenSettingsIfNeeded } from "./modules/LeetPlusEditorSettings";
 import {
   applyCloudStatsMerge,
   fetchCloudStatsDocument,
@@ -190,12 +190,12 @@ function getProvider(): IProblemProvider {
   return new LeetCodeProvider();
 }
 
-const LEETCODE_MARKER = ".leetcode";
+const LEETCODE_MARKER = ".leetplus";
 const LEETCODE_THEME = "LeetCode Dark";
 
 function hasLeetcodeMarker(workspaceFolder: vscode.WorkspaceFolder): boolean {
-  const markerPath = path.join(workspaceFolder.uri.fsPath, LEETCODE_MARKER);
-  return fs.existsSync(markerPath);
+  const rootPath = workspaceFolder.uri.fsPath;
+  return fs.existsSync(path.join(rootPath, ".leetplus")) || fs.existsSync(path.join(rootPath, ".leetcode"));
 }
 
 function computeHasLeetcodeMarker(): boolean {
@@ -215,19 +215,19 @@ function shouldAutoApplyTheme(): boolean {
   return hasMarkerCache;
 }
 
-const HAS_MARKER_CONTEXT = "leetcodePractice.hasMarker";
-const SHOW_PROBLEMSET_CONTEXT = "leetcodePractice.showProblemset";
-const SHOW_STUDY_PLANS_CONTEXT = "leetcodePractice.showStudyPlans";
-const SHOW_PROBLEM_LISTS_CONTEXT = "leetcodePractice.showProblemLists";
-const SHOW_QOTD_CONTEXT = "leetcodePractice.showQotd";
-const SHOW_CONTESTS_CONTEXT = "leetcodePractice.showContests";
-const SHOW_COMPANIES_CONTEXT = "leetcodePractice.showCompanies";
-const IS_SOLUTION_FILE_CONTEXT = "leetcodePractice.isSolutionFile";
+const HAS_MARKER_CONTEXT = "leetplus.hasMarker";
+const SHOW_PROBLEMSET_CONTEXT = "leetplus.showProblemset";
+const SHOW_STUDY_PLANS_CONTEXT = "leetplus.showStudyPlans";
+const SHOW_PROBLEM_LISTS_CONTEXT = "leetplus.showProblemLists";
+const SHOW_QOTD_CONTEXT = "leetplus.showQotd";
+const SHOW_CONTESTS_CONTEXT = "leetplus.showContests";
+const SHOW_COMPANIES_CONTEXT = "leetplus.showCompanies";
+const IS_SOLUTION_FILE_CONTEXT = "leetplus.isSolutionFile";
 
 const SOLUTION_EXTENSIONS = new Set(SOLUTION_FILE_EXTENSIONS);
 
-// Java solution files are named after their entry class (`LCexMain2.java`); see LanguageStrategy.
-const NUMBERED_FILE_PATTERN = /^(?:LCexMain)?(\d+)\.(ts|js|py|cpp|java)$/i;
+// Java solution files are named after their entry class (`LeetPlusMain2.java`); see LanguageStrategy.
+const NUMBERED_FILE_PATTERN = /^(?:LeetPlusMain)?(\d+)\.(ts|js|py|cpp|java)$/i;
 
 /** Shows problem name as tooltip on numbered solution files in LeetCode workspaces. */
 class LeetCodeFileDecorationProvider implements vscode.FileDecorationProvider {
@@ -324,7 +324,7 @@ function updateAgentStatusBarVisibility(): void {
     if (visible) {
       statusBarMakeRunnable.text = "$(play) Make Runnable";
       statusBarMakeRunnable.tooltip = "Ask agent: Make this runnable (prompt from .leetcode)";
-      statusBarMakeRunnable.command = "leetcode-practice.agentMakeRunnable";
+      statusBarMakeRunnable.command = "leetplus.agentMakeRunnable";
       statusBarMakeRunnable.show();
     } else {
       statusBarMakeRunnable.hide();
@@ -334,8 +334,8 @@ function updateAgentStatusBarVisibility(): void {
     if (visible) {
       statusBarHint.text = "$(lightbulb) Hint";
       statusBarHint.tooltip =
-        "Coaching: open .hint if it exists, else ask the agent (lcex-dsa-hint). Configure in .leetcode.";
-      statusBarHint.command = "leetcode-practice.agentHint";
+        "Coaching: open .hint if it exists, else ask the agent (lp-dsa-hint). Configure in .leetcode.";
+      statusBarHint.command = "leetplus.agentHint";
       statusBarHint.show();
     } else {
       statusBarHint.hide();
@@ -345,8 +345,8 @@ function updateAgentStatusBarVisibility(): void {
     if (visible) {
       statusBarAnalyze.text = "$(graph) Analyze";
       statusBarAnalyze.tooltip =
-        "Scored review: open .hint if it exists, else ask the agent (lcex-dsa-analyze). Configure in .leetcode.";
-      statusBarAnalyze.command = "leetcode-practice.agentAnalyze";
+        "Scored review: open .hint if it exists, else ask the agent (lp-dsa-analyze). Configure in .leetcode.";
+      statusBarAnalyze.command = "leetplus.agentAnalyze";
       statusBarAnalyze.show();
     } else {
       statusBarAnalyze.hide();
@@ -886,7 +886,7 @@ async function runInterviewSessionAfterPlan(
   if (!shouldAutoApplyTheme()) {
     return {
       ok: false,
-      message: "LeetCode workspace (.leetcode) required. Open a workspace with a .leetcode file.",
+      message: "LeetPlus workspace required. Run 'LeetPlus: Initialize Workspace' to set up.",
     };
   }
   if (getInterviewSession(context.globalState)) {
@@ -990,7 +990,7 @@ function startInterviewTick(context: vscode.ExtensionContext): void {
         sess.kind === "contest"
           ? `Contest interview${sess.interviewName ? ` — ${sess.interviewName}` : ""} — click to stop`
           : "Interview mode — click to stop";
-      interviewStatusBar.command = "leetcode-practice.interviewModeStop";
+      interviewStatusBar.command = "leetplus.interviewModeStop";
       interviewStatusBar.show();
     }
     void incrementInterviewTimeForFocusedProblem(context.globalState);
@@ -1016,7 +1016,7 @@ function updateGamificationStatusBars(context: vscode.ExtensionContext): void {
     dailyGoalStatusBar.text =
       g.mode === "problems" ? `$(checklist) ${cur}/${g.target} today` : `$(watch) ${cur}/${g.target} min`;
     dailyGoalStatusBar.tooltip = "Daily goal — LeetCode: Set Daily Goal";
-    dailyGoalStatusBar.command = "leetcode-practice.setDailyGoal";
+    dailyGoalStatusBar.command = "leetplus.setDailyGoal";
     dailyGoalStatusBar.show();
   } else {
     dailyGoalStatusBar?.hide();
@@ -1026,7 +1026,7 @@ function updateGamificationStatusBars(context: vscode.ExtensionContext): void {
   if (xpStatusBar) {
     xpStatusBar.text = `$(star-full) Lv ${lv.level} · ${txp} XP`;
     xpStatusBar.tooltip = `${txp} XP total · ${lv.xpInLevel}/${lv.xpNeededForNext} XP to next level`;
-    xpStatusBar.command = "leetcode-practice.viewStats";
+    xpStatusBar.command = "leetplus.viewStats";
     xpStatusBar.show();
   }
 }
@@ -1043,7 +1043,7 @@ function refreshInterviewStatusBarNow(context: vscode.ExtensionContext): void {
     sess.kind === "contest"
       ? `Contest interview${sess.interviewName ? ` — ${sess.interviewName}` : ""} — click to stop`
       : "Interview mode — click to stop";
-  interviewStatusBar.command = "leetcode-practice.interviewModeStop";
+  interviewStatusBar.command = "leetplus.interviewModeStop";
   interviewStatusBar.show();
 }
 
@@ -1175,7 +1175,7 @@ async function detectAndRecordPatternMastery(
     const result = await recordSolveForPatterns(context.globalState, titleSlug, detection.matched);
     if (result.newPatterns.length > 0) {
       const labels = result.newPatterns.map((p) => getPatternMeta(p).label).join(", ");
-      vscode.window.setStatusBarMessage(`lcex: pattern mastery +${result.newPatterns.length} (${labels})`, 6000);
+      vscode.window.setStatusBarMessage(`leetplus: pattern mastery +${result.newPatterns.length} (${labels})`, 6000);
     }
   } catch (e) {
     Logger.logError("pattern-mastery: failed to record solve", e);
@@ -1186,7 +1186,7 @@ async function applyLeetcodeThemeIfNeeded(): Promise<void> {
   Logger.log("Theme auto-apply: checking...");
   const folders = vscode.workspace.workspaceFolders ?? [];
   if (!folders.length) return;
-  const leetcodeConfig = parseLeetcodeConfig(folders);
+  const leetcodeConfig = parseLeetPlusConfig(folders);
   if (leetcodeConfig.theme === "none") {
     Logger.log("Theme auto-apply: skipped (theme: none in .leetcode)");
     return;
@@ -1221,19 +1221,94 @@ async function applyLeetcodeThemeIfNeeded(): Promise<void> {
 async function applyLeetcodeWorkspaceAppearanceIfNeeded(context: vscode.ExtensionContext): Promise<void> {
   await applyLeetcodeThemeIfNeeded();
   if (!computeHasLeetcodeMarker()) return;
-  await ensureLcexBundledFontsInstalled(context.extensionPath);
-  await applyLcexEditorFontAndTokenSettingsIfNeeded();
+  await ensureLeetPlusBundledFontsInstalled(context.extensionPath);
+  await applyLeetPlusEditorFontAndTokenSettingsIfNeeded();
 }
 
 let extensionContextForBars: vscode.ExtensionContext | null = null;
 
+async function migrateWorkspaces() {
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  const subdirs = ["snapshots", "diffs", "guides", "designs", "behavioral", "plans", "whiteboard"];
+  
+  for (const folder of folders) {
+    const rootPath = folder.uri.fsPath;
+    const leetplusDir = path.join(rootPath, ".leetplus");
+    const leetcodeFile = path.join(rootPath, ".leetcode");
+
+    const exists = fs.existsSync(leetplusDir);
+    const isFile = exists ? fs.statSync(leetplusDir).isFile() : false;
+
+    if (isFile) {
+      // User created `.leetplus` as a file. Let's convert it to a directory.
+      try {
+        let configContent = "{}";
+        try {
+          configContent = fs.readFileSync(leetplusDir, "utf-8");
+        } catch { /* ignore */ }
+        
+        fs.unlinkSync(leetplusDir);
+        fs.mkdirSync(leetplusDir, { recursive: true });
+        
+        for (const d of subdirs) {
+          fs.mkdirSync(path.join(leetplusDir, d), { recursive: true });
+        }
+        
+        fs.writeFileSync(path.join(leetplusDir, "config.json"), configContent, "utf-8");
+        Logger.log(`Converted .leetplus file to directory in ${folder.name}`);
+      } catch (e) {
+        Logger.logError(`Failed to convert .leetplus file in ${folder.name}`, e);
+      }
+    } else if (!exists) {
+      if (fs.existsSync(leetcodeFile)) {
+        // Silent automatic migration of legacy config
+        try {
+          fs.mkdirSync(leetplusDir, { recursive: true });
+          for (const d of subdirs) {
+            fs.mkdirSync(path.join(leetplusDir, d), { recursive: true });
+          }
+          
+          let configContent = "{}";
+          try {
+            configContent = fs.readFileSync(leetcodeFile, "utf-8");
+          } catch { /* ignore */ }
+          
+          fs.writeFileSync(path.join(leetplusDir, "config.json"), configContent, "utf-8");
+          fs.unlinkSync(leetcodeFile);
+          
+          Logger.log(`Successfully migrated legacy config in ${folder.name} to LeetPlus`);
+        } catch (e) {
+          Logger.logError(`Migration failed for legacy config in ${folder.name}`, e);
+        }
+      }
+    } else {
+      // It is a directory, scaffold subdirs if they don't exist
+      for (const d of subdirs) {
+        const subPath = path.join(leetplusDir, d);
+        if (!fs.existsSync(subPath)) {
+          try {
+            fs.mkdirSync(subPath, { recursive: true });
+          } catch (e) {
+            Logger.logError(`Failed to scaffold ${subPath}`, e);
+          }
+        }
+      }
+    }
+  }
+}
+
 export async function activate(context: vscode.ExtensionContext) {
-  Logger.log("LeetCode Practice activating...");
-
-
+  Logger.log("LeetPlus activating...");
+  
+  // Run migration and scaffold check
+  try {
+    await migrateWorkspaces();
+  } catch (e) {
+    Logger.logError("Workspace migration failed", e);
+  }
 
   extensionContextForBars = context;
-  const outputChannel = vscode.window.createOutputChannel("LeetCode Practice");
+  const outputChannel = vscode.window.createOutputChannel("LeetPlus");
   context.subscriptions.push(outputChannel);
   Logger.init(outputChannel);
   Logger.log("Extension activated");
@@ -1290,7 +1365,7 @@ export async function activate(context: vscode.ExtensionContext) {
       updateHasMarkerContext();
     })
   );
-  const leetcodeWatcher = vscode.workspace.createFileSystemWatcher("**/.leetcode");
+  const leetcodeWatcher = vscode.workspace.createFileSystemWatcher("**/{.leetplus/config.json,.leetcode}");
   leetcodeWatcher.onDidCreate(() => {
     updateHasMarkerContext();
     void applyLeetcodeWorkspaceAppearanceIfNeeded(context);
@@ -1320,7 +1395,7 @@ export async function activate(context: vscode.ExtensionContext) {
   dailyGoalStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 96);
   xpStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 95);
   bugReviewStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 94);
-  bugReviewStatusBar.command = "leetcode-practice.openNextBugReview";
+  bugReviewStatusBar.command = "leetplus.openNextBugReview";
   context.subscriptions.push(
     statusBarMakeRunnable,
     statusBarHint,
@@ -1367,21 +1442,21 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(registerProblemPlainTextDocumentProvider(context, getProvider));
   context.subscriptions.push(
     vscode.window.registerCustomEditorProvider(
-      "leetcode-practice.configEditor",
-      new LeetcodeConfigEditorProvider(context),
+      "leetplus.configEditor",
+      new LeetPlusConfigEditorProvider(context),
       { webviewOptions: { retainContextWhenHidden: true } }
     )
   );
   context.subscriptions.push(
     vscode.window.registerCustomEditorProvider(
-      "leetcode-practice.lcInterviewEditor",
+      "leetplus.lcInterviewEditor",
       new LeetcodeInterviewEditorProvider(context, getProvider),
       { webviewOptions: { retainContextWhenHidden: true } }
     )
   );
   context.subscriptions.push(
     vscode.window.registerCustomEditorProvider(
-      "leetcode-practice.lcInterviewReportEditor",
+      "leetplus.lcInterviewReportEditor",
       new LcInterviewReportEditorProvider(context, getProvider),
       { webviewOptions: { retainContextWhenHidden: true } }
     )
@@ -1394,13 +1469,77 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  void ensureCursorLcexPluginInstalled(context).catch((e) => {
+  void ensureCursorLeetPlusPluginInstalled(context).catch((e) => {
     Logger.logError("Cursor LCX plugin install skipped", e);
   });
 
+  // Register initialization command
+  context.subscriptions.push(
+    vscode.commands.registerCommand("leetplus.initializeWorkspace", async () => {
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders || folders.length === 0) {
+        vscode.window.showErrorMessage("Please open a workspace folder first.");
+        return;
+      }
+      
+      const folder = folders[0];
+      const rootPath = folder.uri.fsPath;
+      const leetplusDir = path.join(rootPath, ".leetplus");
+      const leetcodeFile = path.join(rootPath, ".leetcode");
+      const subdirs = ["snapshots", "diffs", "guides", "designs", "behavioral", "plans", "whiteboard"];
+
+      try {
+        if (fs.existsSync(leetcodeFile)) {
+          fs.mkdirSync(leetplusDir, { recursive: true });
+          for (const d of subdirs) {
+            fs.mkdirSync(path.join(leetplusDir, d), { recursive: true });
+          }
+          
+          let configContent = "{}";
+          try {
+            configContent = fs.readFileSync(leetcodeFile, "utf-8");
+          } catch { /* ignore */ }
+          
+          fs.writeFileSync(path.join(leetplusDir, "config.json"), configContent, "utf-8");
+          fs.unlinkSync(leetcodeFile);
+          
+          vscode.window.showInformationMessage("Migrated legacy .leetcode configuration to LeetPlus!");
+        } else {
+          if (!fs.existsSync(leetplusDir)) {
+            fs.mkdirSync(leetplusDir, { recursive: true });
+          } else if (fs.statSync(leetplusDir).isFile()) {
+            fs.unlinkSync(leetplusDir);
+            fs.mkdirSync(leetplusDir, { recursive: true });
+          }
+          
+          for (const d of subdirs) {
+            const subPath = path.join(leetplusDir, d);
+            if (!fs.existsSync(subPath)) {
+              fs.mkdirSync(subPath, { recursive: true });
+            }
+          }
+          
+          const configJson = path.join(leetplusDir, "config.json");
+          if (!fs.existsSync(configJson)) {
+            fs.writeFileSync(configJson, "{\n  \"language\": \"typescript\"\n}\n", "utf-8");
+          }
+          
+          vscode.window.showInformationMessage("Workspace successfully initialized for LeetPlus!");
+        }
+        
+        hasMarkerCacheInitialized = false;
+        updateHasMarkerContext();
+        await applyLeetcodeWorkspaceAppearanceIfNeeded(context);
+        
+      } catch (e) {
+        vscode.window.showErrorMessage(`Failed to initialize workspace: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    })
+  );
+
   // Register sign-in/sign-out first so they always exist
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.signIn", () => {
+    vscode.commands.registerCommand("leetplus.signIn", () => {
       trackAnalytics("command_invoked", "command_palette", "sign_in");
       Authentication.signIn(context).catch((e) => {
         vscode.window.showErrorMessage(e instanceof Error ? e.message : String(e));
@@ -1408,7 +1547,7 @@ export async function activate(context: vscode.ExtensionContext) {
     })
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.signOut", () => {
+    vscode.commands.registerCommand("leetplus.signOut", () => {
       trackAnalytics("command_invoked", "command_palette", "sign_out");
       Authentication.signOut(context).catch((e) => {
         vscode.window.showErrorMessage(e instanceof Error ? e.message : String(e));
@@ -1416,22 +1555,22 @@ export async function activate(context: vscode.ExtensionContext) {
     })
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.applyTheme", async () => {
+    vscode.commands.registerCommand("leetplus.applyTheme", async () => {
       trackAnalytics("command_invoked", "command_palette", "apply_theme");
       await applyLeetcodeWorkspaceAppearanceIfNeeded(context);
       if (shouldAutoApplyTheme()) {
-        vscode.window.showInformationMessage("LeetCode Dark theme applied (workspace has .leetcode)");
+        vscode.window.showInformationMessage("LeetPlus workspace theme applied");
       } else {
-        vscode.window.showWarningMessage("No .leetcode file in workspace root. Add one to auto-apply the theme.");
+        vscode.window.showWarningMessage("No LeetPlus workspace detected. Run 'LeetPlus: Initialize Workspace' to set up.");
       }
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.agentMakeRunnable", async () => {
+    vscode.commands.registerCommand("leetplus.agentMakeRunnable", async () => {
       trackAnalytics("agent_action", "auto", "agent_make_runnable");
       if (!shouldAutoApplyTheme()) {
-        vscode.window.showWarningMessage("LeetCode workspace (.leetcode) required. Open a workspace with a .leetcode file.");
+        vscode.window.showWarningMessage("LeetPlus workspace required. Run 'LeetPlus: Initialize Workspace' to set up.");
         return;
       }
       const folders = vscode.workspace.workspaceFolders ?? [];
@@ -1445,7 +1584,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "leetcode-practice.agentHint",
+      "leetplus.agentHint",
       async (args?: { titleSlug?: string; forceAgent?: boolean }) => {
         trackAnalytics("agent_action", "auto", "agent_hint");
         if (getInterviewSession(context.globalState)) {
@@ -1453,7 +1592,7 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
         if (!shouldAutoApplyTheme()) {
-          vscode.window.showWarningMessage("LeetCode workspace (.leetcode) required. Open a workspace with a .leetcode file.");
+          vscode.window.showWarningMessage("LeetPlus workspace required. Run 'LeetPlus: Initialize Workspace' to set up.");
           return;
         }
         if (!args?.forceAgent) {
@@ -1466,10 +1605,10 @@ export async function activate(context: vscode.ExtensionContext) {
         const config = getEffectiveConfig(folders);
         const basePrompt =
           config.agentPromptHint?.trim() ||
-          "Load **lcex-dsa-hint** and follow it. Nudge from the problem only—do not read or review my code. Each `coaching` value: one short line; no solution.";
+          "Load **lp-dsa-hint** and follow it. Nudge from the problem only—do not read or review my code. Each `coaching` value: one short line; no solution.";
         // const ctxPath = await writeHintLadderContext(args?.titleSlug);
         // const prompt = ctxPath
-        //   ? `${basePrompt}\n\nIf the **lcex-dsa-hint** skill supports it, load auto-detected user state from \`${ctxPath}\` (JSON: static complexity, problem-size budget, verdict, top hotspot) and tailor \`coaching.nextFocus\` to the verdict. Otherwise ignore.`
+        //   ? `${basePrompt}\n\nIf the **lp-dsa-hint** skill supports it, load auto-detected user state from \`${ctxPath}\` (JSON: static complexity, problem-size budget, verdict, top hotspot) and tailor \`coaching.nextFocus\` to the verdict. Otherwise ignore.`
         //   : basePrompt;
         await openChatWithPrompt(basePrompt);
       }
@@ -1478,7 +1617,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "leetcode-practice.agentAnalyze",
+      "leetplus.agentAnalyze",
       async (args?: { titleSlug?: string; forceAgent?: boolean }) => {
         trackAnalytics("agent_action", "auto", "agent_analyze");
         if (getInterviewSession(context.globalState)) {
@@ -1486,7 +1625,7 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
         if (!shouldAutoApplyTheme()) {
-          vscode.window.showWarningMessage("LeetCode workspace (.leetcode) required. Open a workspace with a .leetcode file.");
+          vscode.window.showWarningMessage("LeetPlus workspace required. Run 'LeetPlus: Initialize Workspace' to set up.");
           return;
         }
         if (!args?.forceAgent) {
@@ -1499,7 +1638,7 @@ export async function activate(context: vscode.ExtensionContext) {
         const config = getEffectiveConfig(folders);
         const prompt =
           config.agentPromptAnalyze?.trim() ||
-          "Load **lcex-dsa-analyze** and follow it. Analyze my current LeetCode solution implementation.";
+          "Load **lp-dsa-analyze** and follow it. Analyze my current LeetCode solution implementation.";
         await openChatWithPrompt(prompt);
       }
     )
@@ -1507,7 +1646,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "leetcode-practice.openHintAnalysis",
+      "leetplus.openHintAnalysis",
       async (args?: { titleSlug?: string }) => {
         trackAnalytics("command_invoked", "auto", "open_hint_analysis");
         if (getInterviewSession(context.globalState)) {
@@ -1515,7 +1654,7 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
         if (!shouldAutoApplyTheme()) {
-          vscode.window.showWarningMessage("LeetCode workspace (.leetcode) required. Open a workspace with a .leetcode file.");
+          vscode.window.showWarningMessage("LeetPlus workspace required. Run 'LeetPlus: Initialize Workspace' to set up.");
           return;
         }
         await openHintFileForProblem(context, getProvider, args?.titleSlug);
@@ -1524,14 +1663,14 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.agentExplainCode", async () => {
+    vscode.commands.registerCommand("leetplus.agentExplainCode", async () => {
       trackAnalytics("agent_action", "auto", "agent_explain");
       if (getInterviewSession(context.globalState)) {
         vscode.window.showWarningMessage("Explain code is disabled during Interview mode.");
         return;
       }
       if (!shouldAutoApplyTheme()) {
-        vscode.window.showWarningMessage("LeetCode workspace (.leetcode) required. Open a workspace with a .leetcode file.");
+        vscode.window.showWarningMessage("LeetPlus workspace required. Run 'LeetPlus: Initialize Workspace' to set up.");
         return;
       }
       const editor = vscode.window.activeTextEditor;
@@ -1557,7 +1696,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.focusModeEnter", async (...args: unknown[]) => {
+    vscode.commands.registerCommand("leetplus.focusModeEnter", async (...args: unknown[]) => {
       const opts = args[0] as { silent?: boolean } | undefined;
       trackAnalytics("focus_mode", "auto", "focus_enter");
       await enterFocusModeUi(context);
@@ -1570,14 +1709,14 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.focusModeExit", async () => {
+    vscode.commands.registerCommand("leetplus.focusModeExit", async () => {
       trackAnalytics("focus_mode", "command_palette", "focus_exit");
       await exitFocusModeUi(context);
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.setDailyGoal", async () => {
+    vscode.commands.registerCommand("leetplus.setDailyGoal", async () => {
       trackAnalytics("command_invoked", "command_palette", "set_daily_goal");
       const pick = await vscode.window.showQuickPick(
         [
@@ -1613,7 +1752,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.interviewModeStart", async () => {
+    vscode.commands.registerCommand("leetplus.interviewModeStart", async () => {
       trackAnalytics("command_invoked", "command_palette", "interview_start");
       const startVia = await vscode.window.showQuickPick(
         [
@@ -1624,7 +1763,7 @@ export async function activate(context: vscode.ExtensionContext) {
       );
       if (!startVia) return;
       if (startVia.id === "ai") {
-        await vscode.commands.executeCommand("leetcode-practice.interviewGenerateWithAi");
+        await vscode.commands.executeCommand("leetplus.interviewGenerateWithAi");
         return;
       }
       const getProblemStatus = (slug: string) => getStoredStatus(context.globalState, slug);
@@ -1680,14 +1819,14 @@ export async function activate(context: vscode.ExtensionContext) {
         await openProblemWebview(context, item, getProvider, getProblemStatus, getWebviewOpts());
       };
       const onEnd = async () => {
-        await vscode.commands.executeCommand("leetcode-practice.interviewModeStop");
+        await vscode.commands.executeCommand("leetplus.interviewModeStop");
       };
       openInterviewSetupWebview(context, { onStart, onOpenProblem, onEnd }, getProvider);
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.interviewModeStop", async () => {
+    vscode.commands.registerCommand("leetplus.interviewModeStop", async () => {
       trackAnalytics("command_invoked", "command_palette", "interview_stop");
       const result = await endInterviewSession(context.globalState, "user");
       stopInterviewTick();
@@ -1706,14 +1845,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "leetcode-practice.openInterviewPlanProblem",
+      "leetplus.openInterviewPlanProblem",
       async (titleSlug?: string) => {
         if (!titleSlug?.trim()) {
           return;
         }
         if (!shouldAutoApplyTheme()) {
           void vscode.window.showWarningMessage(
-            "LeetCode workspace (.leetcode) required. Open a workspace with a .leetcode file."
+            "LeetPlus workspace required. Run 'LeetPlus: Initialize Workspace' to set up."
           );
           return;
         }
@@ -1742,7 +1881,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "leetcode-practice.interviewStartFromLcInterviewFile",
+      "leetplus.interviewStartFromLcInterviewFile",
       async (args?: { fsPath?: string; payload?: LcInterviewFileV1 }) => {
         if (!args?.fsPath || !args.payload?.problems) {
           return;
@@ -1808,7 +1947,7 @@ export async function activate(context: vscode.ExtensionContext) {
           await vscode.commands.executeCommand(
             "vscode.openWith",
             vscode.Uri.file(lcPath),
-            "leetcode-practice.lcInterviewEditor",
+            "leetplus.lcInterviewEditor",
             vscode.ViewColumn.One
           );
         } catch {
@@ -1835,7 +1974,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.openLcInterviewReportForPath", async (fsPath?: string) => {
+    vscode.commands.registerCommand("leetplus.openLcInterviewReportForPath", async (fsPath?: string) => {
       if (typeof fsPath !== "string" || !fsPath.trim()) {
         return;
       }
@@ -1851,7 +1990,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.openLcInterviewReportFile", async () => {
+    vscode.commands.registerCommand("leetplus.openLcInterviewReportFile", async () => {
       trackAnalytics("command_invoked", "command_palette", "open_interview_report");
       const picked = await vscode.window.showOpenDialog({
         canSelectMany: false,
@@ -1870,7 +2009,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.interviewGenerateWithAi", async () => {
+    vscode.commands.registerCommand("leetplus.interviewGenerateWithAi", async () => {
       trackAnalytics("command_invoked", "command_palette", "interview_ai_gen");
       const defaultName = defaultInterviewNameFromDate();
       const name =
@@ -1881,7 +2020,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const label = name.trim() || defaultName;
       const prompt = `Interview plan: ${label}
 
-Load the **lcex-interview-generator** skill and follow it exactly.
+Load the **lp-interview-generator** skill and follow it exactly.
 
 Produce a single JSON object for a LeetCode Practice \`.lcInterview\` file (version 1) with:
 - name (string)
@@ -1895,7 +2034,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
 
   try {
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.openQotd", async () => {
+    vscode.commands.registerCommand("leetplus.openQotd", async () => {
       trackAnalytics("command_invoked", "command_palette", "open_qotd");
       const leetcode = new LeetCodeProvider();
       const getProblemStatus = (slug: string) =>
@@ -1935,7 +2074,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "leetcode-practice.openSolutionFromText",
+      "leetplus.openSolutionFromText",
       async (arg?: vscode.Uri) => {
         const uri = arg instanceof vscode.Uri ? arg : vscode.window.activeTextEditor?.document.uri;
         const slug = plainProblemSlugFromUri(uri);
@@ -1958,7 +2097,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.openProblem", async () => {
+    vscode.commands.registerCommand("leetplus.openProblem", async () => {
       trackAnalytics("command_invoked", "command_palette", "open_problem");
       const idOrSlug = await vscode.window.showInputBox({
         prompt:
@@ -1997,20 +2136,20 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.runExamples", async () => {
+    vscode.commands.registerCommand("leetplus.runExamples", async () => {
       const editor = vscode.window.activeTextEditor;
       const uri = editor?.document.uri;
       const ext = uri ? path.extname(uri.fsPath) : "";
       if (!editor || !uri || !SOLUTION_FILE_EXTENSIONS.includes(ext.toLowerCase())) {
         vscode.window.setStatusBarMessage(
-          "lcex: open a .ts/.js/.py/.cpp/.java solution file to run examples",
+          "leetplus: open a .ts/.js/.py/.cpp/.java solution file to run examples",
           5000
         );
         return;
       }
       const lang = bucketLanguage(ext.replace(".", ""));
 
-      clearInlineDecorations(editor, "lcex.runExamples");
+      clearInlineDecorations(editor, "leetplus.runExamples");
 
       if (editor.document.isDirty) {
         await editor.document.save();
@@ -2020,21 +2159,21 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         const results = await vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Window,
-            title: "lcex: running examples…",
+            title: "leetplus: running examples…",
           },
           () => runExamplesImpl(uri)
         );
         if (results.length === 0) {
           trackAnalytics("example_run", "command_palette", "run_examples", { language: lang, result: "ok" });
           vscode.window.setStatusBarMessage(
-            "lcex: no example output lines found in this file",
+            "leetplus: no example output lines found in this file",
             5000
           );
           return;
         }
 
         const exampleToggleFooter =
-          "\n\n[turn off on-save runs](command:leetcode-practice.toggleRunExamplesOnSave) · [hide all](command:leetcode-practice.toggleInlineDecorations)";
+          "\n\n[turn off on-save runs](command:leetplus.toggleRunExamplesOnSave) · [hide all](command:leetplus.toggleInlineDecorations)";
         const items: InlineItem[] = results.map((r) => {
           const line = Math.max(0, r.lineIndex - 1);
           if (r.pass) {
@@ -2044,7 +2183,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
               text: tail,
               severity: r.expected === null ? "muted" : "success",
               hoverMarkdown:
-                `**lcex: example passed**\n\n- actual: \`${r.actual || "(empty)"}\`${r.expected !== null ? `\n- expected: \`${r.expected}\`` : ""}` +
+                `**leetplus: example passed**\n\n- actual: \`${r.actual || "(empty)"}\`${r.expected !== null ? `\n- expected: \`${r.expected}\`` : ""}` +
                 exampleToggleFooter,
             };
           }
@@ -2058,7 +2197,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
               exampleToggleFooter,
           };
         });
-        applyInlineDecorations(editor, "lcex.runExamples", items);
+        applyInlineDecorations(editor, "leetplus.runExamples", items);
 
         if (!handleBugReviewScratchResults(uri.fsPath, results)) {
           recordBugReviewsFromExampleResults(editor.document, results);
@@ -2068,8 +2207,8 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         const total = results.length;
         const summary =
           passed === total
-            ? `lcex: ${passed}/${total} examples passed ✓`
-            : `lcex: ${passed}/${total} passed · ${total - passed} failed ✗`;
+            ? `leetplus: ${passed}/${total} examples passed ✓`
+            : `leetplus: ${passed}/${total} passed · ${total - passed} failed ✗`;
         vscode.window.setStatusBarMessage(summary, 6000);
         trackAnalytics(
           "example_run",
@@ -2083,20 +2222,20 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         const blocks = parseExampleBlocks(editor.document.getText(), languageFromFileExtension(ext) ?? "typescript");
         const firstBlockLine = blocks[0]?.callLine ? blocks[0].callLine - 1 : 0;
         const label = isTimeout ? "✗ timeout (>15s)" : "✗ runtime error";
-        applyInlineDecorations(editor, "lcex.runExamples", [
+        applyInlineDecorations(editor, "leetplus.runExamples", [
           {
             line: firstBlockLine,
             text: `  ${label} — hover for details`,
             severity: "error",
             hoverMarkdown:
               (isTimeout
-                ? `**lcex: execution timed out**\n\nThe solution ran longer than 15 seconds and was terminated.\n\n\`\`\`\n${msg}\n\`\`\``
-                : `**lcex: execution failed**\n\n\`\`\`\n${msg}\n\`\`\``) +
-              "\n\n[turn off on-save runs](command:leetcode-practice.toggleRunExamplesOnSave) · [hide all](command:leetcode-practice.toggleInlineDecorations)",
+                ? `**leetplus: execution timed out**\n\nThe solution ran longer than 15 seconds and was terminated.\n\n\`\`\`\n${msg}\n\`\`\``
+                : `**leetplus: execution failed**\n\n\`\`\`\n${msg}\n\`\`\``) +
+              "\n\n[turn off on-save runs](command:leetplus.toggleRunExamplesOnSave) · [hide all](command:leetplus.toggleInlineDecorations)",
           },
         ]);
         vscode.window.setStatusBarMessage(
-          isTimeout ? "lcex: example run timed out (>15s)" : "lcex: example run failed (hover for details)",
+          isTimeout ? "leetplus: example run timed out (>15s)" : "leetplus: example run failed (hover for details)",
           6000
         );
       }
@@ -2108,10 +2247,10 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   context.subscriptions.push(lintDiagnostics);
 
   const cfg = (key: string, def: boolean): boolean =>
-    vscode.workspace.getConfiguration("leetcodePractice").get<boolean>(key, def);
+    vscode.workspace.getConfiguration("leetplus").get<boolean>(key, def);
   const setCfg = async (key: string, val: boolean): Promise<void> => {
     await vscode.workspace
-      .getConfiguration("leetcodePractice")
+      .getConfiguration("leetplus")
       .update(key, val, vscode.ConfigurationTarget.Global);
   };
   const isInlineEnabled = () => cfg("inlineDecorations.enabled", true);
@@ -2143,7 +2282,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
     );
   };
 
-  const BUG_REVIEW_SCRATCH_DIR = path.join(require("os").homedir(), ".lcex", "reviews");
+  const BUG_REVIEW_SCRATCH_DIR = path.join(require("os").homedir(), ".leetplus", "reviews");
   const bugReviewScratchPath = (id: string, ext: string): string =>
     path.join(BUG_REVIEW_SCRATCH_DIR, `bug-${id}${ext}`);
   const parseBugReviewIdFromPath = (fsPath: string): string | undefined => {
@@ -2247,7 +2386,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   };
 
   const FEATURE_FOOTER = (label: string, toggleCmd: string) =>
-    `\n\n[turn off ${label}](command:${toggleCmd}) · [hide all](command:leetcode-practice.toggleInlineDecorations)`;
+    `\n\n[turn off ${label}](command:${toggleCmd}) · [hide all](command:leetplus.toggleInlineDecorations)`;
 
   writeHintLadderContext = async (slugHint?: string): Promise<string | null> => {
     try {
@@ -2301,7 +2440,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       } catch {
         /* best-effort */
       }
-      const dir = path.join(require("os").homedir(), ".lcex", "hint-context");
+      const dir = path.join(require("os").homedir(), ".leetplus", "hint-context");
       fs.mkdirSync(dir, { recursive: true });
       const ctxPath = path.join(dir, `${slug}.json`);
       fs.writeFileSync(ctxPath, JSON.stringify(ctx, null, 2), "utf-8");
@@ -2314,16 +2453,16 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   refreshBugReviewStatusBar();
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.openNextBugReview", async () => {
+    vscode.commands.registerCommand("leetplus.openNextBugReview", async () => {
       if (!isBugReviewEnabled()) {
         vscode.window.showInformationMessage(
-          "lcex: bug-review queue is disabled. Enable `leetcodePractice.bugReview.enabled` in settings to use it."
+          "leetplus: bug-review queue is disabled. Enable `leetplus.bugReview.enabled` in settings to use it."
         );
         return;
       }
       const due = listDueReviews();
       if (due.length === 0) {
-        vscode.window.setStatusBarMessage("lcex: no bug reviews due — nothing to drill", 5000);
+        vscode.window.setStatusBarMessage("leetplus: no bug reviews due — nothing to drill", 5000);
         return;
       }
       const next = due[0];
@@ -2342,8 +2481,8 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         const dueLabel = new Date(next.nextDueAt).toLocaleDateString();
         const header =
           next.language === "python"
-            ? `# lcex bug-review · ${next.problemTitle ?? next.titleSlug}\n# Failed ${next.failedAt.slice(0, 10)} · interval ${next.intervalDays}d · lapses ${next.lapseCount} · due ${dueLabel}\n# Reproduce the bug, fix it, then run examples (Cmd+Shift+P → "lcex: Run Examples").\n\n`
-            : `// lcex bug-review · ${next.problemTitle ?? next.titleSlug}\n// Failed ${next.failedAt.slice(0, 10)} · interval ${next.intervalDays}d · lapses ${next.lapseCount} · due ${dueLabel}\n// Reproduce the bug, fix it, then run examples (Cmd+Shift+P → "lcex: Run Examples").\n\n`;
+            ? `# lcex bug-review · ${next.problemTitle ?? next.titleSlug}\n# Failed ${next.failedAt.slice(0, 10)} · interval ${next.intervalDays}d · lapses ${next.lapseCount} · due ${dueLabel}\n# Reproduce the bug, fix it, then run examples (Cmd+Shift+P → "leetplus: Run Examples").\n\n`
+            : `// lcex bug-review · ${next.problemTitle ?? next.titleSlug}\n// Failed ${next.failedAt.slice(0, 10)} · interval ${next.intervalDays}d · lapses ${next.lapseCount} · due ${dueLabel}\n// Reproduce the bug, fix it, then run examples (Cmd+Shift+P → "leetplus: Run Examples").\n\n`;
         const body = next.fullSource && next.fullSource.length > 0
           ? next.fullSource
           : `${next.sourceSnippet}\n${next.input}`;
@@ -2355,7 +2494,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       } catch (e) {
         Logger.logError("openNextBugReview failed", e);
         vscode.window.showErrorMessage(
-          `lcex: could not open bug review — ${e instanceof Error ? e.message : String(e)}`
+          `leetplus: could not open bug review — ${e instanceof Error ? e.message : String(e)}`
         );
       }
     })
@@ -2373,10 +2512,10 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   };
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.measureComplexity", async () => {
+    vscode.commands.registerCommand("leetplus.measureComplexity", async () => {
       if (!isEmpiricalFitEnabled()) {
         vscode.window.showInformationMessage(
-          "lcex: complexity fitter is disabled. Enable `leetcodePractice.empiricalFit.enabled` and define `function benchmark(n)` (or `def benchmark(n)`) that runs your solution at problem size n."
+          "leetplus: complexity fitter is disabled. Enable `leetplus.empiricalFit.enabled` and define `function benchmark(n)` (or `def benchmark(n)`) that runs your solution at problem size n."
         );
         return;
       }
@@ -2384,28 +2523,28 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       const uri = editor?.document.uri;
       const ext = uri ? path.extname(uri.fsPath).toLowerCase() : "";
       if (!editor || !uri || !SOLUTION_FILE_EXTENSIONS.includes(ext)) {
-        vscode.window.setStatusBarMessage("lcex: open a solution file to measure complexity", 5000);
+        vscode.window.setStatusBarMessage("leetplus: open a solution file to measure complexity", 5000);
         return;
       }
       const lang = languageFromFileExtension(ext) ?? "typescript";
       if (lang === "cpp" || lang === "java") {
         const label = lang === "cpp" ? "C++" : "Java";
-        vscode.window.setStatusBarMessage(`lcex: complexity fitter doesn't support ${label} yet`, 5000);
+        vscode.window.setStatusBarMessage(`leetplus: complexity fitter doesn't support ${label} yet`, 5000);
         return;
       }
       if (editor.document.isDirty) await editor.document.save();
-      clearInlineDecorations(editor, "lcex.fit");
+      clearInlineDecorations(editor, "leetplus.fit");
       const slug = resolveSlugForUri(uri);
       try {
         const outcome = await vscode.window.withProgress(
-          { location: vscode.ProgressLocation.Window, title: "lcex: measuring complexity…" },
+          { location: vscode.ProgressLocation.Window, title: "leetplus: measuring complexity…" },
           () => runEmpiricalFit({ source: editor.document.getText(), lang, slug })
         );
         const source = editor.document.getText();
         const idx = source.split("\n").findIndex((l) => /\bbenchmark\s*\(/.test(l));
         const anchorLine = idx >= 0 ? idx : 0;
         if (!outcome.ok) {
-          applyInlineDecorations(editor, "lcex.fit", [
+          applyInlineDecorations(editor, "leetplus.fit", [
             {
               line: anchorLine,
               text: `  ⚠ fit: ${outcome.message}`,
@@ -2439,7 +2578,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         const verdict = exceeds
           ? `🔴 empirical \`${outcome.bestFit}\` exceeds static \`${staticEstimate.bigO}\` — likely a hidden cost (e.g. \`indexOf\` inside loop, accidental copy)`
           : `🟢 empirical \`${outcome.bestFit}\` matches static \`${staticEstimate.bigO}\``;
-        applyInlineDecorations(editor, "lcex.fit", [
+        applyInlineDecorations(editor, "leetplus.fit", [
           {
             line: anchorLine,
             text: `  📐 fit: ${outcome.bestFit}${exceeds ? ` (exceeds static ${staticEstimate.bigO})` : ""}`,
@@ -2462,10 +2601,10 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.visualizeRecursion", async () => {
+    vscode.commands.registerCommand("leetplus.visualizeRecursion", async () => {
       if (!isRecursionTreeEnabled()) {
         vscode.window.showInformationMessage(
-          "lcex: recursion visualizer is disabled. Enable `leetcodePractice.recursionTree.enabled` and define `traceCall()` (or `trace_call()` in Python) that invokes your recursive function once."
+          "leetplus: recursion visualizer is disabled. Enable `leetplus.recursionTree.enabled` and define `traceCall()` (or `trace_call()` in Python) that invokes your recursive function once."
         );
         return;
       }
@@ -2473,20 +2612,20 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       const uri = editor?.document.uri;
       const ext = uri ? path.extname(uri.fsPath).toLowerCase() : "";
       if (!editor || !uri || !SOLUTION_FILE_EXTENSIONS.includes(ext)) {
-        vscode.window.setStatusBarMessage("lcex: open a solution file to visualize recursion", 5000);
+        vscode.window.setStatusBarMessage("leetplus: open a solution file to visualize recursion", 5000);
         return;
       }
       const lang = languageFromFileExtension(ext) ?? "typescript";
       if (lang === "cpp" || lang === "java") {
         const label = lang === "cpp" ? "C++" : "Java";
-        vscode.window.setStatusBarMessage(`lcex: recursion visualizer doesn't support ${label} yet`, 5000);
+        vscode.window.setStatusBarMessage(`leetplus: recursion visualizer doesn't support ${label} yet`, 5000);
         return;
       }
       if (editor.document.isDirty) await editor.document.save();
       const slug = resolveSlugForUri(uri);
       try {
         const outcome = await vscode.window.withProgress(
-          { location: vscode.ProgressLocation.Window, title: "lcex: tracing recursion…" },
+          { location: vscode.ProgressLocation.Window, title: "leetplus: tracing recursion…" },
           () => runRecursionTrace({ source: editor.document.getText(), lang, slug })
         );
         if (!outcome.ok) {
@@ -2511,10 +2650,10 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.visualizeIterative", async () => {
+    vscode.commands.registerCommand("leetplus.visualizeIterative", async () => {
       if (!isIterativeVisualizerEnabled()) {
         vscode.window.showInformationMessage(
-          "lcex: iterative visualizer is disabled. Enable `leetcodePractice.iterativeVisualizer.enabled` and define `traceCall()` (or `trace_call()` in Python) that calls `lcexTrace.track(container, \"stack\"|\"queue\")` and runs the loop."
+          "leetplus: iterative visualizer is disabled. Enable `leetplus.iterativeVisualizer.enabled` and define `traceCall()` (or `trace_call()` in Python) that calls `lcexTrace.track(container, \"stack\"|\"queue\")` and runs the loop."
         );
         return;
       }
@@ -2522,20 +2661,20 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       const uri = editor?.document.uri;
       const ext = uri ? path.extname(uri.fsPath).toLowerCase() : "";
       if (!editor || !uri || !SOLUTION_FILE_EXTENSIONS.includes(ext)) {
-        vscode.window.setStatusBarMessage("lcex: open a solution file to visualize iterative traversal", 5000);
+        vscode.window.setStatusBarMessage("leetplus: open a solution file to visualize iterative traversal", 5000);
         return;
       }
       const lang = languageFromFileExtension(ext) ?? "typescript";
       if (lang === "cpp" || lang === "java") {
         const label = lang === "cpp" ? "C++" : "Java";
-        vscode.window.setStatusBarMessage(`lcex: iterative visualizer doesn't support ${label} yet`, 5000);
+        vscode.window.setStatusBarMessage(`leetplus: iterative visualizer doesn't support ${label} yet`, 5000);
         return;
       }
       if (editor.document.isDirty) await editor.document.save();
       const slug = resolveSlugForUri(uri);
       try {
         const outcome = await vscode.window.withProgress(
-          { location: vscode.ProgressLocation.Window, title: "lcex: tracing traversal…" },
+          { location: vscode.ProgressLocation.Window, title: "leetplus: tracing traversal…" },
           () => runIterativeTrace({ source: editor.document.getText(), lang, slug })
         );
         if (!outcome.ok) {
@@ -2560,10 +2699,10 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.fuzzVsBruteForce", async () => {
+    vscode.commands.registerCommand("leetplus.fuzzVsBruteForce", async () => {
       if (!isFuzzerEnabled()) {
         vscode.window.showInformationMessage(
-          "lcex: fuzzer is disabled. Enable `leetcodePractice.fuzzer.enabled` in settings, then add `bruteForce` and `fuzzInputs` (or `brute_force`/`fuzz_inputs` in Python) functions alongside your solution."
+          "leetplus: fuzzer is disabled. Enable `leetplus.fuzzer.enabled` in settings, then add `bruteForce` and `fuzzInputs` (or `brute_force`/`fuzz_inputs` in Python) functions alongside your solution."
         );
         return;
       }
@@ -2571,13 +2710,13 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       const uri = editor?.document.uri;
       const ext = uri ? path.extname(uri.fsPath).toLowerCase() : "";
       if (!editor || !uri || !SOLUTION_FILE_EXTENSIONS.includes(ext)) {
-        vscode.window.setStatusBarMessage("lcex: open a solution file to fuzz", 5000);
+        vscode.window.setStatusBarMessage("leetplus: open a solution file to fuzz", 5000);
         return;
       }
       const lang = languageFromFileExtension(ext) ?? "typescript";
       if (lang === "cpp" || lang === "java") {
         const label = lang === "cpp" ? "C++" : "Java";
-        vscode.window.setStatusBarMessage(`lcex: fuzzer doesn't support ${label} yet`, 5000);
+        vscode.window.setStatusBarMessage(`leetplus: fuzzer doesn't support ${label} yet`, 5000);
         return;
       }
       if (editor.document.isDirty) await editor.document.save();
@@ -2585,7 +2724,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       const slug = resolveSlugForUri(uri);
       try {
         const outcome = await vscode.window.withProgress(
-          { location: vscode.ProgressLocation.Window, title: "lcex: fuzzing vs brute-force…" },
+          { location: vscode.ProgressLocation.Window, title: "leetplus: fuzzing vs brute-force…" },
           () => runFuzz({ source: editor.document.getText(), lang, slug })
         );
         const blocks = parseExampleBlocks(editor.document.getText(), lang);
@@ -2657,7 +2796,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.clearInlineDecorations", () => {
+    vscode.commands.registerCommand("leetplus.clearInlineDecorations", () => {
       const editor = vscode.window.activeTextEditor;
       if (editor) {
         clearInlineDecorations(editor);
@@ -2665,7 +2804,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         clearAllInlineDecorations();
       }
       lintDiagnostics.clear();
-      vscode.window.setStatusBarMessage("lcex: inline decorations cleared", 2500);
+      vscode.window.setStatusBarMessage("leetplus: inline decorations cleared", 2500);
     })
   );
 
@@ -2701,7 +2840,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         severity: f.severity === "warning" ? "warning" : "info",
         hoverMarkdown:
           `**lcex-lint:${f.rule}**\n\n${f.message}\n\n_Suppress inline with \`// lcex-lint-ignore: ${f.rule}\`._` +
-          FEATURE_FOOTER("lint", "leetcode-practice.toggleLint"),
+          FEATURE_FOOTER("lint", "leetplus.toggleLint"),
       }));
       applyInlineDecorations(editor, "lcex.lint", items);
     }
@@ -2726,7 +2865,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       severity: i.severity,
       hoverMarkdown:
         (i.hoverMarkdown ?? "") +
-        FEATURE_FOOTER("complexity budget", "leetcode-practice.toggleComplexityBudget"),
+        FEATURE_FOOTER("complexity budget", "leetplus.toggleComplexityBudget"),
     }));
     applyInlineDecorations(editor, "lcex.complexity", items);
   };
@@ -2746,8 +2885,8 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
           text: "  ⓘ could not resolve problem — open it from the sidebar first",
           severity: "warning",
           hoverMarkdown:
-            "lcex: could not fetch problem to parse constraints. Open the problem from the sidebar first so the URI mapping is cached." +
-            FEATURE_FOOTER("edge-case probes", "leetcode-practice.toggleAdversarialTests"),
+            "leetplus: could not fetch problem to parse constraints. Open the problem from the sidebar first so the URI mapping is cached." +
+            FEATURE_FOOTER("edge-case probes", "leetplus.toggleAdversarialTests"),
         },
       ]);
       return;
@@ -2761,7 +2900,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         severity: summary.perCase.length === 0 ? "muted" : "warning",
         hoverMarkdown:
           summary.signatureHover +
-          FEATURE_FOOTER("edge-case probes", "leetcode-practice.toggleAdversarialTests"),
+          FEATURE_FOOTER("edge-case probes", "leetplus.toggleAdversarialTests"),
       },
     ]);
   };
@@ -2772,8 +2911,8 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   ): Promise<void> => {
     const ext = path.extname(doc.uri.fsPath).toLowerCase();
     const lang = languageFromFileExtension(ext) ?? "typescript";
-    clearInlineDecorations(editor, "lcex.runExamples");
-    const footer = FEATURE_FOOTER("on-save runs", "leetcode-practice.toggleRunExamplesOnSave");
+    clearInlineDecorations(editor, "leetplus.runExamples");
+    const footer = FEATURE_FOOTER("on-save runs", "leetplus.toggleRunExamplesOnSave");
     try {
       const results = await runExamplesImpl(doc.uri);
       if (results.length === 0) return;
@@ -2786,7 +2925,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
             text: tail,
             severity: r.expected === null ? "muted" : "success",
             hoverMarkdown:
-              `**lcex: example passed**\n\n- actual: \`${r.actual || "(empty)"}\`${r.expected !== null ? `\n- expected: \`${r.expected}\`` : ""}` +
+              `**leetplus: example passed**\n\n- actual: \`${r.actual || "(empty)"}\`${r.expected !== null ? `\n- expected: \`${r.expected}\`` : ""}` +
               footer,
           };
         }
@@ -2799,7 +2938,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
             footer,
         };
       });
-      applyInlineDecorations(editor, "lcex.runExamples", items);
+      applyInlineDecorations(editor, "leetplus.runExamples", items);
       if (!handleBugReviewScratchResults(doc.uri.fsPath, results)) {
         recordBugReviewsFromExampleResults(doc, results);
       }
@@ -2809,15 +2948,15 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       const blocks = parseExampleBlocks(doc.getText(), lang);
       const firstBlockLine = blocks[0]?.callLine ? blocks[0].callLine - 1 : 0;
       const label = isTimeout ? "✗ timeout (>15s)" : "✗ runtime error";
-      applyInlineDecorations(editor, "lcex.runExamples", [
+      applyInlineDecorations(editor, "leetplus.runExamples", [
         {
           line: firstBlockLine,
           text: `  ${label} — hover for details`,
           severity: "error",
           hoverMarkdown:
             (isTimeout
-              ? `**lcex: execution timed out**\n\nExceeded 15 seconds.\n\n\`\`\`\n${msg}\n\`\`\``
-              : `**lcex: execution failed**\n\n\`\`\`\n${msg}\n\`\`\``) +
+              ? `**leetplus: execution timed out**\n\nExceeded 15 seconds.\n\n\`\`\`\n${msg}\n\`\`\``
+              : `**leetplus: execution failed**\n\n\`\`\`\n${msg}\n\`\`\``) +
             footer,
         },
       ]);
@@ -2845,43 +2984,43 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   };
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.complexityBudget", async () => {
+    vscode.commands.registerCommand("leetplus.complexityBudget", async () => {
       const editor = vscode.window.activeTextEditor;
       const uri = editor?.document.uri;
       const ext = uri ? path.extname(uri.fsPath).toLowerCase() : "";
       if (!editor || !uri || !SOLUTION_FILE_EXTENSIONS.includes(ext)) {
         vscode.window.setStatusBarMessage(
-          "lcex: open a .ts/.js/.py/.cpp/.java solution file for a complexity budget",
+          "leetplus: open a .ts/.js/.py/.cpp/.java solution file for a complexity budget",
           5000
         );
         return;
       }
       await runComplexityOn(editor.document, editor, null);
     }),
-    vscode.commands.registerCommand("leetcode-practice.runAdversarialTests", async () => {
+    vscode.commands.registerCommand("leetplus.runAdversarialTests", async () => {
       const editor = vscode.window.activeTextEditor;
       const uri = editor?.document.uri;
       const ext = uri ? path.extname(uri.fsPath).toLowerCase() : "";
       if (!editor || !uri || !SOLUTION_FILE_EXTENSIONS.includes(ext)) {
         vscode.window.setStatusBarMessage(
-          "lcex: open a .ts/.js/.py/.cpp/.java solution file for adversarial probes",
+          "leetplus: open a .ts/.js/.py/.cpp/.java solution file for adversarial probes",
           5000
         );
         return;
       }
       await runAdversarialOn(editor.document, editor, null);
     }),
-    vscode.commands.registerCommand("leetcode-practice.lint", () => {
+    vscode.commands.registerCommand("leetplus.lint", () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
-        vscode.window.setStatusBarMessage("lcex: no active editor to lint", 4000);
+        vscode.window.setStatusBarMessage("leetplus: no active editor to lint", 4000);
         return;
       }
       const findings = runLintOn(editor.document);
       vscode.window.setStatusBarMessage(
         findings.length === 0
-          ? "lcex: lint — no issues ✓"
-          : `lcex: lint — ${findings.length} issue${findings.length === 1 ? "" : "s"}`,
+          ? "leetplus: lint — no issues ✓"
+          : `leetplus: lint — ${findings.length} issue${findings.length === 1 ? "" : "s"}`,
         6000
       );
     })
@@ -2904,27 +3043,27 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
     } else if (vscode.window.activeTextEditor) {
       void runAllFeaturesOn(vscode.window.activeTextEditor.document);
     }
-    vscode.window.setStatusBarMessage(`lcex: ${label} ${!current ? "enabled" : "disabled"}`, 4000);
+    vscode.window.setStatusBarMessage(`leetplus: ${label} ${!current ? "enabled" : "disabled"}`, 4000);
   };
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "leetcode-practice.toggleLint",
+      "leetplus.toggleLint",
       makeToggle("lint.enabled", "lint", "lcex.lint", true, true)
     ),
     vscode.commands.registerCommand(
-      "leetcode-practice.toggleComplexityBudget",
+      "leetplus.toggleComplexityBudget",
       makeToggle("complexityBudget.enabled", "complexity budget", "lcex.complexity", true)
     ),
     vscode.commands.registerCommand(
-      "leetcode-practice.toggleAdversarialTests",
+      "leetplus.toggleAdversarialTests",
       makeToggle("adversarialTests.enabled", "edge-case probes", "lcex.adversarial", false)
     ),
     vscode.commands.registerCommand(
-      "leetcode-practice.toggleRunExamplesOnSave",
-      makeToggle("runExamplesOnSave.enabled", "run examples on save", "lcex.runExamples", true)
+      "leetplus.toggleRunExamplesOnSave",
+      makeToggle("runExamplesOnSave.enabled", "run examples on save", "leetplus.runExamples", true)
     ),
-    vscode.commands.registerCommand("leetcode-practice.toggleInlineDecorations", async () => {
+    vscode.commands.registerCommand("leetplus.toggleInlineDecorations", async () => {
       const current = isInlineEnabled();
       await setCfg("inlineDecorations.enabled", !current);
       if (current) {
@@ -2936,7 +3075,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         void runAllFeaturesOn(vscode.window.activeTextEditor.document);
       }
       vscode.window.setStatusBarMessage(
-        `lcex: inline decorations ${!current ? "enabled" : "disabled"}`,
+        `leetplus: inline decorations ${!current ? "enabled" : "disabled"}`,
         4000
       );
     })
@@ -2959,7 +3098,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       );
       if (ed) {
         clearInlineDecorations(ed, "lcex.lint");
-        clearInlineDecorations(ed, "lcex.runExamples");
+        clearInlineDecorations(ed, "leetplus.runExamples");
         clearInlineDecorations(ed, "lcex.complexity");
         clearInlineDecorations(ed, "lcex.adversarial");
       }
@@ -2971,7 +3110,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.runInTerminal", () => {
+    vscode.commands.registerCommand("leetplus.runInTerminal", () => {
       const editor = vscode.window.activeTextEditor;
       const filePath = editor?.document.uri.fsPath;
       const ext = filePath ? path.extname(filePath) : "";
@@ -2994,7 +3133,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   context.subscriptions.push(vscode.window.registerFileDecorationProvider(fileDecorationProvider));
   const problemsProvider = new ProblemsTreeProvider("problemset", globalState, storagePath);
   const treeView = vscode.window.createTreeView(
-    "leetcode-practice.problemsView",
+    "leetplus.problemsView",
     { treeDataProvider: problemsProvider }
   );
   const getProblemStatus = (slug: string) => getStoredStatus(globalState, slug);
@@ -3006,8 +3145,16 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   });
   context.subscriptions.push(treeView);
 
-  const STUDY_PLANS_KEY = "leetcode-practice.selectedStudyPlan";
-  const PROBLEM_LIST_KEY = "leetcode-practice.selectedProblemList";
+  const onboardingProvider = {
+    getChildren: () => [],
+    getTreeItem: (element: any) => element
+  };
+  context.subscriptions.push(
+    vscode.window.createTreeView("leetplus.onboardingView", { treeDataProvider: onboardingProvider })
+  );
+
+  const STUDY_PLANS_KEY = "leetplus.selectedStudyPlan";
+  const PROBLEM_LIST_KEY = "leetplus.selectedProblemList";
 
   const folders = vscode.workspace.workspaceFolders ?? [];
   const leetcodeConfig = getEffectiveConfig(folders);
@@ -3055,7 +3202,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   });
 
   const topInterview150View = vscode.window.createTreeView(
-    "leetcode-practice.topInterview150View",
+    "leetplus.topInterview150View",
     { treeDataProvider: studyPlanProvider }
   );
   topInterview150View.onDidChangeSelection(async (e) => {
@@ -3065,7 +3212,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   });
   context.subscriptions.push(topInterview150View);
 
-  const problemListsView = vscode.window.createTreeView("leetcode-practice.problemListsView", {
+  const problemListsView = vscode.window.createTreeView("leetplus.problemListsView", {
     treeDataProvider: problemListProvider,
   });
   problemListsView.onDidChangeSelection(async (e) => {
@@ -3196,11 +3343,11 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   }
 
   const qotdProvider = new QotdTreeProvider();
-  const qotdView = vscode.window.createTreeView("leetcode-practice.qotdView", {
+  const qotdView = vscode.window.createTreeView("leetplus.qotdView", {
     treeDataProvider: qotdProvider,
   });
   const contestsProvider = new ContestsTreeProvider(storagePath, globalState);
-  const contestsView = vscode.window.createTreeView("leetcode-practice.contestsView", {
+  const contestsView = vscode.window.createTreeView("leetplus.contestsView", {
     treeDataProvider: contestsProvider,
   });
   if (contestsView.visible) contestsProvider.startCountdownTimer();
@@ -3218,7 +3365,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
     if (item instanceof PastContestItem) {
       const contest = item.contest;
       const problems = await vscode.window.withProgress(
-        { location: { viewId: "leetcode-practice.contestsView" }, title: "Loading contest problems…" },
+        { location: { viewId: "leetplus.contestsView" }, title: "Loading contest problems…" },
         () => contestsProvider.getContestProblems(contest.titleSlug)
       );
       openContestSetupWebview(context, contest, problems, {
@@ -3277,7 +3424,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   context.subscriptions.push(contestsView, { dispose: () => contestsProvider.dispose() });
 
   const companiesProvider = new CompaniesTreeProvider(context.extensionPath, globalState);
-  const companiesView = vscode.window.createTreeView("leetcode-practice.companiesView", {
+  const companiesView = vscode.window.createTreeView("leetplus.companiesView", {
     treeDataProvider: companiesProvider,
   });
   companiesView.onDidChangeSelection(async (e) => {
@@ -3296,7 +3443,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   context.subscriptions.push(companiesView, { dispose: () => companiesProvider.dispose() });
 
   const patternMasteryProvider = new PatternMasteryTreeProvider(globalState);
-  const patternMasteryView = vscode.window.createTreeView("leetcode-practice.patternMasteryView", {
+  const patternMasteryView = vscode.window.createTreeView("leetplus.patternMasteryView", {
     treeDataProvider: patternMasteryProvider,
   });
   context.subscriptions.push(patternMasteryView);
@@ -3330,7 +3477,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   context.subscriptions.push(qotdView);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.refreshProblems", async () => {
+    vscode.commands.registerCommand("leetplus.refreshProblems", async () => {
       trackAnalytics("command_invoked", "command_palette", "refresh_problems");
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: "Refreshing problems..." },
@@ -3347,7 +3494,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.refreshContests", async () => {
+    vscode.commands.registerCommand("leetplus.refreshContests", async () => {
       trackAnalytics("command_invoked", "sidebar", "refresh_contests");
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: "Refreshing contests..." },
@@ -3357,14 +3504,14 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.refreshCompanies", () => {
+    vscode.commands.registerCommand("leetplus.refreshCompanies", () => {
       trackAnalytics("command_invoked", "sidebar", "refresh_companies");
       companiesProvider.refresh();
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.searchCompanies", async () => {
+    vscode.commands.registerCommand("leetplus.searchCompanies", async () => {
       trackAnalytics("command_invoked", "sidebar", "search_companies");
       const query = await vscode.window.showInputBox({
         prompt: "Search companies and problems",
@@ -3376,7 +3523,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.filterCompaniesByDifficulty", async () => {
+    vscode.commands.registerCommand("leetplus.filterCompaniesByDifficulty", async () => {
       const choice = await vscode.window.showQuickPick(
         ["All", "Easy", "Medium", "Hard"],
         { placeHolder: "Filter company problems by difficulty" }
@@ -3387,7 +3534,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.openContestOnWeb", async (item) => {
+    vscode.commands.registerCommand("leetplus.openContestOnWeb", async (item) => {
       trackAnalytics("command_invoked", "sidebar", "open_contest_on_web");
       const slug =
         item instanceof UpcomingContestItem
@@ -3401,14 +3548,14 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.switchStudyPlan", async () => {
+    vscode.commands.registerCommand("leetplus.switchStudyPlan", async () => {
       trackAnalytics("command_invoked", "sidebar", "switch_study_plan");
       const folders = vscode.workspace.workspaceFolders ?? [];
       const cfg = getEffectiveConfig(folders);
       const plans = cfg.studyPlans ?? [{ slug: "top-interview-150", name: "Top Interview 150" }];
       if (plans.length === 0) {
         vscode.window.showInformationMessage(
-          "No study plans configured. Add them in leetcodePractice.studyPlans or .leetcode."
+          "No study plans configured. Add them in leetplus.studyPlans or .leetcode."
         );
         return;
       }
@@ -3423,14 +3570,14 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.switchProblemList", async () => {
+    vscode.commands.registerCommand("leetplus.switchProblemList", async () => {
       trackAnalytics("command_invoked", "sidebar", "switch_problem_list");
       const folders = vscode.workspace.workspaceFolders ?? [];
       const cfg = getEffectiveConfig(folders);
       const lists = cfg.problemLists ?? [];
       if (lists.length === 0) {
         vscode.window.showInformationMessage(
-          "No problem lists configured. Add leetcodePractice.problemLists or problemLists in .leetcode."
+          "No problem lists configured. Add leetplus.problemLists or problemLists in .leetcode."
         );
         return;
       }
@@ -3445,7 +3592,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.refreshQotd", async () => {
+    vscode.commands.registerCommand("leetplus.refreshQotd", async () => {
       trackAnalytics("command_invoked", "sidebar", "refresh_qotd");
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: "Refreshing Question of the Day..." },
@@ -3455,7 +3602,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.filterByDifficulty", async () => {
+    vscode.commands.registerCommand("leetplus.filterByDifficulty", async () => {
       trackAnalytics("command_invoked", "sidebar", "filter_difficulty");
       const choice = await vscode.window.showQuickPick(
         ["All", "Easy", "Medium", "Hard"],
@@ -3468,7 +3615,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
     })
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.searchProblems", async () => {
+    vscode.commands.registerCommand("leetplus.searchProblems", async () => {
       trackAnalytics("command_invoked", "sidebar", "search_problems");
       const query = await vscode.window.showInputBox({
         prompt: "Search by problem title or slug",
@@ -3482,7 +3629,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.viewStats", () => {
+    vscode.commands.registerCommand("leetplus.viewStats", () => {
       trackAnalytics("command_invoked", "command_palette", "view_stats");
       openStatsWebview(context, globalState).catch((e) =>
         vscode.window.showErrorMessage(e instanceof Error ? e.message : String(e))
@@ -3491,7 +3638,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.refreshStatsData", () => {
+    vscode.commands.registerCommand("leetplus.refreshStatsData", () => {
       refreshStatsData(context, globalState).catch((e) =>
         vscode.window.showErrorMessage(e instanceof Error ? e.message : String(e))
       );
@@ -3499,23 +3646,23 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.cloudSignIn", async () => {
+    vscode.commands.registerCommand("leetplus.cloudSignIn", async () => {
       trackAnalytics("command_invoked", "command_palette", "cloud_sign_in");
       await signInToCloud(context);
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.cloudSignOut", async () => {
+    vscode.commands.registerCommand("leetplus.cloudSignOut", async () => {
       trackAnalytics("command_invoked", "command_palette", "cloud_sign_out");
       await signOutFromCloud(context);
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.setCloudUsername", async () => {
+    vscode.commands.registerCommand("leetplus.setCloudUsername", async () => {
       trackAnalytics("command_invoked", "command_palette", "set_cloud_username");
-      const cfg = vscode.workspace.getConfiguration("leetcodePractice");
+      const cfg = vscode.workspace.getConfiguration("leetplus");
       const current = cfg.get<string>("leetcodeUsername") ?? "";
       const value = await vscode.window.showInputBox({
         prompt: "LeetCode username (used as the per-account Firestore document id)",
@@ -3541,7 +3688,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
     );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.pushCloudStats", async () => {
+    vscode.commands.registerCommand("leetplus.pushCloudStats", async () => {
       const result = await pushStatsToCloud(context, globalState);
       trackAnalytics("cloud_sync", "command_palette", "push_cloud_stats", {
         result: result.ok ? "ok" : "err",
@@ -3577,7 +3724,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.pullCloudStats", async () => {
+    vscode.commands.registerCommand("leetplus.pullCloudStats", async () => {
       if (!getCloudIdentity(globalState)) {
         void warnNotSignedIn();
         return;
@@ -3631,7 +3778,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   context.subscriptions.push({ dispose: () => clearInterval(cloudPushInterval) });
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.openRandomProblem", async () => {
+    vscode.commands.registerCommand("leetplus.openRandomProblem", async () => {
       trackAnalytics("command_invoked", "command_palette", "open_random", { source: "random" });
       const list = await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: "Loading problems..." },
@@ -3651,7 +3798,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.patternDrill", async () => {
+    vscode.commands.registerCommand("leetplus.patternDrill", async () => {
       trackAnalytics("command_invoked", "command_palette", "pattern_drill");
       if (!(getProvider() instanceof LeetCodeProvider)) {
         void vscode.window.showInformationMessage(
@@ -3682,7 +3829,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "leetcode-practice.practicePattern",
+      "leetplus.practicePattern",
       async (patternId?: PatternId, leetcodeTag?: string) => {
         trackAnalytics("command_invoked", "command_palette", "practice_pattern");
         let target: PatternId | undefined = patternId;
@@ -3727,7 +3874,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.showPatternMasterySummary", async () => {
+    vscode.commands.registerCommand("leetplus.showPatternMasterySummary", async () => {
       trackAnalytics("command_invoked", "command_palette", "pattern_mastery_summary");
       const summary = summarizePatternMastery(globalState);
       const total = summary.reduce((acc, s) => acc + s.solvedCount, 0);
@@ -3757,7 +3904,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       const matched = summary.find((s) => `${s.icon}  ${s.label}` === pick.label);
       if (matched) {
         await vscode.commands.executeCommand(
-          "leetcode-practice.practicePattern",
+          "leetplus.practicePattern",
           matched.patternId,
           matched.leetcodeTag,
         );
@@ -3766,7 +3913,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.markAsSolved", async (node: ProblemTreeItem) => {
+    vscode.commands.registerCommand("leetplus.markAsSolved", async (node: ProblemTreeItem) => {
       if (node?.item?.titleSlug) {
         trackAnalytics("command_invoked", "sidebar", "mark_solved", {
           difficulty: bucketDifficulty(node.item.difficulty),
@@ -3778,7 +3925,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
     })
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.markAsAttempting", (node: ProblemTreeItem) => {
+    vscode.commands.registerCommand("leetplus.markAsAttempting", (node: ProblemTreeItem) => {
       if (node?.item?.titleSlug) {
         trackAnalytics("command_invoked", "sidebar", "mark_attempting", {
           difficulty: bucketDifficulty(node.item.difficulty),
@@ -3789,7 +3936,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
     })
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.toggleAnalytics", async () => {
+    vscode.commands.registerCommand("leetplus.toggleAnalytics", async () => {
       const currentlyOn = isAnalyticsEnabled();
       const pick = await vscode.window.showQuickPick(
         [
@@ -3817,7 +3964,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetcode-practice.clearProblemStatus", (node: ProblemTreeItem) => {
+    vscode.commands.registerCommand("leetplus.clearProblemStatus", (node: ProblemTreeItem) => {
       if (node?.item?.titleSlug) {
         trackAnalytics("command_invoked", "sidebar", "clear_status");
         setProblemStatus(globalState, node.item.titleSlug, undefined);

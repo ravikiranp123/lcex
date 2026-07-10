@@ -1,5 +1,5 @@
 (() => {
-  const CURSOR_URI = "cursor://NikkyAmresh.leetcode-practice/open/";
+  const CURSOR_URI = "cursor://ravikiranp123.leetcode-practice/open/";
   const BRAIN_URL = "https://dsa-portal.algofunds.in/question/";
   const DATA_ATTR = "data-lcex-cursor-btn";
   const BRAIN_DATA_ATTR = "data-lcex-brain-btn";

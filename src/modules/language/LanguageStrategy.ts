@@ -86,7 +86,7 @@ function cppSourceDefinesMain(source: string): boolean {
 }
 
 const JAVA_MAIN_RE = /\bpublic\s+static\s+void\s+main\s*\(/;
-const JAVA_RUNNER_CLASS = "LCexMain";
+const JAVA_RUNNER_CLASS = "LeetPlusMain";
 
 /** Find the class that declares `public static void main(...)`. Returns null if none. */
 function findJavaMainClass(source: string): string | null {
@@ -98,7 +98,7 @@ function findJavaMainClass(source: string): string | null {
 }
 
 /**
- * Java entry-class name for a problem file base: `2` → `LCexMain2`, `two-sum` → `LCexMainTwoSum`.
+ * Java entry-class name for a problem file base: `2` → `LeetPlusMain2`, `two-sum` → `LeetPlusMainTwoSum`.
  * Java class names cannot start with a digit or contain `-`, and the file must be named after the
  * class it runs, so Java solution files are named after this entry class.
  */
@@ -118,9 +118,9 @@ export function solutionFileBaseName(
   return javaEntryClassName(base) + attemptSuffix.replace(/-/g, "_");
 }
 
-/** Reverse of Java solution naming: `LCexMain2` → `2`, `LCexMainTwoSum` → `two-sum`; other bases unchanged. */
+/** Reverse of Java solution naming: `LeetPlusMain2` → `2`, `LeetPlusMainTwoSum` → `two-sum`; other bases unchanged. */
 export function problemKeyFromSolutionFileBase(base: string): string {
-  const m = base.match(/^LCexMain(.+?)(_[0-9a-f]{3})?$/i);
+  const m = base.match(/^LeetPlusMain(.+?)(_[0-9a-f]{3})?$/i);
   if (!m) return base;
   const inner = m[1];
   if (/^\d+$/.test(inner)) return inner;
@@ -561,7 +561,7 @@ const cppStrategy: LanguageStrategy = {
         [tmpDir]
       );
       if (!(await fileExists(outPath))) {
-        return { stdout: compile.stdout, stderr: compile.stderr || "lcex: g++ produced no binary" };
+        return { stdout: compile.stdout, stderr: compile.stderr || "leetplus: g++ produced no binary" };
       }
       return execCaptured(quoteShellPath(outPath), tmpDir, 15000, [tmpDir]);
     } finally {
@@ -724,7 +724,7 @@ const javaStrategy: LanguageStrategy = {
     if (!entry) {
       return {
         stdout: "",
-        stderr: "lcex: no `public static void main(String[] args)` found in this file",
+        stderr: "leetplus: no `public static void main(String[] args)` found in this file",
       };
     }
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "lcex-java-"));
@@ -738,7 +738,7 @@ const javaStrategy: LanguageStrategy = {
       if (!(await fileExists(path.join(tmpDir, `${entry}.class`)))) {
         return {
           stdout: compile.stdout,
-          stderr: compile.stderr || "lcex: javac produced no class file",
+          stderr: compile.stderr || "leetplus: javac produced no class file",
         };
       }
       return execCaptured(`java -cp ${quoteShellPath(tmpDir)} ${entry}`, tmpDir, 15000, [tmpDir]);

@@ -8,7 +8,7 @@ import {
   serializeLcInterviewFile,
   type LcInterviewFileV1,
 } from "./LcInterviewFile";
-import { normalizeInterviewFilePath } from "./LcexInterviewReportStore";
+import { normalizeInterviewFilePath } from "./LeetPlusInterviewReportStore";
 import { getInterviewSession, remainingMs } from "./InterviewMode";
 
 function escapeHtml(s: string): string {
@@ -415,14 +415,14 @@ export class LeetcodeInterviewEditorProvider implements vscode.CustomTextEditorP
         }
         if (msg.type === "startInterview" && msg.data) {
           const canonicalPath = normalizeInterviewFilePath(document.uri.fsPath);
-          void vscode.commands.executeCommand("leetcode-practice.interviewStartFromLcInterviewFile", {
+          void vscode.commands.executeCommand("leetplus.interviewStartFromLcInterviewFile", {
             fsPath: canonicalPath,
             payload: msg.data,
           });
           return;
         }
         if (msg.type === "endInterview") {
-          void vscode.commands.executeCommand("leetcode-practice.interviewModeStop");
+          void vscode.commands.executeCommand("leetplus.interviewModeStop");
           return;
         }
         if (msg.type === "openPastReport" && typeof msg.reportPath === "string" && msg.reportPath.trim()) {
@@ -431,7 +431,7 @@ export class LeetcodeInterviewEditorProvider implements vscode.CustomTextEditorP
             void vscode.commands.executeCommand(
               "vscode.openWith",
               vscode.Uri.file(p),
-              "leetcode-practice.lcInterviewReportEditor",
+              "leetplus.lcInterviewReportEditor",
               vscode.ViewColumn.One
             );
           } catch {
@@ -441,7 +441,7 @@ export class LeetcodeInterviewEditorProvider implements vscode.CustomTextEditorP
         }
         if (msg.type === "openProblem" && typeof msg.titleSlug === "string" && msg.titleSlug.trim()) {
           void vscode.commands.executeCommand(
-            "leetcode-practice.openInterviewPlanProblem",
+            "leetplus.openInterviewPlanProblem",
             msg.titleSlug.trim()
           );
         }

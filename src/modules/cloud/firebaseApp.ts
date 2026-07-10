@@ -29,12 +29,12 @@ export const FIREBASE_CONFIG = {
 export const AUTH_PAGE_URL = "https://lc-ext.web.app/";
 
 /** Secrets-storage keys. */
-const SECRET_REFRESH_TOKEN = "leetcode-practice.cloud.refreshToken";
-const SECRET_ANON_REFRESH_TOKEN = "leetcode-practice.cloud.anonRefreshToken";
+const SECRET_REFRESH_TOKEN = "leetplus.cloud.refreshToken";
+const SECRET_ANON_REFRESH_TOKEN = "leetplus.cloud.anonRefreshToken";
 /** Memento keys for the (non-secret) profile shape. */
-const STATE_UID = "leetcode-practice.cloud.uid";
-const STATE_EMAIL = "leetcode-practice.cloud.email";
-const STATE_ANON_UID = "leetcode-practice.cloud.anonUid";
+const STATE_UID = "leetplus.cloud.uid";
+const STATE_EMAIL = "leetplus.cloud.email";
+const STATE_ANON_UID = "leetplus.cloud.anonUid";
 
 export interface CloudIdentity {
   uid: string;

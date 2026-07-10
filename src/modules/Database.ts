@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 import type { Session } from "./interface/Session";
-import { getEffectiveConfig } from "./LeetcodeConfig";
+import { getEffectiveConfig } from "./LeetPlusConfig";
 import type { SupportedLanguage } from "./interface/Problem";
 import { getLanguageStrategy, solutionFileBaseName } from "./language/LanguageStrategy";
 

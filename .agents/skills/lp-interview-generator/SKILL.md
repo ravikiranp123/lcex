@@ -1,11 +1,11 @@
 ---
-name: lcex-interview-generator
-description: Generate JSON for LeetCode Practice .lcInterview files (timed mock interviews with LeetCode slugs).
+name: lp-interview-generator
+description: Generate JSON for LeetPlus .lcInterview files (timed mock interviews with LeetCode slugs).
 ---
 
 # LC Interview file generator
 
-When this skill is loaded, help the user design a **LeetCode Practice** mock interview and output **one JSON object** only (no surrounding explanation outside the code block).
+When this skill is loaded, help the user design a **LeetPlus** mock interview and output **one JSON object** only (no surrounding explanation outside the code block).
 
 ## Output format
 

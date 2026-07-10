@@ -7,8 +7,8 @@ import {
   type ProblemListItem,
   type StudyPlanGroup,
 } from "./LeetCode";
-import { NO_PROBLEM_LIST_SENTINEL, getEffectiveConfig } from "./LeetcodeConfig";
-const STATUS_KEY = "leetcode-practice.problemStatus";
+import { NO_PROBLEM_LIST_SENTINEL, getEffectiveConfig } from "./LeetPlusConfig";
+const STATUS_KEY = "leetplus.problemStatus";
 
 export type ProblemStatus = "solved" | "attempting";
 

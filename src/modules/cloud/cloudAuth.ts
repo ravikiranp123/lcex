@@ -9,7 +9,7 @@ import {
   setCloudIdentity,
 } from "./firebaseApp";
 
-const PUBLISHER = "nikkyamresh";
+const PUBLISHER = "ravikiranp123";
 const EXTENSION_ID = "leetcode-practice";
 const SIGN_IN_TIMEOUT_MS = 5 * 60 * 1000;
 

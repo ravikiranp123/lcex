@@ -60,7 +60,7 @@ class SuggestionNode extends PatternMasteryNode {
     item.contextValue = "patternMasterySuggestion";
     item.command = {
       title: "Practice this pattern",
-      command: "leetcode-practice.practicePattern",
+      command: "leetplus.practicePattern",
       arguments: [this.summary.patternId, this.summary.leetcodeTag],
     };
     return item;
@@ -92,7 +92,7 @@ class PatternRowNode extends PatternMasteryNode {
     item.contextValue = `patternMastery.${this.summary.rank}`;
     item.command = {
       title: "Practice this pattern",
-      command: "leetcode-practice.practicePattern",
+      command: "leetplus.practicePattern",
       arguments: [this.summary.patternId, this.summary.leetcodeTag],
     };
     return item;

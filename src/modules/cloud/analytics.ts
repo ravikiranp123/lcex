@@ -11,7 +11,7 @@ import { FIREBASE_CONFIG, getFreshAnonIdToken, getFreshIdToken } from "./firebas
  *    Only a pseudonymous per-install UUID identifies the sender.
  *  - Every string field is drawn from a compile-time allow-list (AnalyticsEvent,
  *    AnalyticsSurface, AnalyticsFeature) and enforced again by Firestore rules.
- *  - Writes are gated on (a) user setting `leetcodePractice.analytics.enabled`
+ *  - Writes are gated on (a) user setting `leetplus.analytics.enabled`
  *    and (b) `vscode.env.isTelemetryEnabled`. If either is false, track() is a
  *    silent no-op. Sign-in is NOT required: if the user has a signed-in cloud
  *    identity it's used, otherwise a per-install anonymous Firebase identity
@@ -27,8 +27,8 @@ import { FIREBASE_CONFIG, getFreshAnonIdToken, getFreshIdToken } from "./firebas
 
 export const ANALYTICS_SCHEMA_VERSION = 1;
 
-const INSTALL_ID_KEY = "leetcode-practice.analytics.installId";
-const DAILY_COUNT_KEY = "leetcode-practice.analytics.dailyCount";
+const INSTALL_ID_KEY = "leetplus.analytics.installId";
+const DAILY_COUNT_KEY = "leetplus.analytics.dailyCount";
 const ANALYTICS_SETTING = "analytics.enabled";
 
 const MAX_BUFFER = 50;
@@ -400,13 +400,13 @@ export async function flushAnalytics(): Promise<void> {
 
 export function isAnalyticsEnabled(): boolean {
   if (!vscode.env.isTelemetryEnabled) return false;
-  const cfg = vscode.workspace.getConfiguration("leetcodePractice");
+  const cfg = vscode.workspace.getConfiguration("leetplus");
   const enabled = cfg.get<boolean>(ANALYTICS_SETTING);
   return enabled !== false;
 }
 
 export async function setAnalyticsEnabled(enabled: boolean): Promise<void> {
-  const cfg = vscode.workspace.getConfiguration("leetcodePractice");
+  const cfg = vscode.workspace.getConfiguration("leetplus");
   await cfg.update(ANALYTICS_SETTING, enabled, vscode.ConfigurationTarget.Global);
 }
 

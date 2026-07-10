@@ -3,8 +3,8 @@ import * as vscode from "vscode";
 import * as Logger from "../Logger";
 import { FIREBASE_CONFIG, getFreshAnonIdToken } from "./firebaseApp";
 
-const STATE_LAST_REGISTERED_AT = "leetcode-practice.cloud.installLastRegisteredAt";
-const STATE_LAST_REGISTERED_KEY = "leetcode-practice.cloud.installLastRegisteredKey";
+const STATE_LAST_REGISTERED_AT = "leetplus.cloud.installLastRegisteredAt";
+const STATE_LAST_REGISTERED_KEY = "leetplus.cloud.installLastRegisteredKey";
 const REGISTER_INTERVAL_MS = 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 8_000;
 

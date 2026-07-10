@@ -28,7 +28,7 @@ export interface FitOutcome {
   ranking?: { cls: ComplexityClass; rss: number }[];
 }
 
-const HARNESS_DIR = path.join(os.homedir(), ".lcex", "fit");
+const HARNESS_DIR = path.join(os.homedir(), ".leetplus", "fit");
 
 function ensureDir(): void {
   fs.mkdirSync(HARNESS_DIR, { recursive: true });

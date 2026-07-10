@@ -63,7 +63,7 @@ export class CompanyProblemTreeItem extends vscode.TreeItem {
 
   constructor(public readonly problem: CompanyProblem, status: ProblemStatus | undefined) {
     super(problem.title, vscode.TreeItemCollapsibleState.None);
-    this.contextValue = "lcex.companyProblem";
+    this.contextValue = "leetplus.companyProblem";
     const dKey = problem.difficultyKey;
     const difficulty =
       dKey === "EASY"

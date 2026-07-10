@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import type { IProblemProvider } from "./interface/Problem";
-import { readInterviewReportFile } from "./LcexInterviewReportStore";
+import { readInterviewReportFile } from "./LeetPlusInterviewReportStore";
 import {
   interviewReportViewModelFromSnapshotFile,
   openInterviewAttemptSolutionFile,

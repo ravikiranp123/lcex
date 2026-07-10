@@ -5,7 +5,7 @@ import * as path from "node:path";
 import * as Logger from "../Logger";
 import { FIREBASE_CONFIG } from "./firebaseApp";
 
-const CACHE_DIR = path.join(os.homedir(), ".lcex");
+const CACHE_DIR = path.join(os.homedir(), ".leetplus");
 const CACHE_FILE = path.join(CACHE_DIR, "wellness-cache.json");
 const FETCH_TIMEOUT_MS = 4_000;
 

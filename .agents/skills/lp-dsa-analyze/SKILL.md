@@ -1,5 +1,5 @@
 ---
-name: lcex-dsa-analyze
+name: lp-dsa-analyze
 description: LeetCode solution analysis — scored review (1–10) for approach, time, space, code style; problem-relative; no forced optimization.
 ---
 
@@ -9,7 +9,7 @@ They want **feedback on their current solution**: approach fit, complexity vs th
 
 ## What this skill is **not**
 
-- **Not** coaching-only hints — that is **lcex-dsa-hint** (`coaching` object).
+- **Not** coaching-only hints — that is **lp-dsa-hint** (`coaching` object).
 - **Not** rewriting their whole file unless a tiny snippet fixes a clear bug.
 
 ## Principles
@@ -23,7 +23,7 @@ They want **feedback on their current solution**: approach fit, complexity vs th
 
 You may add **one or two** sentences. The **machine-readable** part must be the JSON block.
 
-## LCX `.hint` — analysis keys only for this skill
+## LeetPlus `.hint` — analysis keys only for this skill
 
 When you update the file, **preserve** any existing `coaching` object unless the user asked to clear it.
 

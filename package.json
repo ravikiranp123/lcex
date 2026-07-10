@@ -1,9 +1,9 @@
 {
-  "name": "leetcode-practice",
-  "displayName": "LeetCode Practice — Problems, Study Plans & Interview Mode",
-  "description": "Solve LeetCode problems in VS Code. Browse problems, study plans (Top Interview 150, Blind 75), and Question of the Day. Generate TypeScript / JavaScript / Python / C++ / Java templates, run examples inline, track XP & streaks, and run timed mock interviews.",
+  "name": "leet-plus",
+  "displayName": "LeetPlus — Spaced Repetition Study Plans, Visual Algorithms & System Design",
+  "description": "Prepare for technical interviews in VS Code. Featuring spaced repetition (SRS) study plans, visual step-through algorithms, Excalidraw system & low-level design diagrams, behavioral STAR mock interviews, and automated telemetry.",
   "version": "0.11.0",
-  "publisher": "nikkyamresh",
+  "publisher": "ravikiranp123",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -16,18 +16,21 @@
   "icon": "icons/icon.png",
   "activationEvents": [
     "onUri",
-    "onWebviewPanel:leetcodeProblem",
-    "workspaceContains:**/.leetcode"
+    "onWebviewPanel:leetplusProblem",
+    "workspaceContains:**/.leetplus/config.json",
+    "workspaceContains:**/.leetcode",
+    "onView:leetplus.onboardingView",
+    "onCommand:leetplus.initializeWorkspace"
   ],
   "main": "./out/extension.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/NikkyAmresh/lcex"
+    "url": "https://github.com/ravikiranp123/leet-plus"
   },
   "bugs": {
-    "url": "https://github.com/NikkyAmresh/lcex/issues"
+    "url": "https://github.com/ravikiranp123/leet-plus/issues"
   },
-  "homepage": "https://github.com/NikkyAmresh/lcex#readme",
+  "homepage": "https://github.com/ravikiranp123/leet-plus#readme",
   "license": "MIT",
   "galleryBanner": {
     "color": "#1e1e2e",
@@ -64,416 +67,421 @@
   "contributes": {
     "commands": [
       {
-        "command": "leetcode-practice.openProblem",
-        "title": "LeetCode: Open/Create Problem",
-        "category": "LeetCode"
+        "command": "leetplus.openProblem",
+        "title": "Open/Create Problem",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.openSolutionFromText",
-        "title": "LeetCode: Open Solution",
-        "category": "LeetCode",
+        "command": "leetplus.openSolutionFromText",
+        "title": "Open Solution",
+        "category": "LeetPlus",
         "icon": "$(code)"
       },
       {
-        "command": "leetcode-practice.openQotd",
-        "title": "LeetCode: Open Question of the Day",
-        "category": "LeetCode"
+        "command": "leetplus.openQotd",
+        "title": "Open Question of the Day",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.runExamples",
-        "title": "LeetCode: Run Examples",
-        "category": "LeetCode"
+        "command": "leetplus.runExamples",
+        "title": "Run Examples",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.openNextBugReview",
-        "title": "LeetCode: Open Next Bug Review",
-        "category": "LeetCode"
+        "command": "leetplus.openNextBugReview",
+        "title": "Open Next Bug Review",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.fuzzVsBruteForce",
-        "title": "LeetCode: Fuzz vs Brute Force",
-        "category": "LeetCode"
+        "command": "leetplus.fuzzVsBruteForce",
+        "title": "Fuzz vs Brute Force",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.measureComplexity",
-        "title": "LeetCode: Measure Complexity (Empirical)",
-        "category": "LeetCode"
+        "command": "leetplus.measureComplexity",
+        "title": "Measure Complexity (Empirical)",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.visualizeRecursion",
-        "title": "LeetCode: Visualize Recursion Call Tree",
-        "category": "LeetCode"
+        "command": "leetplus.visualizeRecursion",
+        "title": "Visualize Recursion Call Tree",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.visualizeIterative",
-        "title": "LeetCode: Visualize Iterative Traversal",
-        "category": "LeetCode"
+        "command": "leetplus.visualizeIterative",
+        "title": "Visualize Iterative Traversal",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.clearInlineDecorations",
-        "title": "LeetCode: Clear Inline Decorations",
-        "category": "LeetCode"
+        "command": "leetplus.clearInlineDecorations",
+        "title": "Clear Inline Decorations",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.runAdversarialTests",
-        "title": "LeetCode: Surface Adversarial Edge Cases",
-        "category": "LeetCode"
+        "command": "leetplus.runAdversarialTests",
+        "title": "Surface Adversarial Edge Cases",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.complexityBudget",
-        "title": "LeetCode: Show Complexity Budget vs. Estimate",
-        "category": "LeetCode"
+        "command": "leetplus.complexityBudget",
+        "title": "Show Complexity Budget vs. Estimate",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.lint",
-        "title": "LeetCode: Lint Solution for Interview Anti-Patterns",
-        "category": "LeetCode"
+        "command": "leetplus.lint",
+        "title": "Lint Solution for Interview Anti-Patterns",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.toggleLint",
-        "title": "LeetCode: Toggle Interview Lint on Save",
-        "category": "LeetCode"
+        "command": "leetplus.toggleLint",
+        "title": "Toggle Interview Lint on Save",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.toggleComplexityBudget",
-        "title": "LeetCode: Toggle Complexity Budget on Save",
-        "category": "LeetCode"
+        "command": "leetplus.toggleComplexityBudget",
+        "title": "Toggle Complexity Budget on Save",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.toggleAdversarialTests",
-        "title": "LeetCode: Toggle Edge-Case Probes on Save",
-        "category": "LeetCode"
+        "command": "leetplus.toggleAdversarialTests",
+        "title": "Toggle Edge-Case Probes on Save",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.toggleRunExamplesOnSave",
-        "title": "LeetCode: Toggle Run Examples on Save",
-        "category": "LeetCode"
+        "command": "leetplus.toggleRunExamplesOnSave",
+        "title": "Toggle Run Examples on Save",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.toggleInlineDecorations",
-        "title": "LeetCode: Toggle All Inline Decorations",
-        "category": "LeetCode"
+        "command": "leetplus.toggleInlineDecorations",
+        "title": "Toggle All Inline Decorations",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.runInTerminal",
-        "title": "LeetCode: Run in Terminal",
-        "category": "LeetCode"
+        "command": "leetplus.runInTerminal",
+        "title": "Run in Terminal",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.signIn",
-        "title": "LeetCode: Sign In",
-        "category": "LeetCode"
+        "command": "leetplus.signIn",
+        "title": "Sign In",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.signOut",
-        "title": "LeetCode: Sign Out",
-        "category": "LeetCode"
+        "command": "leetplus.signOut",
+        "title": "Sign Out",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.refreshProblems",
-        "title": "LeetCode: Refresh Problems"
+        "command": "leetplus.refreshProblems",
+        "title": "Refresh Problems"
       },
       {
-        "command": "leetcode-practice.refreshQotd",
-        "title": "LeetCode: Refresh Question of the Day"
+        "command": "leetplus.refreshQotd",
+        "title": "Refresh Question of the Day"
       },
       {
-        "command": "leetcode-practice.refreshContests",
-        "title": "LeetCode: Refresh Contests",
+        "command": "leetplus.refreshContests",
+        "title": "Refresh Contests",
         "icon": "$(refresh)"
       },
       {
-        "command": "leetcode-practice.openContestOnWeb",
-        "title": "LeetCode: Open Contest on leetcode.com",
+        "command": "leetplus.openContestOnWeb",
+        "title": "Open Contest on leetcode.com",
         "icon": "$(link-external)"
       },
       {
-        "command": "leetcode-practice.refreshCompanies",
-        "title": "LeetCode: Refresh Companies",
+        "command": "leetplus.refreshCompanies",
+        "title": "Refresh Companies",
         "icon": "$(refresh)"
       },
       {
-        "command": "leetcode-practice.searchCompanies",
-        "title": "LeetCode: Search Companies",
+        "command": "leetplus.searchCompanies",
+        "title": "Search Companies",
         "icon": "$(search)"
       },
       {
-        "command": "leetcode-practice.filterCompaniesByDifficulty",
-        "title": "LeetCode: Filter Companies by Difficulty",
+        "command": "leetplus.filterCompaniesByDifficulty",
+        "title": "Filter Companies by Difficulty",
         "icon": "$(filter)"
       },
       {
-        "command": "leetcode-practice.markAsSolved",
+        "command": "leetplus.markAsSolved",
         "title": "Mark as Solved"
       },
       {
-        "command": "leetcode-practice.markAsAttempting",
+        "command": "leetplus.markAsAttempting",
         "title": "Mark as Attempting"
       },
       {
-        "command": "leetcode-practice.clearProblemStatus",
+        "command": "leetplus.clearProblemStatus",
         "title": "Clear Status"
       },
       {
-        "command": "leetcode-practice.filterByDifficulty",
-        "title": "LeetCode: Filter by Difficulty"
+        "command": "leetplus.filterByDifficulty",
+        "title": "Filter by Difficulty"
       },
       {
-        "command": "leetcode-practice.searchProblems",
-        "title": "LeetCode: Search Problems"
+        "command": "leetplus.searchProblems",
+        "title": "Search Problems"
       },
       {
-        "command": "leetcode-practice.openRandomProblem",
-        "title": "LeetCode: Open Random Problem"
+        "command": "leetplus.openRandomProblem",
+        "title": "Open Random Problem"
       },
       {
-        "command": "leetcode-practice.patternDrill",
-        "title": "LeetCode: Pattern Recognition Drill",
-        "category": "LeetCode"
+        "command": "leetplus.patternDrill",
+        "title": "Pattern Recognition Drill",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.practicePattern",
-        "title": "LeetCode: Practice Weakest Pattern",
-        "category": "LeetCode"
+        "command": "leetplus.practicePattern",
+        "title": "Practice Weakest Pattern",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.showPatternMasterySummary",
-        "title": "LeetCode: Pattern Mastery Summary",
-        "category": "LeetCode"
+        "command": "leetplus.showPatternMasterySummary",
+        "title": "Pattern Mastery Summary",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.viewStats",
-        "title": "LeetCode: View Stats"
+        "command": "leetplus.viewStats",
+        "title": "View Stats"
       },
       {
-        "command": "leetcode-practice.refreshStatsData",
-        "title": "LeetCode: Refresh Stats Data",
-        "category": "LeetCode"
+        "command": "leetplus.refreshStatsData",
+        "title": "Refresh Stats Data",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.cloudSignIn",
-        "title": "LeetCode: Sign in to Cloud Sync",
-        "category": "LeetCode"
+        "command": "leetplus.cloudSignIn",
+        "title": "Sign in to Cloud Sync",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.cloudSignOut",
-        "title": "LeetCode: Sign out of Cloud Sync",
-        "category": "LeetCode"
+        "command": "leetplus.cloudSignOut",
+        "title": "Sign out of Cloud Sync",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.setCloudUsername",
-        "title": "LeetCode: Set LeetCode username",
-        "category": "LeetCode"
+        "command": "leetplus.setCloudUsername",
+        "title": "Set LeetCode username",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.pushCloudStats",
-        "title": "LeetCode: Push stats to cloud now",
-        "category": "LeetCode"
+        "command": "leetplus.pushCloudStats",
+        "title": "Push stats to cloud now",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.pullCloudStats",
-        "title": "LeetCode: Pull stats from cloud",
-        "category": "LeetCode"
+        "command": "leetplus.pullCloudStats",
+        "title": "Pull stats from cloud",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.applyTheme",
-        "title": "LeetCode: Apply Theme"
+        "command": "leetplus.applyTheme",
+        "title": "Apply Theme"
       },
       {
-        "command": "leetcode-practice.switchStudyPlan",
-        "title": "LeetCode: Switch Study Plan"
+        "command": "leetplus.switchStudyPlan",
+        "title": "Switch Study Plan"
       },
       {
-        "command": "leetcode-practice.switchProblemList",
-        "title": "LeetCode: Switch Problem List"
+        "command": "leetplus.switchProblemList",
+        "title": "Switch Problem List"
       },
       {
-        "command": "leetcode-practice.agentMakeRunnable",
-        "title": "LeetCode: Ask Agent – Make Runnable"
+        "command": "leetplus.agentMakeRunnable",
+        "title": "Ask Agent – Make Runnable"
       },
       {
-        "command": "leetcode-practice.agentHint",
-        "title": "LeetCode: Ask Agent — Hint (coaching)"
+        "command": "leetplus.agentHint",
+        "title": "Ask Agent — Hint (coaching)"
       },
       {
-        "command": "leetcode-practice.agentAnalyze",
-        "title": "LeetCode: Ask Agent — Analyze (scored review)",
-        "category": "LeetCode"
+        "command": "leetplus.agentAnalyze",
+        "title": "Ask Agent — Analyze (scored review)",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.openHintAnalysis",
-        "title": "LeetCode: Open solution notes (.hint)",
-        "category": "LeetCode"
+        "command": "leetplus.openHintAnalysis",
+        "title": "Open solution notes (.hint)",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.agentExplainCode",
-        "title": "LeetCode: Ask Agent – Explain My Code",
-        "category": "LeetCode"
+        "command": "leetplus.agentExplainCode",
+        "title": "Ask Agent – Explain My Code",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.focusModeEnter",
-        "title": "LeetCode: Focus Mode (enter)",
-        "category": "LeetCode"
+        "command": "leetplus.focusModeEnter",
+        "title": "Focus Mode (enter)",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.focusModeExit",
-        "title": "LeetCode: Focus Mode (exit)",
-        "category": "LeetCode"
+        "command": "leetplus.focusModeExit",
+        "title": "Focus Mode (exit)",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.setDailyGoal",
-        "title": "LeetCode: Set Daily Goal",
-        "category": "LeetCode"
+        "command": "leetplus.setDailyGoal",
+        "title": "Set Daily Goal",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.interviewModeStart",
-        "title": "LeetCode: Interview Mode — Start",
-        "category": "LeetCode"
+        "command": "leetplus.initializeWorkspace",
+        "title": "Initialize Workspace",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.interviewModeStop",
-        "title": "LeetCode: Interview Mode — Stop",
-        "category": "LeetCode"
+        "command": "leetplus.interviewModeStart",
+        "title": "Interview Mode — Start",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.interviewGenerateWithAi",
-        "title": "LeetCode: Generate LC Interview (AI)",
-        "category": "LeetCode"
+        "command": "leetplus.interviewModeStop",
+        "title": "Interview Mode — Stop",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.openLcInterviewReportFile",
-        "title": "LeetCode: Open LC Interview Report…",
-        "category": "LeetCode"
+        "command": "leetplus.interviewGenerateWithAi",
+        "title": "Generate LC Interview (AI)",
+        "category": "LeetPlus"
       },
       {
-        "command": "leetcode-practice.toggleAnalytics",
-        "title": "LeetCode: Toggle anonymous analytics",
-        "category": "LeetCode"
+        "command": "leetplus.openLcInterviewReportFile",
+        "title": "Open LC Interview Report…",
+        "category": "LeetPlus"
+      },
+      {
+        "command": "leetplus.toggleAnalytics",
+        "title": "Toggle anonymous analytics",
+        "category": "LeetPlus"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "leetcode-practice.openSolutionFromText",
-          "when": "leetcodePractice.hasMarker && resourceScheme == 'leetcode-problem-plain'",
+          "command": "leetplus.openSolutionFromText",
+          "when": "leetplus.hasMarker && resourceScheme == 'leetcode-problem-plain'",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.agentMakeRunnable",
-          "when": "leetcodePractice.hasMarker && leetcodePractice.isSolutionFile",
+          "command": "leetplus.agentMakeRunnable",
+          "when": "leetplus.hasMarker && leetplus.isSolutionFile",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.agentHint",
-          "when": "leetcodePractice.hasMarker && leetcodePractice.isSolutionFile && !leetcodePractice.interviewMode",
+          "command": "leetplus.agentHint",
+          "when": "leetplus.hasMarker && leetplus.isSolutionFile && !leetplus.interviewMode",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.agentAnalyze",
-          "when": "leetcodePractice.hasMarker && leetcodePractice.isSolutionFile && !leetcodePractice.interviewMode",
+          "command": "leetplus.agentAnalyze",
+          "when": "leetplus.hasMarker && leetplus.isSolutionFile && !leetplus.interviewMode",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.openHintAnalysis",
-          "when": "leetcodePractice.hasMarker && leetcodePractice.isSolutionFile && !leetcodePractice.interviewMode",
+          "command": "leetplus.openHintAnalysis",
+          "when": "leetplus.hasMarker && leetplus.isSolutionFile && !leetplus.interviewMode",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.agentExplainCode",
-          "when": "leetcodePractice.hasMarker && leetcodePractice.isSolutionFile && !leetcodePractice.interviewMode",
+          "command": "leetplus.agentExplainCode",
+          "when": "leetplus.hasMarker && leetplus.isSolutionFile && !leetplus.interviewMode",
           "group": "navigation"
         }
       ],
       "editor/context": [
         {
-          "command": "leetcode-practice.agentExplainCode",
-          "when": "editorHasSelection && leetcodePractice.hasMarker && leetcodePractice.isSolutionFile && !leetcodePractice.interviewMode",
+          "command": "leetplus.agentExplainCode",
+          "when": "editorHasSelection && leetplus.hasMarker && leetplus.isSolutionFile && !leetplus.interviewMode",
           "group": "navigation@9"
         }
       ],
       "view/item/context": [
         {
-          "command": "leetcode-practice.markAsSolved",
-          "when": "view == leetcode-practice.problemsView || view == leetcode-practice.topInterview150View || view == leetcode-practice.problemListsView || view == leetcode-practice.qotdView || (view == leetcode-practice.contestsView && viewItem == lcex.contestProblem) || (view == leetcode-practice.companiesView && viewItem == lcex.companyProblem)"
+          "command": "leetplus.markAsSolved",
+          "when": "view == leetplus.problemsView || view == leetplus.topInterview150View || view == leetplus.problemListsView || view == leetplus.qotdView || (view == leetplus.contestsView && viewItem == leetplus.contestProblem) || (view == leetplus.companiesView && viewItem == leetplus.companyProblem)"
         },
         {
-          "command": "leetcode-practice.markAsAttempting",
-          "when": "view == leetcode-practice.problemsView || view == leetcode-practice.topInterview150View || view == leetcode-practice.problemListsView || view == leetcode-practice.qotdView || (view == leetcode-practice.contestsView && viewItem == lcex.contestProblem) || (view == leetcode-practice.companiesView && viewItem == lcex.companyProblem)"
+          "command": "leetplus.markAsAttempting",
+          "when": "view == leetplus.problemsView || view == leetplus.topInterview150View || view == leetplus.problemListsView || view == leetplus.qotdView || (view == leetplus.contestsView && viewItem == leetplus.contestProblem) || (view == leetplus.companiesView && viewItem == leetplus.companyProblem)"
         },
         {
-          "command": "leetcode-practice.clearProblemStatus",
-          "when": "view == leetcode-practice.problemsView || view == leetcode-practice.topInterview150View || view == leetcode-practice.problemListsView || view == leetcode-practice.qotdView || (view == leetcode-practice.contestsView && viewItem == lcex.contestProblem) || (view == leetcode-practice.companiesView && viewItem == lcex.companyProblem)"
+          "command": "leetplus.clearProblemStatus",
+          "when": "view == leetplus.problemsView || view == leetplus.topInterview150View || view == leetplus.problemListsView || view == leetplus.qotdView || (view == leetplus.contestsView && viewItem == leetplus.contestProblem) || (view == leetplus.companiesView && viewItem == leetplus.companyProblem)"
         },
         {
-          "command": "leetcode-practice.openContestOnWeb",
-          "when": "view == leetcode-practice.contestsView && (viewItem == lcex.upcomingContest || viewItem == lcex.pastContest)",
+          "command": "leetplus.openContestOnWeb",
+          "when": "view == leetplus.contestsView && (viewItem == leetplus.upcomingContest || viewItem == leetplus.pastContest)",
           "group": "inline"
         }
       ],
       "view/title": [
         {
-          "command": "leetcode-practice.filterByDifficulty",
-          "when": "view == leetcode-practice.problemsView",
+          "command": "leetplus.filterByDifficulty",
+          "when": "view == leetplus.problemsView",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.searchProblems",
-          "when": "view == leetcode-practice.problemsView",
+          "command": "leetplus.searchProblems",
+          "when": "view == leetplus.problemsView",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.filterByDifficulty",
-          "when": "view == leetcode-practice.topInterview150View",
+          "command": "leetplus.filterByDifficulty",
+          "when": "view == leetplus.topInterview150View",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.searchProblems",
-          "when": "view == leetcode-practice.topInterview150View",
+          "command": "leetplus.searchProblems",
+          "when": "view == leetplus.topInterview150View",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.refreshQotd",
-          "when": "view == leetcode-practice.qotdView",
+          "command": "leetplus.refreshQotd",
+          "when": "view == leetplus.qotdView",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.switchStudyPlan",
-          "when": "view == leetcode-practice.topInterview150View",
+          "command": "leetplus.switchStudyPlan",
+          "when": "view == leetplus.topInterview150View",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.filterByDifficulty",
-          "when": "view == leetcode-practice.problemListsView",
+          "command": "leetplus.filterByDifficulty",
+          "when": "view == leetplus.problemListsView",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.searchProblems",
-          "when": "view == leetcode-practice.problemListsView",
+          "command": "leetplus.searchProblems",
+          "when": "view == leetplus.problemListsView",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.switchProblemList",
-          "when": "view == leetcode-practice.problemListsView",
+          "command": "leetplus.switchProblemList",
+          "when": "view == leetplus.problemListsView",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.refreshContests",
-          "when": "view == leetcode-practice.contestsView",
+          "command": "leetplus.refreshContests",
+          "when": "view == leetplus.contestsView",
           "group": "navigation"
         },
         {
-          "command": "leetcode-practice.searchCompanies",
-          "when": "view == leetcode-practice.companiesView",
+          "command": "leetplus.searchCompanies",
+          "when": "view == leetplus.companiesView",
           "group": "navigation@1"
         },
         {
-          "command": "leetcode-practice.filterCompaniesByDifficulty",
-          "when": "view == leetcode-practice.companiesView",
+          "command": "leetplus.filterCompaniesByDifficulty",
+          "when": "view == leetplus.companiesView",
           "group": "navigation@2"
         },
         {
-          "command": "leetcode-practice.refreshCompanies",
-          "when": "view == leetcode-practice.companiesView",
+          "command": "leetplus.refreshCompanies",
+          "when": "view == leetplus.companiesView",
           "group": "navigation@3"
         }
       ]
@@ -481,87 +489,98 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "leetcode-practice.container",
-          "title": "LeetCode",
+          "id": "leetplus-container",
+          "title": "LeetPlus",
           "icon": "./icons/icon-mono.svg"
         }
       ]
     },
     "views": {
-      "leetcode-practice.container": [
+      "leetplus-container": [
         {
-          "id": "leetcode-practice.problemsView",
-          "name": "LeetCode",
-          "when": "leetcodePractice.hasMarker && leetcodePractice.showProblemset"
+          "id": "leetplus.onboardingView",
+          "name": "Getting Started",
+          "when": "!leetplus.hasMarker"
+        }
+      ],
+      "explorer": [
+        {
+          "id": "leetplus.problemsView",
+          "name": "Problems",
+          "when": "leetplus.hasMarker && leetplus.showProblemset"
         },
         {
-          "id": "leetcode-practice.topInterview150View",
+          "id": "leetplus.topInterview150View",
           "name": "Study Plans",
-          "when": "leetcodePractice.hasMarker && leetcodePractice.showStudyPlans"
+          "when": "leetplus.hasMarker && leetplus.showStudyPlans"
         },
         {
-          "id": "leetcode-practice.problemListsView",
+          "id": "leetplus.problemListsView",
           "name": "Problem Lists",
-          "when": "leetcodePractice.hasMarker && leetcodePractice.showProblemLists"
+          "when": "leetplus.hasMarker && leetplus.showProblemLists"
         },
         {
-          "id": "leetcode-practice.qotdView",
+          "id": "leetplus.qotdView",
           "name": "Question of the Day",
-          "when": "leetcodePractice.hasMarker && leetcodePractice.showQotd"
+          "when": "leetplus.hasMarker && leetplus.showQotd"
         },
         {
-          "id": "leetcode-practice.contestsView",
+          "id": "leetplus.contestsView",
           "name": "Practice Past Contests",
-          "when": "leetcodePractice.hasMarker && leetcodePractice.showContests"
+          "when": "leetplus.hasMarker && leetplus.showContests"
         },
         {
-          "id": "leetcode-practice.companiesView",
+          "id": "leetplus.companiesView",
           "name": "Companies",
-          "when": "leetcodePractice.hasMarker && leetcodePractice.showCompanies"
+          "when": "leetplus.hasMarker && leetplus.showCompanies"
         },
         {
-          "id": "leetcode-practice.patternMasteryView",
+          "id": "leetplus.patternMasteryView",
           "name": "Pattern Mastery",
-          "when": "leetcodePractice.hasMarker"
+          "when": "leetplus.hasMarker"
         }
       ]
     },
     "keybindings": [
       {
-        "command": "leetcode-practice.runInTerminal",
+        "command": "leetplus.runInTerminal",
         "key": "ctrl+shift+r",
         "mac": "cmd+shift+r",
-        "when": "leetcodePractice.hasMarker && leetcodePractice.isSolutionFile && editorTextFocus"
+        "when": "leetplus.hasMarker && leetplus.isSolutionFile && editorTextFocus"
       },
       {
-        "command": "leetcode-practice.clearInlineDecorations",
+        "command": "leetplus.clearInlineDecorations",
         "key": "ctrl+k ctrl+l",
         "mac": "cmd+k cmd+l",
-        "when": "leetcodePractice.hasMarker && editorTextFocus"
+        "when": "leetplus.hasMarker && editorTextFocus"
       }
     ],
     "viewsWelcome": [
       {
-        "view": "leetcode-practice.problemsView",
-        "contents": "Sign in to your LeetCode account and start practicing.\n\n[Sign in to LeetCode](command:leetcode-practice.signIn)"
+        "view": "leetplus.onboardingView",
+        "contents": "Welcome to LeetPlus!\n\nTo start practicing and tracking your progress in this folder, you need to initialize it as a LeetPlus workspace. This will set up your local settings and workspace directories.\n\n[Initialize Workspace](command:leetplus.initializeWorkspace)"
       },
       {
-        "view": "leetcode-practice.topInterview150View",
-        "contents": "Interview study plans from LeetCode.\n\n[Switch study plan](command:leetcode-practice.switchStudyPlan)"
+        "view": "leetplus.problemsView",
+        "contents": "Sign in to your LeetCode account and start practicing.\n\n[Sign in to LeetCode](command:leetplus.signIn)"
       },
       {
-        "view": "leetcode-practice.problemListsView",
-        "contents": "Curated LeetCode problem lists (e.g. /problem-list/graph/). Configure `problemLists` in .leetcode.\n\n[Switch problem list](command:leetcode-practice.switchProblemList)"
+        "view": "leetplus.topInterview150View",
+        "contents": "Interview study plans from LeetCode.\n\n[Switch study plan](command:leetplus.switchStudyPlan)"
+      },
+      {
+        "view": "leetplus.problemListsView",
+        "contents": "Curated LeetCode problem lists (e.g. /problem-list/graph/). Configure `problemLists` in .leetplus.\n\n[Switch problem list](command:leetplus.switchProblemList)"
       }
     ],
     "languages": [
       {
-        "id": "leetcode-config",
+        "id": "leetplus-config",
         "aliases": [
           "LeetCode Config"
         ],
         "filenames": [
-          ".leetcode"
+          ".leetplus"
         ],
         "icon": {
           "light": "./icons/logo-dark-16.png",
@@ -610,14 +629,14 @@
       }
     ],
     "configuration": {
-      "title": "LeetCode Practice",
+      "title": "LeetPlus",
       "properties": {
-        "leetcodePractice.defaultDirectory": {
+        "leetplus.defaultDirectory": {
           "type": "string",
           "default": ".",
           "description": "Default directory for new problem files (relative to workspace root or current file)."
         },
-        "leetcodePractice.fileNamePattern": {
+        "leetplus.fileNamePattern": {
           "type": "string",
           "enum": [
             "id",
@@ -626,7 +645,7 @@
           "default": "id",
           "description": "New file name: 'id' → 167.ts, 'slug' → two-sum-ii-input-array-is-sorted.ts"
         },
-        "leetcodePractice.language": {
+        "leetplus.language": {
           "type": "string",
           "enum": [
             "typescript",
@@ -638,7 +657,7 @@
           "default": "typescript",
           "description": "Language for generated solution files and run/submit."
         },
-        "leetcodePractice.problemViewMode": {
+        "leetplus.problemViewMode": {
           "type": "string",
           "enum": [
             "ui",
@@ -647,32 +666,32 @@
           "default": "ui",
           "description": "When opening a problem from sidebar lists: 'ui' (webview with run/submit) or 'text' (plain statement in an editor tab). Overridden by problemViewMode in a workspace .leetcode file when set."
         },
-        "leetcodePractice.suppressAiTabOnSolve": {
+        "leetplus.suppressAiTabOnSolve": {
           "type": "boolean",
           "default": true,
-          "description": "In workspaces with a root .leetcode file, when you open/create a solution from the problem page, write workspace settings to reduce Tab/inline AI completions for that solution language (editor.inlineSuggest.enabled false and editor.tabCompletion off in [typescript]/[javascript]/[python]/[cpp]/[java])."
+          "description": "In workspaces with a root .leetplus file, when you open/create a solution from the problem page, write workspace settings to reduce Tab/inline AI completions for that solution language (editor.inlineSuggest.enabled false and editor.tabCompletion off in [typescript]/[javascript]/[python]/[cpp]/[java])."
         },
-        "leetcodePractice.suppressAiTabWorkspaceWide": {
+        "leetplus.suppressAiTabWorkspaceWide": {
           "type": "boolean",
           "default": false,
           "description": "If suppressAiTabOnSolve is enabled, set editor.inlineSuggest.enabled to false for the whole workspace instead of per-language scopes (stronger; affects all file types in this workspace folder)."
         },
-        "leetcodePractice.internalApiUrl": {
+        "leetplus.internalApiUrl": {
           "type": "string",
           "default": "",
           "description": "Optional internal API base URL. If set, fetches problem data from here instead of LeetCode."
         },
-        "leetcodePractice.activeStudyPlan": {
+        "leetplus.activeStudyPlan": {
           "type": "string",
           "default": "",
           "description": "Default study plan slug for the Study Plans sidebar when the workspace has no remembered selection. Must match an entry in studyPlans."
         },
-        "leetcodePractice.activeProblemList": {
+        "leetplus.activeProblemList": {
           "type": "string",
           "default": "",
           "description": "Default problem-list slug for the Problem Lists sidebar when the workspace has no remembered selection. Must match an entry in problemLists."
         },
-        "leetcodePractice.activeListSource": {
+        "leetplus.activeListSource": {
           "type": "string",
           "enum": [
             "studyPlan",
@@ -680,7 +699,7 @@
           ],
           "description": "Deprecated. Used only to migrate old configs (activeStudyPlan + problemList) when activeProblemList is unset."
         },
-        "leetcodePractice.studyPlans": {
+        "leetplus.studyPlans": {
           "type": "array",
           "items": {
             "type": "object",
@@ -707,7 +726,7 @@
           ],
           "description": "Study plans to show in the Study Plans view. Add plans like top-interview-100, etc."
         },
-        "leetcodePractice.problemLists": {
+        "leetplus.problemLists": {
           "type": "array",
           "items": {
             "type": "object",
@@ -729,47 +748,47 @@
           "default": [],
           "description": "LeetCode problem lists (favoriteQuestionList) shown in the Problem Lists sidebar."
         },
-        "leetcodePractice.showProblemLists": {
+        "leetplus.showProblemLists": {
           "type": "boolean",
           "default": true,
           "description": "Show the Problem Lists sidebar view."
         },
-        "leetcodePractice.leetcodeUsername": {
+        "leetplus.leetcodeUsername": {
           "type": "string",
           "default": "",
           "description": "LeetCode handle used as the per-account document id for cloud stats. Cloud path: users/<your-firebase-uid>/stats/<username>. Sign in with 'LeetCode: Sign in to Cloud Sync' first."
         },
-        "leetcodePractice.analytics.enabled": {
+        "leetplus.analytics.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Send anonymous usage analytics (which features are used, bucketed durations, language, coarse timestamps). No problem slugs, notes, file paths, or identifying info are ever sent. Only an opaque per-install UUID identifies the sender. Works without sign-in (a per-install anonymous Firebase identity is minted on first send). Disabled automatically if VS Code telemetry is off."
         },
-        "leetcodePractice.inlineDecorations.enabled": {
+        "leetplus.inlineDecorations.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Master switch for all lcex inline ghost-text decorations (lint, complexity budget, edge-case probes, example results). Turn off for clean screenshots or distraction-free mode."
+          "description": "Master switch for all LeetPlus inline ghost-text decorations (lint, complexity budget, edge-case probes, example results). Turn off for clean screenshots or distraction-free mode."
         },
-        "leetcodePractice.lint.enabled": {
+        "leetplus.lint.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Run the interview anti-pattern linter on save (mutate-input, built-in sort, magic numbers, debug prints). Inline + Problems panel."
         },
-        "leetcodePractice.complexityBudget.enabled": {
+        "leetplus.complexityBudget.enabled": {
           "type": "boolean",
           "default": true,
           "description": "On save, derive a complexity budget from the problem's size constraints and compare against your solution's estimated loop nesting. Shows 🟢/🟡/🔴 on the signature and per-loop badges."
         },
-        "leetcodePractice.adversarialTests.enabled": {
+        "leetplus.adversarialTests.enabled": {
           "type": "boolean",
           "default": false,
           "description": "On save, surface edge-case probes derived from parsed constraints (empty, max-size, boundary, negatives) as an inline hint on the function signature. Off by default — enable or run `LeetCode: Surface Adversarial Edge Cases` on demand."
         },
-        "leetcodePractice.runExamplesOnSave.enabled": {
+        "leetplus.runExamplesOnSave.enabled": {
           "type": "boolean",
           "default": true,
           "description": "On save, run the solution's example lines automatically and show results inline. Spawns a language process per save — disable if iteration feels sluggish."
         },
-        "leetcodePractice.runExamples.sandbox": {
+        "leetplus.runExamples.sandbox": {
           "type": "string",
           "enum": [
             "auto",
@@ -779,42 +798,42 @@
           "default": "auto",
           "markdownDescription": "Sandbox solution execution. `auto` (default) uses macOS `sandbox-exec` on Darwin, normal execution elsewhere. `sandbox` forces sandbox (fails on platforms without a backend). `off` runs the solution unsandboxed (legacy behaviour). The sandbox blocks network access and writes outside the toolchain's scratch directories."
         },
-        "leetcodePractice.bugReview.enabled": {
+        "leetplus.bugReview.enabled": {
           "type": "boolean",
           "default": false,
-          "description": "Spaced-repetition bug review: when an example fails, snapshot the failing test (input, expected, actual, full source) to ~/.lcex/bug-reviews.json and resurface it 3/7/30/90 days later as a re-attempt drill. Status bar shows count due. Off by default — enable to start building the queue."
+          "description": "Spaced-repetition bug review: when an example fails, snapshot the failing test (input, expected, actual, full source) to ~/.leetplus/bug-reviews.json and resurface it 3/7/30/90 days later as a re-attempt drill. Status bar shows count due. Off by default — enable to start building the queue."
         },
-        "leetcodePractice.fuzzer.enabled": {
+        "leetplus.fuzzer.enabled": {
           "type": "boolean",
           "default": false,
           "description": "Differential fuzzer: define `bruteForce` and `fuzzInputs(seed)` (or `brute_force`/`fuzz_inputs` in Python) alongside your solution; the fuzzer runs both on random inputs and reports the first divergence as a counterexample. Off by default."
         },
-        "leetcodePractice.empiricalFit.enabled": {
+        "leetplus.empiricalFit.enabled": {
           "type": "boolean",
           "default": false,
           "description": "Empirical complexity fitter: define `benchmark(n)` (or `def benchmark(n)`) that runs your solution at size n; the fitter times it at growing N and fits a curve (const/log/sqrt/n/n log n/n²/n³/2ⁿ). Surfaces a verdict if the empirical class exceeds the static estimate. Off by default."
         },
-        "leetcodePractice.recursionTree.enabled": {
+        "leetplus.recursionTree.enabled": {
           "type": "boolean",
           "default": false,
           "description": "Recursion call-tree visualizer: instruments the recursive function in the open file (TS/JS via wrapper, Python via sys.setprofile), runs it, and renders the live call tree with memoization-hit edges in a webview. Off by default."
         },
-        "leetcodePractice.iterativeVisualizer.enabled": {
+        "leetplus.iterativeVisualizer.enabled": {
           "type": "boolean",
           "default": false,
-          "description": "Iterative traversal visualizer: wraps push/pop on a user-tracked stack/queue (`lcexTrace.track(container, \"stack\"|\"queue\")` in TS/JS, `lcex_trace.track(...)` in Python) and renders the resulting traversal tree with revisit edges. Off by default."
+          "description": "Iterative traversal visualizer: wraps push/pop on a user-tracked stack/queue (`leetplusTrace.track(container, \"stack\"|\"queue\")` in TS/JS, `leetplus_trace.track(...)` in Python) and renders the resulting traversal tree with revisit edges. Off by default."
         },
-        "leetcodePractice.showContests": {
+        "leetplus.showContests": {
           "type": "boolean",
           "default": true,
           "description": "Show the Contests sidebar view (past weekly/biweekly + upcoming-contest metadata). Past contest problems open in the editor; upcoming contests show a countdown and an 'Open on leetcode.com' action only — live-contest questions are intentionally not surfaced."
         },
-        "leetcodePractice.showCompanies": {
+        "leetplus.showCompanies": {
           "type": "boolean",
           "default": true,
           "description": "Show the Companies sidebar view — browse LeetCode problems grouped by company (frequency, acceptance, difficulty, topics) sourced from liquidslr/interview-company-wise-problems."
         },
-        "leetcodePractice.timerMode": {
+        "leetplus.timerMode": {
           "type": "string",
           "enum": [
             "auto",
@@ -835,26 +854,29 @@
     ],
     "iconThemes": [
       {
-        "id": "leetcode-practice-file-icons",
-        "label": "LeetCode Practice",
-        "path": "./icons/leetcode-file-icon-theme.json"
+        "id": "leetplus-file-icons",
+        "label": "LeetPlus",
+        "path": "./icons/leetplus-file-icon-theme.json"
       }
     ],
     "customEditors": [
       {
-        "id": "leetcode-practice.configEditor",
-        "viewType": "leetcode-practice.configEditor",
-        "displayName": "LeetCode Config",
+        "id": "leetplus.configEditor",
+        "viewType": "leetplus.configEditor",
+        "displayName": "LeetPlus Config",
         "selector": [
           {
-            "filenamePattern": ".leetcode"
+            "filenamePattern": "**/.leetplus/config.json"
+          },
+          {
+            "filenamePattern": ".leetplus"
           }
         ],
         "priority": "default"
       },
       {
-        "id": "leetcode-practice.lcInterviewEditor",
-        "viewType": "leetcode-practice.lcInterviewEditor",
+        "id": "leetplus.lcInterviewEditor",
+        "viewType": "leetplus.lcInterviewEditor",
         "displayName": "LC Interview",
         "selector": [
           {
@@ -864,8 +886,8 @@
         "priority": "default"
       },
       {
-        "id": "leetcode-practice.lcInterviewReportEditor",
-        "viewType": "leetcode-practice.lcInterviewReportEditor",
+        "id": "leetplus.lcInterviewReportEditor",
+        "viewType": "leetplus.lcInterviewReportEditor",
         "displayName": "LC Interview Report",
         "selector": [
           {
@@ -875,8 +897,8 @@
         "priority": "default"
       },
       {
-        "id": "leetcode-practice.hintEditor",
-        "viewType": "leetcode-practice.hintEditor",
+        "id": "leetplus.hintEditor",
+        "viewType": "leetplus.hintEditor",
         "displayName": "LeetCode solution notes (.hint)",
         "selector": [
           {
@@ -896,7 +918,7 @@
     "watch": "node esbuild.config.mjs --watch",
     "test": "node --test --import tsx test/integration.test.ts test/java-template.test.ts",
     "package": "npm run compile && npx vsce package",
-    "install-extension": "npm run package && node -e \"const v=require('./package.json').version;require('child_process').execSync('code --install-extension leetcode-practice-'+v+'.vsix --force',{stdio:'inherit'})\""
+    "install-extension": "npm run package && node -e \"const v=require('./package.json').version;require('child_process').execSync('code --install-extension leet-plus-'+v+'.vsix --force',{stdio:'inherit'})\""
   },
   "devDependencies": {
     "@types/ejs": "^3.1.3",

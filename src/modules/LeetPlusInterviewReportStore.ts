@@ -4,7 +4,7 @@ import * as os from "os";
 import * as path from "path";
 import type { InterviewHistoryEntry } from "./InterviewMode";
 
-export const LCEX_HOME_DIR = path.join(os.homedir(), ".lcex");
+export const LCEX_HOME_DIR = path.join(os.homedir(), ".leetplus");
 
 export interface LcInterviewReportHubRowSnapshot {
   titleSlug: string;
@@ -41,7 +41,7 @@ export function normalizeInterviewFilePath(fsPath: string): string {
   return resolved;
 }
 
-/** MD5 hex of UTF-8 normalized absolute path (legacy reports in ~/.lcex). */
+/** MD5 hex of UTF-8 normalized absolute path (legacy reports in ~/.leetplus). */
 export function getInterviewFileKey(fsPath: string): string {
   const normalized = normalizeInterviewFilePath(fsPath);
   return crypto.createHash("md5").update(normalized, "utf8").digest("hex");
@@ -97,7 +97,7 @@ export function writeInterviewReportAtPath(absPath: string, data: LcInterviewRep
   atomicWriteJsonSync(absPath, data);
 }
 
-/** Legacy: write under ~/.lcex using MD5 of interview file path. */
+/** Legacy: write under ~/.leetplus using MD5 of interview file path. */
 export function writeInterviewReportFile(data: LcInterviewReportFileV1): void {
   ensureLcexDir();
   const p = getReportPathForInterviewFile(data.sourceLcInterviewPath);

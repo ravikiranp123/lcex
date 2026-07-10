@@ -3,9 +3,9 @@ import * as path from "path";
 import * as vscode from "vscode";
 import type { SupportedLanguage } from "./interface/Problem";
 import * as Logger from "./Logger";
-import { getEffectiveConfig } from "./LeetcodeConfig";
+import { getEffectiveConfig } from "./LeetPlusConfig";
 
-const MARKER = ".leetcode";
+const MARKER = ".leetplus";
 
 /** Applied to the workspace when a `.leetcode` marker exists (matches LCEX practice styling). */
 export const LCEX_EDITOR_FONT_FAMILY = "Fira Code iScript";
@@ -88,7 +88,7 @@ function workspaceJsonEqual(a: unknown, b: unknown): boolean {
  * Sets the configured font and token rules for LeetCode practice workspaces (folder with `.leetcode`).
  * Only writes workspace-level settings when they differ from the LCEX defaults.
  */
-export async function applyLcexEditorFontAndTokenSettingsIfNeeded(): Promise<void> {
+export async function applyLeetPlusEditorFontAndTokenSettingsIfNeeded(): Promise<void> {
   const folders = vscode.workspace.workspaceFolders;
   if (!folders?.length || !workspaceHasLeetcodeMarker()) return;
 

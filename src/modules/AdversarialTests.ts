@@ -111,14 +111,14 @@ export function buildAdversarialSummary(problemContent: string): AdversarialSumm
     return {
       signatureLine: "  ⓘ no structured constraints detected",
       signatureHover:
-        "lcex: could not parse a `Constraints:` section from this problem's description.",
+        "leetplus: could not parse a `Constraints:` section from this problem's description.",
       perCase: [],
     };
   }
   const short = cases.slice(0, 5).map((c) => c.label).join(" · ");
   const more = cases.length > 5 ? ` · +${cases.length - 5} more` : "";
   const hoverLines = [
-    "**lcex: edge cases to probe**",
+    "**leetplus: edge cases to probe**",
     "",
     ...cases.map((c) => `- **${c.label}** — ${c.detail}`),
     "",

@@ -2,8 +2,8 @@ import * as vscode from "vscode";
 import { recordPracticeSecondForAttemptXp } from "./Gamification";
 
 /** Per-problem cumulative timer state (seconds), keyed by titleSlug */
-export const TIMER_ELAPSED_KEY = "leetcode-practice.timerElapsed";
-export const TIMER_BY_DAY_KEY = "leetcode-practice.timerByDay";
+export const TIMER_ELAPSED_KEY = "leetplus.timerElapsed";
+export const TIMER_BY_DAY_KEY = "leetplus.timerByDay";
 const TICK_INTERVAL_MS = 1000;
 
 /** Per-day breakdown: { "YYYY-MM-DD": { titleSlug: seconds } } */
@@ -67,7 +67,7 @@ function normalizeDifficulty(d: string | undefined): "easy" | "medium" | "hard" 
 export type TimerMode = "auto" | "reverse";
 
 export function getTimerMode(): TimerMode {
-  const v = vscode.workspace.getConfiguration("leetcodePractice").get<string>("timerMode");
+  const v = vscode.workspace.getConfiguration("leetplus").get<string>("timerMode");
   return v === "reverse" ? "reverse" : "auto";
 }
 

@@ -24,7 +24,7 @@ async function replaceDocumentText(document: vscode.TextDocument, newText: strin
 }
 
 export class HintEditorProvider implements vscode.CustomTextEditorProvider {
-  public static readonly viewType = "leetcode-practice.hintEditor";
+  public static readonly viewType = "leetplus.hintEditor";
 
   constructor(private readonly _context: vscode.ExtensionContext) {}
 
@@ -70,13 +70,13 @@ export class HintEditorProvider implements vscode.CustomTextEditorProvider {
 
       if (msg.type === "refreshCoaching") {
         await replaceDocumentText(document, serializeHintFile(emptyCoachingPreserveMeta(base)));
-        await vscode.commands.executeCommand("leetcode-practice.agentHint", {
+        await vscode.commands.executeCommand("leetplus.agentHint", {
           titleSlug: base.titleSlug,
           forceAgent: true,
         });
       } else if (msg.type === "reanalyze") {
         await replaceDocumentText(document, serializeHintFile(emptyAnalysisPreserveMeta(base)));
-        await vscode.commands.executeCommand("leetcode-practice.agentAnalyze", {
+        await vscode.commands.executeCommand("leetplus.agentAnalyze", {
           titleSlug: base.titleSlug,
           forceAgent: true,
         });

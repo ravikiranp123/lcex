@@ -7,7 +7,7 @@ import * as Logger from "./Logger";
 const PLUGIN_ROOT = path.join(os.homedir(), ".cursor", "plugins", "local", "lcex-leetcode-practice");
 
 const SKILL_MD = `---
-name: lcex-interview-generator
+name: lp-interview-generator
 description: Generate JSON for LeetCode Practice .lcInterview files (timed mock interviews with LeetCode slugs).
 ---
 
@@ -48,7 +48,7 @@ If the user specifies topics (e.g. graphs, DP), pick a coherent set of slugs and
 `;
 
 const DSA_HINT_SKILL_MD = `---
-name: lcex-dsa-hint
+name: lp-dsa-hint
 description: Socratic LeetCode optimization mentor — verbal-only replies unless apply_patch; one issue & one question; ~40 words; decision flow; regression-first; optimize on user's path; no alternative debates unless asked; fresh code each turn.
 ---
 
@@ -102,11 +102,11 @@ If you catch yourself drafting a longer or formatted reply, cut it down before s
 
 If you update \`.hint\`: preserve existing \`approach\`, \`efficiency\`, and \`codeStyle\` unless the user asked for a full refresh. Merge only \`coaching\` (plain one-line strings per field), \`updatedAt\`, and metadata; resolve \`<same-dir>/<id-or-slug>.hint\`; read, merge, write via tools — **do not** paste JSON in chat. Omit empty coaching slots.
 
-**Not** implementation scoring — that is **lcex-dsa-analyze** (\`approach\` / \`efficiency\` / \`codeStyle\`).
+**Not** implementation scoring — that is **lp-dsa-analyze** (\`approach\` / \`efficiency\` / \`codeStyle\`).
 `;
 
 const DSA_ANALYZE_SKILL_MD = `---
-name: lcex-dsa-analyze
+name: lp-dsa-analyze
 description: LeetCode solution analysis — scored review (1–10) for approach, time, space, code style; problem-relative; no forced optimization.
 ---
 
@@ -116,7 +116,7 @@ They want **feedback on their current solution**: approach fit, complexity vs th
 
 ## What this skill is **not**
 
-- **Not** coaching-only hints — that is **lcex-dsa-hint** (\`coaching\` object).
+- **Not** coaching-only hints — that is **lp-dsa-hint** (\`coaching\` object).
 - **Not** rewriting their whole file unless a tiny snippet fixes a clear bug.
 
 ## Principles
@@ -208,11 +208,11 @@ async function writeIfDifferent(filePath: string, content: string): Promise<"cre
   }
 }
 
-export async function ensureCursorLcexPluginInstalled(_context: vscode.ExtensionContext): Promise<void> {
+export async function ensureCursorLeetPlusPluginInstalled(_context: vscode.ExtensionContext): Promise<void> {
   // 1. Cursor Plugin Install
-  const interviewSkillPath = path.join(PLUGIN_ROOT, "skills", "lcex-interview-generator", "SKILL.md");
-  const dsaHintSkillPath = path.join(PLUGIN_ROOT, "skills", "lcex-dsa-hint", "SKILL.md");
-  const dsaAnalyzeSkillPath = path.join(PLUGIN_ROOT, "skills", "lcex-dsa-analyze", "SKILL.md");
+  const interviewSkillPath = path.join(PLUGIN_ROOT, "skills", "lp-interview-generator", "SKILL.md");
+  const dsaHintSkillPath = path.join(PLUGIN_ROOT, "skills", "lp-dsa-hint", "SKILL.md");
+  const dsaAnalyzeSkillPath = path.join(PLUGIN_ROOT, "skills", "lp-dsa-analyze", "SKILL.md");
   const metaPath = path.join(PLUGIN_ROOT, ".cursor-plugin", "plugin.json");
   const r1 = await writeIfDifferent(interviewSkillPath, SKILL_MD);
   const r2 = await writeIfDifferent(dsaHintSkillPath, DSA_HINT_SKILL_MD);
@@ -230,9 +230,9 @@ export async function ensureCursorLcexPluginInstalled(_context: vscode.Extension
     const wsRoot = workspaceFolders[0].uri.fsPath;
     
     // Antigravity IDE (Workspace customizations)
-    const agyInterviewSkillPath = path.join(wsRoot, ".agents", "skills", "lcex-interview-generator", "SKILL.md");
-    const agyDsaHintSkillPath = path.join(wsRoot, ".agents", "skills", "lcex-dsa-hint", "SKILL.md");
-    const agyDsaAnalyzeSkillPath = path.join(wsRoot, ".agents", "skills", "lcex-dsa-analyze", "SKILL.md");
+    const agyInterviewSkillPath = path.join(wsRoot, ".agents", "skills", "lp-interview-generator", "SKILL.md");
+    const agyDsaHintSkillPath = path.join(wsRoot, ".agents", "skills", "lp-dsa-hint", "SKILL.md");
+    const agyDsaAnalyzeSkillPath = path.join(wsRoot, ".agents", "skills", "lp-dsa-analyze", "SKILL.md");
     
     await writeIfDifferent(agyInterviewSkillPath, SKILL_MD);
     await writeIfDifferent(agyDsaHintSkillPath, DSA_HINT_SKILL_MD);
@@ -242,11 +242,11 @@ export async function ensureCursorLcexPluginInstalled(_context: vscode.Extension
     const copilotInstructionsPath = path.join(wsRoot, ".github", "copilot-instructions.md");
     const copilotContent = [
       "# Copilot LCX Instructions",
-      "## lcex-dsa-analyze",
+      "## lp-dsa-analyze",
       DSA_ANALYZE_SKILL_MD.replace(/---[\s\S]*?---/, ""),
-      "## lcex-dsa-hint",
+      "## lp-dsa-hint",
       DSA_HINT_SKILL_MD.replace(/---[\s\S]*?---/, ""),
-      "## lcex-interview-generator",
+      "## lp-interview-generator",
       SKILL_MD.replace(/---[\s\S]*?---/, "")
     ].join("\n\n");
     await writeIfDifferent(copilotInstructionsPath, copilotContent);

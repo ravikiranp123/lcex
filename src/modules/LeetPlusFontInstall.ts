@@ -46,7 +46,7 @@ async function copyIfDifferentSize(src: string, dest: string): Promise<boolean> 
  * Copies bundled Fira Code iScript TTFs into the OS user font directory so the editor can resolve
  * `editor.fontFamily` "Fira Code iScript". Skips copies when the destination already matches size.
  */
-export async function ensureLcexBundledFontsInstalled(extensionRoot: string): Promise<void> {
+export async function ensureLeetPlusBundledFontsInstalled(extensionRoot: string): Promise<void> {
   const destRoot = getUserFontsDirectory();
   if (!destRoot) {
     Logger.log("LCEX fonts: unsupported platform, skipping install");

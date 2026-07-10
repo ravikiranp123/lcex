@@ -311,5 +311,5 @@ Five new opt-in features that go beyond "did your sample pass?" — all behind c
 - Timed Interview Mode with focus layout, per-problem timing, and report generation.
 - Stats webview with activity, streak, XP, and interview history.
 - Cloud stats sync via Firebase (Google sign-in; uid-scoped writes).
-- URI handler `vscode://nikkyamresh.leetcode-practice/open/{slug}` for one-click open.
+- URI handler `vscode://ravikiranp123.leetcode-practice/open/{slug}` for one-click open.
 - Question of the Day, focus mode, and configurable file naming (`id` / `slug`).

@@ -22,7 +22,7 @@ export async function signIn(context: vscode.ExtensionContext): Promise<void> {
   vscode.window.showInformationMessage(
     "Signed in to LeetCode. You can now Run and Submit from the problem view."
   );
-  await vscode.commands.executeCommand("leetcode-practice.viewStats");
+  await vscode.commands.executeCommand("leetplus.viewStats");
 }
 
 export async function signOut(context: vscode.ExtensionContext): Promise<void> {

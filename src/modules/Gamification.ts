@@ -1,9 +1,9 @@
 import * as vscode from "vscode";
 
 /** Total XP ever earned (local). */
-export const TOTAL_XP_KEY = "leetcode-practice.totalXp";
+export const TOTAL_XP_KEY = "leetplus.totalXp";
 /** Slugs that have already granted first-solve XP. */
-export const XP_GRANTED_SLUGS_KEY = "leetcode-practice.xpGrantedSlugs";
+export const XP_GRANTED_SLUGS_KEY = "leetplus.xpGrantedSlugs";
 
 export type DailyGoalMode = "problems" | "minutes";
 
@@ -12,34 +12,34 @@ export interface DailyGoal {
   target: number;
 }
 
-export const DAILY_GOAL_KEY = "leetcode-practice.dailyGoal";
+export const DAILY_GOAL_KEY = "leetplus.dailyGoal";
 
 /** Webview compact chrome (problem panel). */
-export const FOCUS_COMPACT_WEBVIEW_KEY = "leetcode-practice.focusCompactWebview";
+export const FOCUS_COMPACT_WEBVIEW_KEY = "leetplus.focusCompactWebview";
 
 /** Workspace: saved `zenMode.hideStatusBar` while focus mode is active; key present ⇒ workbench focus mode on. */
-export const FOCUS_ZEN_STATUSBAR_PREV_KEY = "leetcode-practice.focusZenHideStatusBarPrev";
+export const FOCUS_ZEN_STATUSBAR_PREV_KEY = "leetplus.focusZenHideStatusBarPrev";
 
 /** Last language chosen in the problem webview (Solve / dropdown); not per-problem. */
-export const LAST_CHALLENGE_PANEL_LANGUAGE_KEY = "leetcode-practice.lastChallengePanelLanguage";
+export const LAST_CHALLENGE_PANEL_LANGUAGE_KEY = "leetplus.lastChallengePanelLanguage";
 
 /** Participation XP when exiting focus mode (at most once per cooldown). */
 export const FOCUS_SESSION_PARTICIPATION_XP = 10;
 export const FOCUS_SESSION_XP_COOLDOWN_MS = 60 * 60 * 1000;
-export const FOCUS_LAST_PARTICIPATION_XP_AT_KEY = "leetcode-practice.focusLastParticipationXpAt";
+export const FOCUS_LAST_PARTICIPATION_XP_AT_KEY = "leetplus.focusLastParticipationXpAt";
 
 /** Once per calendar day (UTC) when the extension activates. */
 export const DAILY_LOGIN_XP = 1;
-export const LAST_DAILY_LOGIN_XP_DATE_KEY = "leetcode-practice.lastDailyLoginXpDate";
+export const LAST_DAILY_LOGIN_XP_DATE_KEY = "leetplus.lastDailyLoginXpDate";
 
 /** +5 XP per full 30 minutes of problem-timer practice (any problems; cumulative). */
 export const ATTEMPT_BLOCK_MINUTES = 30;
 export const ATTEMPT_BLOCK_XP = 5;
-export const PRACTICE_SECONDS_TOTAL_KEY = "leetcode-practice.practiceSecondsTotalForAttemptXp";
-export const ATTEMPT_XP_BLOCKS_PAID_KEY = "leetcode-practice.attemptXpBlocksPaid";
-const PRACTICE_SECONDS_FROM_TIMER_MIGRATED_KEY = "leetcode-practice.practiceSecondsFromTimerByDayMigrated_v1";
+export const PRACTICE_SECONDS_TOTAL_KEY = "leetplus.practiceSecondsTotalForAttemptXp";
+export const ATTEMPT_XP_BLOCKS_PAID_KEY = "leetplus.attemptXpBlocksPaid";
+const PRACTICE_SECONDS_FROM_TIMER_MIGRATED_KEY = "leetplus.practiceSecondsFromTimerByDayMigrated_v1";
 /** Must match `TIMER_BY_DAY_KEY` in ProblemTimer.ts (avoid circular import). */
-const TIMER_BY_DAY_KEY_FOR_MIGRATION = "leetcode-practice.timerByDay";
+const TIMER_BY_DAY_KEY_FOR_MIGRATION = "leetplus.timerByDay";
 
 /** XP for interview bonus / first-solve (same curve). */
 export function xpForDifficultyLabel(difficultyRaw: string | undefined): number {

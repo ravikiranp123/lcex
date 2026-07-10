@@ -30,7 +30,7 @@ export interface PatternMasteryStateV1 {
   creditedSlugs: Record<string, true>;
 }
 
-export const PATTERN_MASTERY_KEY = "leetcode-practice.patternMastery";
+export const PATTERN_MASTERY_KEY = "leetplus.patternMastery";
 
 const HALF_LIFE_DAYS = 21;
 

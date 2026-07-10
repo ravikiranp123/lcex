@@ -1,9 +1,9 @@
 import * as vscode from "vscode";
 import { isSupportedLanguage, type SupportedLanguage } from "./interface/Problem";
 import { LANGUAGE_CHOICES } from "./language/LanguageStrategy";
-import type { LeetcodeConfig } from "./LeetcodeConfig";
+import type { LeetPlusConfig } from "./LeetPlusConfig";
 
-const DEFAULTS: LeetcodeConfig = {
+const DEFAULTS: LeetPlusConfig = {
   studyPlans: [{ slug: "top-interview-150", name: "Top Interview 150" }],
   problemLists: [],
   activeStudyPlan: undefined,
@@ -21,12 +21,12 @@ const DEFAULTS: LeetcodeConfig = {
   problemViewMode: "ui",
 };
 
-function parseConfig(text: string): LeetcodeConfig {
+function parseConfig(text: string): LeetPlusConfig {
   const trimmed = text.trim();
   if (!trimmed) return { ...DEFAULTS };
   try {
     const parsed = JSON.parse(trimmed) as Record<string, unknown>;
-    const config: LeetcodeConfig = { ...DEFAULTS };
+    const config: LeetPlusConfig = { ...DEFAULTS };
     if (Array.isArray(parsed.studyPlans)) {
       config.studyPlans = parsed.studyPlans.filter(
         (p: unknown): p is { slug: string; name: string } =>
@@ -52,7 +52,7 @@ function parseConfig(text: string): LeetcodeConfig {
       config.activeListSource = parsed.activeListSource;
     }
     if (["auto", "leetcode-dark", "none"].includes(String(parsed.theme))) {
-      config.theme = parsed.theme as LeetcodeConfig["theme"];
+      config.theme = parsed.theme as LeetPlusConfig["theme"];
     }
     if (typeof parsed.defaultDirectory === "string") config.defaultDirectory = parsed.defaultDirectory;
     if (["id", "slug"].includes(String(parsed.fileNamePattern))) {
@@ -80,11 +80,11 @@ function parseConfig(text: string): LeetcodeConfig {
   }
 }
 
-function configToJson(config: LeetcodeConfig): string {
+function configToJson(config: LeetPlusConfig): string {
   return JSON.stringify(config, null, 2);
 }
 
-function getWebviewContent(config: LeetcodeConfig, webview: vscode.Webview): string {
+function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): string {
   const studyPlans = config.studyPlans ?? DEFAULTS.studyPlans!;
   const plansHtml = studyPlans
     .map(
@@ -293,11 +293,11 @@ function getWebviewContent(config: LeetcodeConfig, webview: vscode.Webview): str
     </div>
     <div class="field">
       <label>Hint button (coaching)</label>
-      <input type="text" id="agentPromptHint" value="${escapeHtml(config.agentPromptHint ?? "Load **lcex-dsa-hint** and follow it. Nudge from the problem only—do not read or review my code. Each `coaching` value: one short line; no solution.")}" placeholder="lcex-dsa-hint; problem-only; no code review; one line per field." />
+      <input type="text" id="agentPromptHint" value="${escapeHtml(config.agentPromptHint ?? "Load **lp-dsa-hint** and follow it. Nudge from the problem only—do not read or review my code. Each `coaching` value: one short line; no solution.")}" placeholder="lp-dsa-hint; problem-only; no code review; one line per field." />
     </div>
     <div class="field">
       <label>Analyze button (scored review)</label>
-      <input type="text" id="agentPromptAnalyze" value="${escapeHtml(config.agentPromptAnalyze ?? "Load **lcex-dsa-analyze** and follow it. Analyze my current LeetCode solution implementation.")}" placeholder="Load lcex-dsa-analyze; fills Analysis in .hint JSON." />
+      <input type="text" id="agentPromptAnalyze" value="${escapeHtml(config.agentPromptAnalyze ?? "Load **lp-dsa-analyze** and follow it. Analyze my current LeetCode solution implementation.")}" placeholder="Load lp-dsa-analyze; fills Analysis in .hint JSON." />
     </div>
     <div class="field">
       <label>Explain selection (base prompt)</label>
@@ -425,7 +425,7 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export class LeetcodeConfigEditorProvider implements vscode.CustomTextEditorProvider {
+export class LeetPlusConfigEditorProvider implements vscode.CustomTextEditorProvider {
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   resolveCustomTextEditor(
@@ -456,7 +456,7 @@ export class LeetcodeConfigEditorProvider implements vscode.CustomTextEditorProv
 
     webviewPanel.webview.onDidReceiveMessage((msg) => {
       if (msg.type === "update" && msg.config) {
-        const json = configToJson(msg.config as LeetcodeConfig);
+        const json = configToJson(msg.config as LeetPlusConfig);
         const edit = new vscode.WorkspaceEdit();
         edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
         vscode.workspace.applyEdit(edit);

@@ -2,10 +2,10 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { addBonusXp, xpForDifficultyLabel } from "./Gamification";
 
-export const INTERVIEW_SESSION_KEY = "leetcode-practice.interviewSession";
-export const INTERVIEW_HISTORY_KEY = "leetcode-practice.interviewHistory";
+export const INTERVIEW_SESSION_KEY = "leetplus.interviewSession";
+export const INTERVIEW_HISTORY_KEY = "leetplus.interviewHistory";
 
-export const INTERVIEW_MODE_CONTEXT = "leetcodePractice.interviewMode";
+export const INTERVIEW_MODE_CONTEXT = "leetplus.interviewMode";
 
 export interface PlannedInterviewProblem {
   titleSlug: string;

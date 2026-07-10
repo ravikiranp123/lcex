@@ -2,7 +2,7 @@ import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import type { SupportedLanguage } from "./interface/Problem";
-import { LCEX_HOME_DIR, atomicWriteJsonSync, ensureLcexDir } from "./LcexInterviewReportStore";
+import { LCEX_HOME_DIR, atomicWriteJsonSync, ensureLcexDir } from "./LeetPlusInterviewReportStore";
 
 export const BUG_REVIEWS_FILE = path.join(LCEX_HOME_DIR, "bug-reviews.json");
 

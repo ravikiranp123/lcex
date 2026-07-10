@@ -83,7 +83,7 @@ export class RootSectionItem extends vscode.TreeItem {
 export class UpcomingContestItem extends vscode.TreeItem {
   constructor(public readonly contest: ContestSummary) {
     super(contest.title, vscode.TreeItemCollapsibleState.None);
-    this.contextValue = "lcex.upcomingContest";
+    this.contextValue = "leetplus.upcomingContest";
     this.tooltip = contest.titleSlug;
     this.description = formatCountdown(contest.startTime, contest.duration);
     this.iconPath = new vscode.ThemeIcon("watch");
@@ -102,7 +102,7 @@ export class YearGroupItem extends vscode.TreeItem {
 export class PastContestItem extends vscode.TreeItem {
   constructor(public readonly contest: ContestSummary) {
     super(contest.title, vscode.TreeItemCollapsibleState.Collapsed);
-    this.contextValue = "lcex.pastContest";
+    this.contextValue = "leetplus.pastContest";
     this.tooltip = contest.titleSlug;
     const date = new Date(contest.startTime * 1000).toISOString().slice(0, 10);
     const qCount = contest.totalQuestions ? ` • ${contest.totalQuestions} problems` : "";
@@ -118,7 +118,7 @@ export class ContestProblemTreeItem extends vscode.TreeItem {
     public readonly contest: ContestSummary
   ) {
     super(`${item.id}. ${item.title}`, vscode.TreeItemCollapsibleState.None);
-    this.contextValue = "lcex.contestProblem";
+    this.contextValue = "leetplus.contestProblem";
     this.tooltip = item.titleSlug;
     const statusSuffix =
       status === "solved" ? " • ✓" : status === "attempting" ? " • Attempting" : "";

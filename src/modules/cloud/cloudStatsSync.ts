@@ -19,12 +19,12 @@ import {
 /** v1 snapshot: problem status, timers, XP, goals, interview history, notes. */
 export const CLOUD_STATS_SCHEMA_VERSION = 1;
 
-export const CLOUD_STATS_LAST_PUSH_KEY = "leetcode-practice.cloudStatsLastPushAt";
+export const CLOUD_STATS_LAST_PUSH_KEY = "leetplus.cloudStatsLastPushAt";
 
-const PRACTICE_SECONDS_MIGRATION_KEY = "leetcode-practice.practiceSecondsFromTimerByDayMigrated_v1";
+const PRACTICE_SECONDS_MIGRATION_KEY = "leetplus.practiceSecondsFromTimerByDayMigrated_v1";
 
-const STATUS_KEY = "leetcode-practice.problemStatus";
-const NOTES_KEY = "leetcode-practice.problemNotes";
+const STATUS_KEY = "leetplus.problemStatus";
+const NOTES_KEY = "leetplus.problemNotes";
 
 /** Keys merged on pull; must match serialized shape in `serializeSnapshotData`. */
 export const CLOUD_SYNC_KEYS: readonly string[] = [
@@ -70,7 +70,7 @@ export interface CloudStatsDocument {
 
 export function getConfiguredLeetcodeUsername(): string {
   return (
-    vscode.workspace.getConfiguration("leetcodePractice").get<string>(LEETCODE_USERNAME_SETTING)?.trim() ??
+    vscode.workspace.getConfiguration("leetplus").get<string>(LEETCODE_USERNAME_SETTING)?.trim() ??
     ""
   );
 }

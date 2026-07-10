@@ -8,7 +8,7 @@ import { isSupportedLanguage, type SupportedLanguage } from "./interface/Problem
 export type ActiveListSource = "studyPlan" | "problemList";
 
 /** Schema for .leetcode config file. Overrides VS Code settings for this workspace. */
-export interface LeetcodeConfig {
+export interface LeetPlusConfig {
   studyPlans?: Array<{ slug: string; name: string; path?: string }>;
   /** LeetCode problem-list slugs (e.g. graph → /problem-list/graph/). */
   problemLists?: Array<{ slug: string; name: string }>;
@@ -53,7 +53,7 @@ export interface LeetcodeConfig {
 
 const DEFAULTS: Required<
   Omit<
-    LeetcodeConfig,
+    LeetPlusConfig,
     "internalApiUrl" | "activeStudyPlan" | "activeProblemList" | "activeListSource" | "problemViewMode"
   >
 > & {
@@ -78,9 +78,9 @@ const DEFAULTS: Required<
   showCompanies: true,
   agentPromptMakeRunnable: "Make this Runnable, do not give solution.",
   agentPromptHint:
-    "Load **lcex-dsa-hint** and follow it. Nudge from the problem only—do not read or review my code. Each `coaching` value: one short line; no solution.",
+    "Load **lp-dsa-hint** and follow it. Nudge from the problem only—do not read or review my code. Each `coaching` value: one short line; no solution.",
   agentPromptAnalyze:
-    "Load **lcex-dsa-analyze** and follow it. Analyze my current LeetCode solution implementation.",
+    "Load **lp-dsa-analyze** and follow it. Analyze my current LeetCode solution implementation.",
   agentPromptExplain:
     "Explain my solution code for this LeetCode problem. Respond with: (1) Intuition — core idea in plain language; (2) Step-by-step dry run — walk through the algorithm with a small example, including loop/state changes; (3) Time and space complexity with brief justification. Do not rewrite the full solution unless needed for clarity.",
   applyWorkspaceFontSettings: false,
@@ -223,21 +223,38 @@ export function resolveDefaultStudyOrProblemList(
   return { slug: "top-interview-150", source: "studyPlan" };
 }
 
-function findLeetcodeFiles(workspaceFolders: readonly vscode.WorkspaceFolder[]): string[] {
+function findLeetPlusFiles(workspaceFolders: readonly vscode.WorkspaceFolder[]): string[] {
   const found: string[] = [];
   for (const folder of workspaceFolders) {
     const rootPath = folder.uri.fsPath;
-    const rootFile = path.join(rootPath, ".leetcode");
-    if (fs.existsSync(rootFile)) {
-      found.push(rootFile);
+    
+    // Check new config location: .leetplus/config.json
+    const newConfig = path.join(rootPath, ".leetplus", "config.json");
+    if (fs.existsSync(newConfig)) {
+      found.push(newConfig);
       continue;
     }
+    
+    // Check legacy .leetcode file as fallback
+    const legacyConfig = path.join(rootPath, ".leetcode");
+    if (fs.existsSync(legacyConfig)) {
+      found.push(legacyConfig);
+      continue;
+    }
+    
     const maxDepth = 4;
     function search(dir: string, depth: number): void {
       if (depth > maxDepth) return;
       try {
         const entries = fs.readdirSync(dir, { withFileTypes: true });
         for (const e of entries) {
+          if (e.isDirectory() && e.name === ".leetplus") {
+            const subConfig = path.join(dir, e.name, "config.json");
+            if (fs.existsSync(subConfig)) {
+              found.push(subConfig);
+              return;
+            }
+          }
           if (e.name === ".leetcode" && e.isFile()) {
             found.push(path.join(dir, e.name));
             return;
@@ -260,7 +277,7 @@ function findLeetcodeFiles(workspaceFolders: readonly vscode.WorkspaceFolder[]):
  * Parses .leetcode file from workspace. Searches folder roots first, then subfolders.
  * Empty file or invalid JSON falls back to defaults.
  */
-function readLeetcodeFileContent(configPath: string): string {
+function readLeetPlusFileContent(configPath: string): string {
   const normalizedConfig = path.resolve(configPath);
   const doc = vscode.workspace.textDocuments.find(
     (d) => path.resolve(d.uri.fsPath) === normalizedConfig
@@ -272,12 +289,12 @@ function readLeetcodeFileContent(configPath: string): string {
   return fs.readFileSync(configPath, "utf-8").trim();
 }
 
-export function parseLeetcodeConfig(workspaceFolders: readonly vscode.WorkspaceFolder[]): LeetcodeConfig {
-  const merged: LeetcodeConfig = { ...DEFAULTS };
-  const configPaths = findLeetcodeFiles(workspaceFolders);
+export function parseLeetPlusConfig(workspaceFolders: readonly vscode.WorkspaceFolder[]): LeetPlusConfig {
+  const merged: LeetPlusConfig = { ...DEFAULTS };
+  const configPaths = findLeetPlusFiles(workspaceFolders);
   for (const configPath of configPaths) {
     try {
-      const raw = readLeetcodeFileContent(configPath);
+      const raw = readLeetPlusFileContent(configPath);
       if (!raw) continue;
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       if (parsed.studyPlans !== undefined) {
@@ -296,7 +313,7 @@ export function parseLeetcodeConfig(workspaceFolders: readonly vscode.WorkspaceF
         merged.activeListSource = parsed.activeListSource;
       }
       if (parsed.theme !== undefined && ["auto", "leetcode-dark", "none"].includes(String(parsed.theme))) {
-        merged.theme = parsed.theme as LeetcodeConfig["theme"];
+        merged.theme = parsed.theme as LeetPlusConfig["theme"];
       }
       if (parsed.defaultDirectory !== undefined && typeof parsed.defaultDirectory === "string") {
         merged.defaultDirectory = parsed.defaultDirectory;
@@ -356,18 +373,18 @@ export function parseLeetcodeConfig(workspaceFolders: readonly vscode.WorkspaceF
         merged.editorCursiveItalics = parsed.editorCursiveItalics;
       }
     } catch (e) {
-      Logger.log(`LeetcodeConfig: failed to parse ${configPath}, using defaults: ${e}`);
+      Logger.log(`LeetPlusConfig: failed to parse ${configPath}, using defaults: ${e}`);
     }
   }
   return merged;
 }
 
-/** Merged config: .leetcode overrides VS Code leetcodePractice.* settings. */
+/** Merged config: .leetcode overrides VS Code leetplus.* settings. */
 export function getEffectiveConfig(
   workspaceFolders: readonly vscode.WorkspaceFolder[]
-): LeetcodeConfig & { internalApiUrl: string; problemViewMode: "ui" | "text" } {
-  const vscodeConfig = vscode.workspace.getConfiguration("leetcodePractice");
-  const leetcode = parseLeetcodeConfig(workspaceFolders);
+): LeetPlusConfig & { internalApiUrl: string; problemViewMode: "ui" | "text" } {
+  const vscodeConfig = vscode.workspace.getConfiguration("leetplus");
+  const leetcode = parseLeetPlusConfig(workspaceFolders);
   const studyPlans = leetcode.studyPlans ?? vscodeConfig.get<Array<{ slug: string; name: string; path?: string }>>("studyPlans") ?? DEFAULTS.studyPlans;
   const problemLists =
     leetcode.problemLists ?? vscodeConfig.get<Array<{ slug: string; name: string }>>("problemLists") ?? DEFAULTS.problemLists;

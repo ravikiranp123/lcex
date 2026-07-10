@@ -23,7 +23,7 @@ export interface RecursionOutcome {
   truncated: boolean;
 }
 
-const HARNESS_DIR = path.join(os.homedir(), ".lcex", "trace");
+const HARNESS_DIR = path.join(os.homedir(), ".leetplus", "trace");
 export const FRAME_LIMIT = 5000;
 
 function ensureDir(): void {

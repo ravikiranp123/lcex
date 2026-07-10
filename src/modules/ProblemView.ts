@@ -27,7 +27,7 @@ import {
   type StoredStatusEntry,
 } from "./ProblemsProvider";
 import * as Database from "./Database";
-import { getEffectiveConfig } from "./LeetcodeConfig";
+import { getEffectiveConfig } from "./LeetPlusConfig";
 import { LeetCodeProvider } from "./LeetCode";
 import { generateTemplate } from "./TemplateEngine";
 import { pollRunStatus, pollSubmitStatus } from "../utils/apiPoller";
@@ -59,12 +59,12 @@ import {
   type InterviewHistoryEntry,
   type InterviewSessionState,
 } from "./InterviewMode";
-import type { LcInterviewReportFileV1 } from "./LcexInterviewReportStore";
+import type { LcInterviewReportFileV1 } from "./LeetPlusInterviewReportStore";
 import {
   suppressInlineSuggestWorkspaceWide,
   suppressTabLikeFeaturesForPracticeLanguage,
   workspaceHasLeetcodeMarker,
-} from "./LeetcodePracticeEditorSettings";
+} from "./LeetPlusEditorSettings";
 
 export interface ProblemViewState {
   webviewPanel: vscode.WebviewPanel;
@@ -1239,7 +1239,7 @@ async function renderChallengeHtml(
     }
   }
 
-  const notesMap = context.globalState.get<Record<string, string>>("leetcode-practice.problemNotes") ?? {};
+  const notesMap = context.globalState.get<Record<string, string>>("leetplus.problemNotes") ?? {};
   const note = notesMap[problem.titleSlug] ?? "";
   const focusCompact = context.globalState.get<boolean>(FOCUS_COMPACT_WEBVIEW_KEY) ?? false;
   const interviewSession = getInterviewSession(context.globalState);
@@ -1979,22 +1979,22 @@ function setupPanelMessageHandler(
         }
       } else if (event === "saveNote" && msgSlug && note !== undefined) {
         trackAnalytics("command_invoked", "webview", "save_note");
-        const notesMap = context.globalState.get<Record<string, string>>("leetcode-practice.problemNotes") ?? {};
-        await context.globalState.update("leetcode-practice.problemNotes", { ...notesMap, [msgSlug]: note });
+        const notesMap = context.globalState.get<Record<string, string>>("leetplus.problemNotes") ?? {};
+        await context.globalState.update("leetplus.problemNotes", { ...notesMap, [msgSlug]: note });
       } else if (event === "toggleFocusMode") {
         const inWorkbenchFocus =
           context.workspaceState.get(FOCUS_ZEN_STATUSBAR_PREV_KEY) !== undefined;
         if (inWorkbenchFocus) {
-          await vscode.commands.executeCommand("leetcode-practice.focusModeExit");
+          await vscode.commands.executeCommand("leetplus.focusModeExit");
         } else {
-          await vscode.commands.executeCommand("leetcode-practice.focusModeEnter", { silent: true });
+          await vscode.commands.executeCommand("leetplus.focusModeEnter", { silent: true });
         }
       } else if (event === "agentHint") {
-        await vscode.commands.executeCommand("leetcode-practice.agentHint", { titleSlug: msgSlug });
+        await vscode.commands.executeCommand("leetplus.agentHint", { titleSlug: msgSlug });
       } else if (event === "agentAnalyze") {
-        await vscode.commands.executeCommand("leetcode-practice.agentAnalyze", { titleSlug: msgSlug });
+        await vscode.commands.executeCommand("leetplus.agentAnalyze", { titleSlug: msgSlug });
       } else if (event === "openHintAnalysis") {
-        await vscode.commands.executeCommand("leetcode-practice.openHintAnalysis", { titleSlug: msgSlug });
+        await vscode.commands.executeCommand("leetplus.openHintAnalysis", { titleSlug: msgSlug });
       }
     }
   );
@@ -2201,7 +2201,7 @@ export async function openOrCreateSolution(
 ): Promise<void> {
   const lang = language ?? getEffectiveChallengePanelLanguage(context);
   if (workspaceHasLeetcodeMarker()) {
-    const practice = vscode.workspace.getConfiguration("leetcodePractice");
+    const practice = vscode.workspace.getConfiguration("leetplus");
     const suppress = practice.get<boolean>("suppressAiTabOnSolve") ?? true;
     if (suppress) {
       const workspaceWide = practice.get<boolean>("suppressAiTabWorkspaceWide") ?? false;

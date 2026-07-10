@@ -54,7 +54,7 @@ export interface PatternDrillStateV1 {
   lastDrilledAt?: string;
 }
 
-export const PATTERN_DRILL_KEY = "leetcode-practice.patternDrill";
+export const PATTERN_DRILL_KEY = "leetplus.patternDrill";
 
 function emptyState(): PatternDrillStateV1 {
   return {
