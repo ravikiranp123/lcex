@@ -515,7 +515,12 @@
           "when": "!leetplus.hasMarker"
         }
       ],
-      "explorer": [
+    "explorer": [
+        {
+          "id": "leetplus-daily-plan",
+          "name": "Daily Plan",
+          "when": "leetplus.hasMarker"
+        },
         {
           "id": "leetplus.problemsView",
           "name": "Problems",

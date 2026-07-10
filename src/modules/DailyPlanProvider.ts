@@ -1,0 +1,190 @@
+import * as fs from "fs";
+import * as path from "path";
+import * as vscode from "vscode";
+import { readState } from "./StateManager";
+import type { LPProblem } from "./interface/LPState";
+
+export type DailyPlanItemType = "root" | "problem";
+
+export interface DailyPlanItem {
+  type: DailyPlanItemType;
+  label: string;
+  id?: string;
+  problem?: LPProblem;
+  itemType?: "rep" | "new";
+  collapsibleState?: vscode.TreeItemCollapsibleState;
+}
+
+export class DailyPlanTreeItem extends vscode.TreeItem {
+  constructor(
+    public readonly data: DailyPlanItem,
+    solvedToday: boolean = false
+  ) {
+    super(
+      data.label,
+      data.type === "root"
+        ? (data.collapsibleState ?? vscode.TreeItemCollapsibleState.Expanded)
+        : vscode.TreeItemCollapsibleState.None
+    );
+
+    this.id = data.id;
+
+    if (data.type === "root") {
+      this.contextValue = "root";
+      if (data.id === "review") {
+        this.iconPath = new vscode.ThemeIcon("history", new vscode.ThemeColor("charts.orange"));
+      } else if (data.id === "new") {
+        this.iconPath = new vscode.ThemeIcon("git-pull-request-create", new vscode.ThemeColor("charts.blue"));
+      } else if (data.id === "done") {
+        this.iconPath = new vscode.ThemeIcon("pass", new vscode.ThemeColor("testing.iconPassed"));
+      }
+    } else if (data.type === "problem" && data.problem) {
+      const p = data.problem;
+      this.contextValue = "problem";
+      this.tooltip = `${p.id}. ${p.title} (${p.difficulty})`;
+      
+      const difficultyEmoji = p.difficulty === "Easy" ? "🟢" : p.difficulty === "Medium" ? "🟡" : "🔴";
+      this.label = `${difficultyEmoji} ${p.id}. ${p.title}`;
+
+      if (solvedToday) {
+        this.description = "Completed";
+        this.iconPath = new vscode.ThemeIcon("check", new vscode.ThemeColor("testing.iconPassed"));
+      } else {
+        if (data.itemType === "rep") {
+          const isUrgent = p.completionHistory && p.completionHistory.length > 0 && p.completionHistory[p.completionHistory.length - 1].rating === 4;
+          this.description = isUrgent ? "Again (urgent)" : "Due today";
+          this.iconPath = new vscode.ThemeIcon("circle-outline", new vscode.ThemeColor("charts.orange"));
+        } else {
+          this.description = "New problem";
+          this.iconPath = new vscode.ThemeIcon("circle-outline", new vscode.ThemeColor("charts.blue"));
+        }
+      }
+
+      this.command = {
+        command: "leetplus.showDailyPlanProblem",
+        title: "Open Problem",
+        arguments: [
+          {
+            id: p.id,
+            titleSlug: p.slug,
+            title: p.title,
+            difficulty: p.difficulty,
+          }
+        ]
+      };
+    }
+  }
+}
+
+export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem> {
+  private _onDidChangeTreeData = new vscode.EventEmitter<DailyPlanItem | undefined | null | void>();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+
+  constructor(private readonly context: vscode.ExtensionContext) {}
+
+  refresh(): void {
+    this._onDidChangeTreeData.fire();
+  }
+
+  getTreeItem(element: DailyPlanItem): vscode.TreeItem {
+    const solvedToday = element.problem ? this.isSolvedToday(element.problem) : false;
+    return new DailyPlanTreeItem(element, solvedToday);
+  }
+
+  async getChildren(element?: DailyPlanItem): Promise<DailyPlanItem[]> {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
+      return [];
+    }
+    const workspaceRoot = folders[0].uri.fsPath;
+
+    // Load state
+    const state = await readState(workspaceRoot);
+    if (!state) {
+      return [];
+    }
+
+    // Load plan
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const planFile = path.join(workspaceRoot, ".leetplus", "plans", `${todayStr}.json`);
+    
+    let planProblems: Array<{ id: number; type: "rep" | "new" }> = [];
+    if (fs.existsSync(planFile)) {
+      try {
+        const raw = fs.readFileSync(planFile, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.problems)) {
+          planProblems = parsed.problems;
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
+    if (!element) {
+      // Root nodes: Review, New, Done
+      let reviewCount = 0;
+      let newCount = 0;
+      let doneCount = 0;
+
+      for (const item of planProblems) {
+        const prob = state.problems.find(p => p.id === item.id);
+        if (!prob) continue;
+        if (this.isSolvedToday(prob)) {
+          doneCount++;
+        } else if (item.type === "rep") {
+          reviewCount++;
+        } else {
+          newCount++;
+        }
+      }
+
+      return [
+        { type: "root", label: `Review (${reviewCount})`, id: "review" },
+        { type: "root", label: `New (${newCount})`, id: "new" },
+        { type: "root", label: `Done (${doneCount})`, id: "done" }
+      ];
+    }
+
+    // Child nodes
+    const children: DailyPlanItem[] = [];
+    for (const item of planProblems) {
+      const prob = state.problems.find(p => p.id === item.id);
+      if (!prob) continue;
+
+      const solvedToday = this.isSolvedToday(prob);
+      if (element.id === "done" && solvedToday) {
+        children.push({
+          type: "problem",
+          label: `${prob.id}. ${prob.title}`,
+          problem: prob,
+          itemType: item.type
+        });
+      } else if (element.id === "review" && !solvedToday && item.type === "rep") {
+        children.push({
+          type: "problem",
+          label: `${prob.id}. ${prob.title}`,
+          problem: prob,
+          itemType: item.type
+        });
+      } else if (element.id === "new" && !solvedToday && item.type === "new") {
+        children.push({
+          type: "problem",
+          label: `${prob.id}. ${prob.title}`,
+          problem: prob,
+          itemType: item.type
+        });
+      }
+    }
+
+    return children;
+  }
+
+  private isSolvedToday(problem: LPProblem): boolean {
+    if (!problem.completionHistory || problem.completionHistory.length === 0) {
+      return false;
+    }
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return problem.completionHistory.some(history => history.date.startsWith(todayStr));
+  }
+}

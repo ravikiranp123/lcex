@@ -123,6 +123,7 @@ import { LeetPlusConfigEditorProvider } from "./modules/LeetPlusConfigEditor";
 import { initState } from "./modules/StateManager";
 import { initStatusBar } from "./modules/StatusBarManager";
 import { initDiffLogger } from "./modules/DiffLogger";
+import { DailyPlanProvider } from "./modules/DailyPlanProvider";
 import { initProblemTimer, disposeProblemTimer, TIMER_BY_DAY_KEY } from "./modules/ProblemTimer";
 import {
   addBonusXp,
@@ -3204,6 +3205,28 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
     await openProblemWebview(context, item.item, getProvider, getProblemStatus, getWebviewOpts());
   });
   context.subscriptions.push(treeView);
+
+  // Initialize DailyPlanProvider
+  const dailyPlanProvider = new DailyPlanProvider(context);
+  const dailyPlanView = vscode.window.createTreeView("leetplus-daily-plan", {
+    treeDataProvider: dailyPlanProvider,
+  });
+  context.subscriptions.push(dailyPlanView);
+
+  // Watch state.json changes to auto-refresh the daily plan tree view
+  const dailyPlanWatcher = vscode.workspace.createFileSystemWatcher("**/.leetplus/state.json");
+  dailyPlanWatcher.onDidChange(() => dailyPlanProvider.refresh());
+  dailyPlanWatcher.onDidCreate(() => dailyPlanProvider.refresh());
+  dailyPlanWatcher.onDidDelete(() => dailyPlanProvider.refresh());
+  context.subscriptions.push(dailyPlanWatcher);
+
+  // Register command to open problem from daily plan TreeView
+  context.subscriptions.push(
+    vscode.commands.registerCommand("leetplus.showDailyPlanProblem", async (item) => {
+      const getProblemStatus = (slug: string) => getStoredStatus(globalState, slug);
+      await openProblemWebview(context, item, getProvider, getProblemStatus, getWebviewOpts());
+    })
+  );
 
   const onboardingProvider = {
     getChildren: () => [],
