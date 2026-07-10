@@ -5,6 +5,7 @@ import assert from "node:assert";
 import * as vscode from "vscode";
 import { generateDailyPlan } from "../src/modules/DailyPlanGenerator";
 import { initState, readState } from "../src/modules/StateManager";
+import { updateSRSModeInConfig } from "../src/modules/LeetPlusConfig";
 
 const TEST_DIR = path.join(__dirname, "..", "test-daily-plan-generator-output");
 
@@ -297,4 +298,28 @@ describe("DailyPlanGenerator", () => {
       vscode.workspace.workspaceFolders = originalWorkspaceFolders;
     }
   });
+
+  it("should persist selected Daily Plan mode to config.json", async () => {
+    const workspaceRoot = path.join(TEST_DIR, "persist-mode-test");
+    fs.mkdirSync(workspaceRoot, { recursive: true });
+
+    const configPath = path.join(workspaceRoot, ".leetplus", "config.json");
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, JSON.stringify({ theme: "leetcode-dark" }), "utf-8");
+
+    const mockFolders = [
+      {
+        uri: { fsPath: workspaceRoot } as any,
+        name: "TestWorkspace",
+        index: 0
+      }
+    ];
+
+    updateSRSModeInConfig(mockFolders, "review-first");
+
+    const content = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    assert.strictEqual(content.srs?.defaultMode, "review-first");
+    assert.strictEqual(content.theme, "leetcode-dark"); // verify existing settings are preserved
+  });
 });
+

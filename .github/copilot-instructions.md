@@ -1,6 +1,6 @@
 # Copilot LCX Instructions
 
-## lcex-dsa-analyze
+## lp-dsa-analyze
 
 
 
@@ -10,7 +10,7 @@ They want **feedback on their current solution**: approach fit, complexity vs th
 
 ## What this skill is **not**
 
-- **Not** coaching-only hints — that is **lcex-dsa-hint** (`coaching` object).
+- **Not** coaching-only hints — that is **lp-dsa-hint** (`coaching` object).
 - **Not** rewriting their whole file unless a tiny snippet fixes a clear bug.
 
 ## Principles
@@ -82,7 +82,7 @@ When you update the file, **preserve** any existing `coaching` object unless the
 **In-editor:** **Ask agent — Analyze** clears analysis fields then runs this flow.
 
 
-## lcex-dsa-hint
+## lp-dsa-hint
 
 
 
@@ -136,10 +136,10 @@ If you catch yourself drafting a longer or formatted reply, cut it down before s
 
 If you update `.hint`: preserve existing `approach`, `efficiency`, and `codeStyle` unless the user asked for a full refresh. Merge only `coaching` (plain one-line strings per field), `updatedAt`, and metadata; resolve `<same-dir>/<id-or-slug>.hint`; read, merge, write via tools — **do not** paste JSON in chat. Omit empty coaching slots.
 
-**Not** implementation scoring — that is **lcex-dsa-analyze** (`approach` / `efficiency` / `codeStyle`).
+**Not** implementation scoring — that is **lp-dsa-analyze** (`approach` / `efficiency` / `codeStyle`).
 
 
-## lcex-interview-generator
+## lp-interview-generator
 
 
 

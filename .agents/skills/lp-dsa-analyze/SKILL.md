@@ -23,7 +23,7 @@ They want **feedback on their current solution**: approach fit, complexity vs th
 
 You may add **one or two** sentences. The **machine-readable** part must be the JSON block.
 
-## LeetPlus `.hint` — analysis keys only for this skill
+## LCX `.hint` — analysis keys only for this skill
 
 When you update the file, **preserve** any existing `coaching` object unless the user asked to clear it.
 

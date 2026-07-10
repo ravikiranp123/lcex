@@ -318,7 +318,7 @@ function readLeetPlusFileContent(configPath: string): string {
   const doc = vscode.workspace.textDocuments.find(
     (d) => path.resolve(d.uri.fsPath) === normalizedConfig
   );
-  if (doc) {
+  if (doc && doc.isDirty) {
     const text = doc.getText().trim();
     if (text) return text;
   }
@@ -485,3 +485,45 @@ export function getEffectiveConfig(
     diffRetention: leetcode.diffRetention ?? DEFAULTS.diffRetention,
   };
 }
+
+export function updateSRSModeInConfig(
+  workspaceFolders: readonly vscode.WorkspaceFolder[],
+  mode: "interleaved" | "review-first" | "push" | "recap"
+): void {
+  const paths = findLeetPlusFiles(workspaceFolders);
+  let configPath = "";
+  if (paths.length > 0) {
+    configPath = paths[0];
+  } else if (workspaceFolders.length > 0) {
+    configPath = path.join(workspaceFolders[0].uri.fsPath, ".leetplus", "config.json");
+    try {
+      fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!configPath) return;
+
+  let existing: Record<string, any> = {};
+  if (fs.existsSync(configPath)) {
+    try {
+      const raw = fs.readFileSync(configPath, "utf-8");
+      existing = JSON.parse(raw);
+    } catch {
+      existing = {};
+    }
+  }
+
+  if (!existing.srs || typeof existing.srs !== "object") {
+    existing.srs = {};
+  }
+  existing.srs.defaultMode = mode;
+
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(existing, null, 2), "utf-8");
+  } catch (e) {
+    console.error(`Failed to write config update to ${configPath}`, e);
+  }
+}
+

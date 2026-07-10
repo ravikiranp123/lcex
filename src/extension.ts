@@ -118,6 +118,7 @@ import {
   getEffectiveConfig,
   resolveDefaultStudyPlanSlug,
   resolveDefaultProblemListSlug,
+  updateSRSModeInConfig,
 } from "./modules/LeetPlusConfig";
 import { LeetPlusConfigEditorProvider } from "./modules/LeetPlusConfigEditor";
 import { initState } from "./modules/StateManager";
@@ -3239,6 +3240,73 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
     vscode.commands.registerCommand("leetplus.showDailyPlanProblem", async (item) => {
       const getProblemStatus = (slug: string) => getStoredStatus(globalState, slug);
       await openProblemWebview(context, item, getProvider, getProblemStatus, getWebviewOpts());
+    })
+  );
+
+  // Register command to switch Daily Plan mode
+  context.subscriptions.push(
+    vscode.commands.registerCommand("leetplus.switchDailyPlanMode", async () => {
+      const folders = vscode.workspace.workspaceFolders ?? [];
+      if (folders.length === 0) return;
+      const workspaceRoot = folders[0].uri.fsPath;
+
+      const config = getEffectiveConfig(folders);
+      const currentMode = config.srs?.defaultMode ?? "interleaved";
+
+      const quickPick = vscode.window.createQuickPick();
+      quickPick.placeholder = "Select Daily Plan SRS scheduling mode";
+      
+      const items = [
+        { label: "Interleaved", description: "Reviews & new problems mixed" + (currentMode === "interleaved" ? " (Current)" : ""), value: "interleaved" as const },
+        { label: "Review-First", description: "Prioritize due reviews (maximize SRS)" + (currentMode === "review-first" ? " (Current)" : ""), value: "review-first" as const },
+        { label: "Push", description: "Prioritize new problems (progress-first)" + (currentMode === "push" ? " (Current)" : ""), value: "push" as const },
+        { label: "Recap", description: "Review completed problems only" + (currentMode === "recap" ? " (Current)" : ""), value: "recap" as const }
+      ];
+
+      quickPick.items = items;
+      
+      // Pre-select/focus the current active mode
+      const activeItem = items.find(item => item.value === currentMode);
+      if (activeItem) {
+        quickPick.activeItems = [activeItem];
+      }
+
+      quickPick.onDidAccept(async () => {
+        const choice = quickPick.selectedItems[0] as typeof items[number] | undefined;
+        quickPick.hide();
+        if (!choice) return;
+
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const planFile = path.join(workspaceRoot, ".leetplus", "plans", `${todayStr}.json`);
+        
+        if (fs.existsSync(planFile) && choice.value !== "recap") {
+          const confirm = await vscode.window.showWarningMessage(
+            `You already have a daily plan generated for today. Switching to "${choice.label}" will overwrite today's plan with new selections. Do you want to proceed?`,
+            "Regenerate Plan",
+            "Cancel"
+          );
+          if (confirm !== "Regenerate Plan") return;
+        }
+
+        // Persist to config
+        updateSRSModeInConfig(folders, choice.value);
+
+        // Delete today's plan file to trigger regeneration
+        if (fs.existsSync(planFile)) {
+          try {
+            fs.unlinkSync(planFile);
+          } catch {
+            // ignore
+          }
+        }
+
+        // Trigger refresh of dailyPlanProvider
+        dailyPlanProvider.refresh();
+        void vscode.window.showInformationMessage(`Daily Plan mode updated to ${choice.label}.`);
+      });
+
+      quickPick.onDidHide(() => quickPick.dispose());
+      quickPick.show();
     })
   );
 

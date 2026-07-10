@@ -49,7 +49,7 @@ Each turn you receive: the LeetCode problem statement, the user's current code, 
 
 If you catch yourself drafting a longer or formatted reply, cut it down before sending.
 
-## LeetPlus `.hint` (when Notes / workflow expect it)
+## LCX `.hint` (when Notes / workflow expect it)
 
 If you update `.hint`: preserve existing `approach`, `efficiency`, and `codeStyle` unless the user asked for a full refresh. Merge only `coaching` (plain one-line strings per field), `updatedAt`, and metadata; resolve `<same-dir>/<id-or-slug>.hint`; read, merge, write via tools — **do not** paste JSON in chat. Omit empty coaching slots.
 

@@ -369,6 +369,12 @@
         "command": "leetplus.toggleDiffLogger",
         "title": "Toggle Diff Logger",
         "category": "LeetPlus"
+      },
+      {
+        "command": "leetplus.switchDailyPlanMode",
+        "title": "Switch Daily Plan Mode",
+        "category": "LeetPlus",
+        "icon": "$(list-selection)"
       }
     ],
     "menus": {
@@ -495,6 +501,11 @@
           "command": "leetplus.refreshCompanies",
           "when": "view == leetplus.companiesView",
           "group": "navigation@3"
+        },
+        {
+          "command": "leetplus.switchDailyPlanMode",
+          "when": "view == leetplus-daily-plan",
+          "group": "navigation"
         }
       ]
     },
