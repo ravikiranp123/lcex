@@ -124,6 +124,7 @@ import { initState } from "./modules/StateManager";
 import { initStatusBar } from "./modules/StatusBarManager";
 import { initDiffLogger } from "./modules/DiffLogger";
 import { DailyPlanProvider } from "./modules/DailyPlanProvider";
+import { switchStudyPlan } from "./modules/StudyPlanSwitcher";
 import { initProblemTimer, disposeProblemTimer, TIMER_BY_DAY_KEY } from "./modules/ProblemTimer";
 import {
   addBonusXp,
@@ -3206,8 +3207,21 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   });
   context.subscriptions.push(treeView);
 
-  // Initialize DailyPlanProvider
-  const dailyPlanProvider = new DailyPlanProvider(context);
+  // Initialize DailyPlanProvider — pass a fetchStudyPlanProblems callback so it can
+  // auto-seed state.json from the active study plan on first load (clean-state bootstrap).
+  const fetchStudyPlanProblems = async () => {
+    const lc = new LeetCodeProvider();
+    const problems = await lc.getStudyPlanProblemList(savedStudySlug);
+    return problems.map((p: ProblemListItem) => ({
+      id: p.id,
+      title: p.title,
+      titleSlug: p.titleSlug,
+      difficulty: p.difficulty,
+      topicTags: p.topicTags,
+    }));
+  };
+  const dailyPlanProvider = new DailyPlanProvider(context, fetchStudyPlanProblems);
+
   const dailyPlanView = vscode.window.createTreeView("leetplus-daily-plan", {
     treeDataProvider: dailyPlanProvider,
   });
@@ -3631,7 +3645,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("leetplus.switchStudyPlan", async () => {
+    vscode.commands.registerCommand("leetplus.switchStudyPlan", async (targetPlanSlug?: string) => {
       trackAnalytics("command_invoked", "sidebar", "switch_study_plan");
       const folders = vscode.workspace.workspaceFolders ?? [];
       const cfg = getEffectiveConfig(folders);
@@ -3642,14 +3656,54 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         );
         return;
       }
-      const choice = await vscode.window.showQuickPick(
-        plans.map((p) => ({ label: p.name, slug: p.slug })),
-        { placeHolder: "Select study plan" }
-      );
+
+      let choice: { label: string; slug: string } | undefined;
+      if (typeof targetPlanSlug === "string" && targetPlanSlug.trim()) {
+        const found = plans.find((p) => p.slug === targetPlanSlug.trim());
+        if (found) {
+          choice = { label: found.name, slug: found.slug };
+        }
+      }
+
+      if (!choice) {
+        choice = await vscode.window.showQuickPick(
+          plans.map((p) => ({ label: p.name, slug: p.slug })),
+          { placeHolder: "Select study plan" }
+        );
+      }
       if (!choice) return;
-      await context.workspaceState.update(STUDY_PLANS_KEY, choice.slug);
-      studyPlanProvider.setPlanSlug(choice.slug);
+
+      const workspaceRoot = (vscode.workspace.workspaceFolders ?? [])[0]?.uri.fsPath;
+      if (!workspaceRoot) return;
+
+      const chosenPlan = plans.find((p) => p.slug === choice!.slug);
+      const localPath = chosenPlan?.path;
+
+      const result = await switchStudyPlan(
+        workspaceRoot,
+        choice.slug,
+        choice.label,
+        async () => {
+          const problems = await new LeetCodeProvider().getStudyPlanProblemList(choice!.slug);
+          return problems.map((p: ProblemListItem) => ({
+            id: p.id,
+            title: p.title,
+            titleSlug: p.titleSlug,
+            difficulty: p.difficulty,
+            topicTags: p.topicTags,
+          }));
+        },
+        localPath
+      );
+
+      if (result === "switched") {
+        // Update the saved slug and refresh both sidebar providers
+        await context.workspaceState.update(STUDY_PLANS_KEY, choice.slug);
+        studyPlanProvider.setPlanSlug(choice.slug);
+        dailyPlanProvider.refresh();
+      }
     })
+
   );
 
   context.subscriptions.push(

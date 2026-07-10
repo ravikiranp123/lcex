@@ -408,6 +408,18 @@ export function parseLeetPlusConfig(workspaceFolders: readonly vscode.WorkspaceF
       if (parsed.editorCursiveItalics !== undefined && typeof parsed.editorCursiveItalics === "boolean") {
         merged.editorCursiveItalics = parsed.editorCursiveItalics;
       }
+      if (parsed.srs !== undefined && typeof parsed.srs === "object") {
+        merged.srs = parsed.srs as any;
+      }
+      if (parsed.diffLogger !== undefined && typeof parsed.diffLogger === "object") {
+        merged.diffLogger = parsed.diffLogger as any;
+      }
+      if (parsed.autoRating !== undefined && typeof parsed.autoRating === "object") {
+        merged.autoRating = parsed.autoRating as any;
+      }
+      if (parsed.diffRetention !== undefined && typeof parsed.diffRetention === "string") {
+        merged.diffRetention = parsed.diffRetention as any;
+      }
     } catch (e) {
       Logger.log(`LeetPlusConfig: failed to parse ${configPath}, using defaults: ${e}`);
     }
@@ -467,5 +479,9 @@ export function getEffectiveConfig(
     applyWorkspaceFontSettings: leetcode.applyWorkspaceFontSettings ?? DEFAULTS.applyWorkspaceFontSettings,
     editorFontFamily: leetcode.editorFontFamily ?? DEFAULTS.editorFontFamily,
     editorCursiveItalics: leetcode.editorCursiveItalics ?? DEFAULTS.editorCursiveItalics,
+    srs: leetcode.srs ?? DEFAULTS.srs,
+    diffLogger: leetcode.diffLogger ?? DEFAULTS.diffLogger,
+    autoRating: leetcode.autoRating ?? DEFAULTS.autoRating,
+    diffRetention: leetcode.diffRetention ?? DEFAULTS.diffRetention,
   };
 }

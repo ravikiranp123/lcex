@@ -49,13 +49,16 @@ export async function writeState(workspaceRoot: string, state: LPState): Promise
 export async function initState(
   workspaceRoot: string,
   planName: string,
-  problems: LPProblem[]
+  problems: LPProblem[],
+  planSlug?: string
 ): Promise<LPState> {
   const newState: LPState = {
     version: "1.0",
     planName,
+    planSlug,
     startDate: new Date().toISOString(),
     problems,
+    archivedProblems: [],
     currentStreak: 0,
     bestStreak: 0,
     lastActivityDate: null,

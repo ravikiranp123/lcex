@@ -13,7 +13,7 @@
         "background": {
           "activeOnStart": true,
           "beginsPattern": "^.*build started.*",
-          "endsPattern": "^.*Done in.*|^.*Done.*"
+          "endsPattern": "^.*build finished.*"
         }
       },
       "label": "npm: watch",

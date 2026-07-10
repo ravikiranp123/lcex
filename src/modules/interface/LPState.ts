@@ -1,8 +1,12 @@
 export interface LPState {
   version: string;               // "1.0"
   planName: string;               // e.g. "NeetCode 150"
+  /** Machine-readable slug of the active study plan (e.g. "neetcode-150"). Used to diff on plan switch. */
+  planSlug?: string;
   startDate: string;              // ISO date UTC
   problems: LPProblem[];          // Full problem list with SRS data
+  /** Problems hidden by a study plan switch. Restored when the user switches back to their original plan. */
+  archivedProblems?: LPProblem[];
   currentStreak: number;
   bestStreak: number;
   lastActivityDate: string | null;
@@ -28,6 +32,12 @@ export interface LPProblem {
   solutionLink: { text: string; url: string } | null;
   hints: string[] | null;
   solution: { explanation: string; code: Record<string, string> } | null;
+  /**
+   * Set to true when this problem was skipped/archived automatically by a
+   * study plan switch (not by the user manually). Enables auto-restore when
+   * the user switches back to the plan that originally contained this problem.
+   */
+  switchedOut?: boolean;
 }
 
 export interface LPSnapshot {

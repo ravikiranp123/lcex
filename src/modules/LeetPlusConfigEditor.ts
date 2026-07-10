@@ -47,12 +47,18 @@ export function parseConfig(text: string): LeetPlusConfig {
     const config: LeetPlusConfig = { ...DEFAULTS };
     if (Array.isArray(parsed.studyPlans)) {
       config.studyPlans = parsed.studyPlans.filter(
-        (p: unknown): p is { slug: string; name: string } =>
+        (p: unknown): p is { slug: string; name: string; path?: string } =>
           typeof p === "object" &&
           p !== null &&
           typeof (p as { slug?: unknown }).slug === "string" &&
           typeof (p as { name?: unknown }).name === "string"
-      );
+      ).map((p) => ({
+        slug: (p as { slug: string }).slug,
+        name: (p as { name: string }).name,
+        ...(typeof (p as { path?: unknown }).path === "string" && (p as { path: string }).path.trim()
+          ? { path: (p as { path: string }).path.trim() }
+          : {}),
+      }));
       if (config.studyPlans.length === 0) config.studyPlans = DEFAULTS.studyPlans;
     }
     if (Array.isArray(parsed.problemLists)) {
@@ -152,12 +158,24 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
   const studyPlans = config.studyPlans ?? DEFAULTS.studyPlans!;
   const plansHtml = studyPlans
     .map(
-      (p, i) => `
+      (p, i) => {
+        const hasLocal = Boolean(p.path?.trim());
+        const badge = hasLocal
+          ? `<span class="source-badge local" title="Problems loaded from local file">📁 Local file</span>`
+          : `<span class="source-badge api" title="Problems fetched from LeetCode API">🌐 LeetCode API</span>`;
+        return `
       <div class="plan-row" data-index="${i}">
-        <input type="text" class="plan-slug" value="${escapeHtml(p.slug)}" placeholder="e.g. top-interview-150" />
-        <input type="text" class="plan-name" value="${escapeHtml(p.name)}" placeholder="Display name" />
-        <button class="btn-remove" data-index="${i}" title="Remove">×</button>
-      </div>`
+        <div class="plan-row-top">
+          <input type="text" class="plan-slug" value="${escapeHtml(p.slug)}" placeholder="e.g. neetcode-150" title="Slug" />
+          <input type="text" class="plan-name" value="${escapeHtml(p.name)}" placeholder="Display name" title="Display name" />
+          <button class="btn-remove" data-index="${i}" title="Remove">×</button>
+        </div>
+        <div class="plan-row-path">
+          <input type="text" class="plan-path" value="${escapeHtml(p.path ?? "")}" placeholder="Optional: .leetplus/data/neetcode-150.json (relative to workspace)" title="Local data file path" />
+          ${badge}
+        </div>
+      </div>`;
+      }
     )
     .join("");
   const problemLists = config.problemLists ?? [];
@@ -231,13 +249,60 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
       border-color: #FFA116;
     }
     .plan-row, .list-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding: 10px;
+      border: 1px solid var(--vscode-widget-border);
+      border-radius: 6px;
+    }
+    .plan-row-top {
       display: grid;
       grid-template-columns: 1fr 1fr auto;
       gap: 8px;
+      align-items: center;
+    }
+    .plan-row-top input, .list-row input { margin: 0; }
+    .plan-row-path {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .plan-row-path input {
+      flex: 1;
+      font-size: 12px;
+      padding: 6px 10px;
+    }
+    .source-badge {
+      flex-shrink: 0;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .source-badge.local {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .source-badge.api {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .list-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 8px;
+      padding: 0;
+      border: none;
+      border-radius: 0;
       margin-bottom: 8px;
       align-items: center;
     }
-    .plan-row input, .list-row input { margin: 0; }
+    .list-row input { margin: 0; }
     .btn-remove {
       width: 32px;
       height: 32px;
@@ -476,9 +541,14 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
       document.querySelectorAll('.plan-row').forEach(row => {
         const slug = row.querySelector('.plan-slug').value.trim();
         const name = row.querySelector('.plan-name').value.trim();
-        if (slug && name) plans.push({ slug, name });
+        const pathVal = row.querySelector('.plan-path')?.value?.trim() || '';
+        if (slug && name) {
+          const entry = { slug, name };
+          if (pathVal) entry.path = pathVal;
+          plans.push(entry);
+        }
       });
-      if (plans.length === 0) plans.push({ slug: 'top-interview-150', name: 'Top Interview 150' });
+      if (plans.length === 0) plans.push({ slug: 'neetcode-150', name: 'NeetCode 150' });
       const problemLists = [];
       document.querySelectorAll('.list-row').forEach(row => {
         const slug = row.querySelector('.list-slug').value.trim();
@@ -532,9 +602,28 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
       const div = document.createElement('div');
       div.className = 'plan-row';
       div.dataset.index = String(idx);
-      div.innerHTML = '<input type="text" class="plan-slug" placeholder="e.g. top-interview-150" /><input type="text" class="plan-name" placeholder="Display name" /><button class="btn-remove" title="Remove">×</button>';
+      div.innerHTML = \`
+        <div class="plan-row-top">
+          <input type="text" class="plan-slug" placeholder="e.g. neetcode-150" />
+          <input type="text" class="plan-name" placeholder="Display name" />
+          <button class="btn-remove" title="Remove">×</button>
+        </div>
+        <div class="plan-row-path">
+          <input type="text" class="plan-path" placeholder="Optional: .leetplus/data/neetcode-150.json" />
+          <span class="source-badge api" title="Problems fetched from LeetCode API">🌐 LeetCode API</span>
+        </div>\`;
+
+      const pathInput = div.querySelector('.plan-path');
+      const badge = div.querySelector('.source-badge');
+      pathInput.oninput = () => {
+        const hasPath = pathInput.value.trim().length > 0;
+        badge.className = 'source-badge ' + (hasPath ? 'local' : 'api');
+        badge.title = hasPath ? 'Problems loaded from local file' : 'Problems fetched from LeetCode API';
+        badge.textContent = hasPath ? '📁 Local file' : '🌐 LeetCode API';
+        notifyChange();
+      };
       div.querySelector('.btn-remove').onclick = () => { div.remove(); notifyChange(); };
-      div.querySelectorAll('input').forEach(i => i.oninput = notifyChange);
+      div.querySelectorAll('input[type="text"]:not(.plan-path)').forEach(i => i.oninput = notifyChange);
       container.appendChild(div);
       notifyChange();
     };
@@ -554,7 +643,18 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
     });
     document.querySelectorAll('.plan-row').forEach(row => {
       row.querySelector('.btn-remove').onclick = () => { row.remove(); notifyChange(); };
-      row.querySelectorAll('input').forEach(i => i.oninput = notifyChange);
+      row.querySelectorAll('input[type="text"]:not(.plan-path)').forEach(i => i.oninput = notifyChange);
+      const pathInput = row.querySelector('.plan-path');
+      const badge = row.querySelector('.source-badge');
+      if (pathInput && badge) {
+        pathInput.oninput = () => {
+          const hasPath = pathInput.value.trim().length > 0;
+          badge.className = 'source-badge ' + (hasPath ? 'local' : 'api');
+          badge.title = hasPath ? 'Problems loaded from local file' : 'Problems fetched from LeetCode API';
+          badge.textContent = hasPath ? '📁 Local file' : '🌐 LeetCode API';
+          notifyChange();
+        };
+      }
     });
     document.querySelectorAll('select, input[type="number"]').forEach(el => el.onchange = notifyChange);
     document.querySelectorAll('input[type="checkbox"]').forEach(el => el.onchange = notifyChange);

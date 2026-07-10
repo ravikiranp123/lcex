@@ -1,7 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
+import * as Logger from "./Logger";
 import {
+
   LeetCodeProvider,
   slugToTitle,
   type ProblemListItem,
@@ -241,11 +243,11 @@ export class ProblemsTreeProvider implements vscode.TreeDataProvider<ProblemTree
           if (!planSlug || planSlug === NO_PROBLEM_LIST_SENTINEL) {
             this.groups = [];
           } else {
-          const cookie = this.getCookie?.();
-          const problems = await this.leetcode.getFavoriteProblemList(planSlug, cookie);
-          const category =
-            this.problemListCategoryLabel?.trim() || slugToTitle(planSlug);
-          this.groups = problems.length > 0 ? [{ category, problems }] : [];
+            const cookie = this.getCookie?.();
+            const problems = await this.leetcode.getFavoriteProblemList(planSlug, cookie);
+            const category =
+              this.problemListCategoryLabel?.trim() || slugToTitle(planSlug);
+            this.groups = problems.length > 0 ? [{ category, problems }] : [];
           }
         } else {
           const lcexCfg = getEffectiveConfig(vscode.workspace.workspaceFolders ?? []);
@@ -271,8 +273,19 @@ export class ProblemsTreeProvider implements vscode.TreeDataProvider<ProblemTree
                 
                 this.groups = Object.entries(customPlan).map(([category, slugs]) => ({
                   category,
-                  problems: slugs.map(slug => bySlug.get(slug)).filter((p): p is ProblemListItem => !!p)
+                  problems: slugs.map(slug => {
+                    const existing = bySlug.get(slug);
+                    if (existing) return existing;
+                    return {
+                      id: slug,
+                      titleSlug: slug,
+                      title: slug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
+                      difficulty: "Medium",
+                      topicTags: [category]
+                    };
+                  })
                 })).filter(g => g.problems.length > 0);
+
               } catch (e) {
                 console.error(`Failed to load custom study plan from ${localPath}`, e);
                 this.groups = [];
@@ -284,6 +297,8 @@ export class ProblemsTreeProvider implements vscode.TreeDataProvider<ProblemTree
             this.groups = await this.leetcode.getStudyPlanProblemListGrouped(planSlug);
           }
         }
+
+
         if (this.groups.length > 0) {
           try {
             fs.mkdirSync(path.dirname(this.cachePath), { recursive: true });
