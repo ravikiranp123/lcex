@@ -3310,6 +3310,116 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
     })
   );
 
+  // Register command to filter Daily Plan by category
+  context.subscriptions.push(
+    vscode.commands.registerCommand("leetplus.filterDailyPlanByCategory", async () => {
+      const state = await dailyPlanProvider.getCurrentState();
+      if (!state) {
+        void vscode.window.showWarningMessage("No study plan active or state not loaded.");
+        return;
+      }
+
+      // Collect unique categories
+      const categories = Array.from(
+        new Set(state.problems.map((p) => p.category).filter(Boolean))
+      ).sort();
+
+      if (categories.length === 0) {
+        void vscode.window.showInformationMessage("No categories found in the current study plan.");
+        return;
+      }
+
+      const items = [
+        { label: "All Categories", description: "Clear active filter", value: undefined },
+        ...categories.map((cat) => ({
+          label: cat,
+          description: dailyPlanProvider.activeCategoryFilter === cat ? "Current Filter" : "",
+          value: cat,
+        })),
+      ];
+
+      const choice = await vscode.window.showQuickPick(items, {
+        placeHolder: "Select a category to focus on",
+      });
+
+      if (choice === undefined) return;
+
+      const folders = vscode.workspace.workspaceFolders ?? [];
+      if (folders.length === 0) return;
+      const workspaceRoot = folders[0].uri.fsPath;
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const planFile = path.join(workspaceRoot, ".leetplus", "plans", `${todayStr}.json`);
+
+      // If clearing filter:
+      if (choice.value === undefined) {
+        const wasFiltered = !!dailyPlanProvider.activeCategoryFilter;
+        dailyPlanProvider.activeCategoryFilter = undefined;
+        dailyPlanView.description = undefined;
+
+        if (wasFiltered && fs.existsSync(planFile)) {
+          // If we had a category focus, delete the focus plan on disk so it gets regenerated normally
+          try {
+            fs.unlinkSync(planFile);
+          } catch {}
+        }
+        dailyPlanProvider.refresh();
+        return;
+      }
+
+      // If selecting a category:
+      // First check if there are problems matching this category in the already-generated daily plan file.
+      let hasMatchingProblem = false;
+      if (fs.existsSync(planFile)) {
+        try {
+          const raw = fs.readFileSync(planFile, "utf-8");
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.problems)) {
+            for (const item of parsed.problems) {
+              const prob = state.problems.find((p) => p.id === item.id);
+              if (prob && prob.category === choice.value) {
+                hasMatchingProblem = true;
+                break;
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!hasMatchingProblem) {
+        // Prompt user to regenerate a focused plan
+        const confirm = await vscode.window.showWarningMessage(
+          `No problems in today's daily plan match '${choice.value}'. Would you like to regenerate today's plan to focus exclusively on '${choice.value}'?`,
+          "Regenerate Focus Plan",
+          "Cancel"
+        );
+
+        if (confirm === "Regenerate Focus Plan") {
+          try {
+            if (fs.existsSync(planFile)) {
+              fs.unlinkSync(planFile);
+            }
+          } catch {}
+
+          dailyPlanProvider.activeCategoryFilter = choice.value;
+          dailyPlanView.description = `Focus: ${choice.value}`;
+          dailyPlanProvider.refresh();
+          void vscode.window.showInformationMessage(`Regenerated Daily Plan focusing on ${choice.value}.`);
+          return;
+        } else {
+          // User cancelled, we just filter what is currently there (which will show 0 items)
+        }
+      }
+
+      // Default behavior: just apply view-level filter of the existing plan
+      dailyPlanProvider.activeCategoryFilter = choice.value;
+      dailyPlanView.description = `Focus: ${choice.value}`;
+      dailyPlanProvider.refresh();
+    })
+  );
+
   const onboardingProvider = {
     getChildren: () => [],
     getTreeItem: (element: any) => element

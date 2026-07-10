@@ -83,6 +83,7 @@ export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem>
   private _onDidChangeTreeData = new vscode.EventEmitter<DailyPlanItem | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
   private mismatchNotificationShown = false;
+  public activeCategoryFilter: string | undefined = undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -93,6 +94,17 @@ export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem>
      */
     private readonly fetchStudyPlanProblems?: () => Promise<StudyPlanProblemSeed[]>
   ) {}
+
+  public async getCurrentState(): Promise<LPState | null> {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) return null;
+    const workspaceRoot = folders[0].uri.fsPath;
+    try {
+      return await readState(workspaceRoot);
+    } catch {
+      return null;
+    }
+  }
 
   refresh(): void {
     this._onDidChangeTreeData.fire();
@@ -195,7 +207,7 @@ export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem>
       }
     } else {
       try {
-        const generated = await generateDailyPlan(workspaceRoot, state);
+        const generated = await generateDailyPlan(workspaceRoot, state, this.activeCategoryFilter);
         planProblems = generated.problems;
       } catch {
         // Fallback
@@ -211,6 +223,12 @@ export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem>
       for (const item of planProblems) {
         const prob = state.problems.find(p => p.id === item.id);
         if (!prob) continue;
+
+        // Apply category filter
+        if (this.activeCategoryFilter && prob.category !== this.activeCategoryFilter) {
+          continue;
+        }
+
         if (this.isSolvedToday(prob)) {
           doneCount++;
         } else if (item.type === "rep") {
@@ -232,6 +250,11 @@ export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem>
     for (const item of planProblems) {
       const prob = state.problems.find(p => p.id === item.id);
       if (!prob) continue;
+
+      // Apply category filter
+      if (this.activeCategoryFilter && prob.category !== this.activeCategoryFilter) {
+        continue;
+      }
 
       const solvedToday = this.isSolvedToday(prob);
       if (element.id === "done" && solvedToday) {

@@ -135,7 +135,8 @@ export function loadSeedsFromLocalDataFile(
  */
 export async function generateDailyPlan(
   workspaceRoot: string,
-  state: LPState
+  state: LPState,
+  focusCategory?: string
 ): Promise<DailyPlanJson> {
   const folders = vscode.workspace.workspaceFolders ?? [];
   const config = getEffectiveConfig(folders);
@@ -144,7 +145,10 @@ export async function generateDailyPlan(
   const mode = config.srs?.defaultMode ?? "interleaved";
   const limit = config.srs?.problemsPerDay ?? 5;
 
-  const targetProblems = state.problems;
+  let targetProblems = state.problems;
+  if (focusCategory) {
+    targetProblems = targetProblems.filter((p) => p.category === focusCategory);
+  }
 
   // 1. Gather pending problems
   const pending = targetProblems.filter((p) => p.status === "pending");

@@ -120,7 +120,13 @@ describe("DailyPlanProvider", () => {
       fs.writeFileSync(todayPlanFile, JSON.stringify(planContent), "utf-8");
 
       // 2. Initialize provider
-      const mockContext = { subscriptions: [] } as any;
+      const mockContext = {
+        subscriptions: [],
+        workspaceState: {
+          get: () => undefined,
+          update: () => Promise.resolve()
+        }
+      } as any;
       const provider = new DailyPlanProvider(mockContext);
 
       // 3. Get Root Nodes
@@ -166,6 +172,96 @@ describe("DailyPlanProvider", () => {
       assert.strictEqual(doneItem.description, "Completed");
     } finally {
       // Restore workspaceFolders
+      vscode.workspace.workspaceFolders = originalWorkspaceFolders;
+    }
+  });
+
+  it("should filter root counts and children when activeCategoryFilter is set", async () => {
+    const workspaceRoot = path.join(TEST_DIR, "workspace2");
+    fs.mkdirSync(workspaceRoot, { recursive: true });
+
+    const originalWorkspaceFolders = vscode.workspace.workspaceFolders;
+    vscode.workspace.workspaceFolders = [
+      {
+        uri: { fsPath: workspaceRoot } as any,
+        name: "TestWorkspace",
+        index: 0
+      }
+    ];
+
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const yesterdayStr = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+      // Problems in different categories
+      const problems = [
+        {
+          id: 1,
+          title: "Two Sum",
+          slug: "two-sum",
+          difficulty: "Easy",
+          category: "Arrays",
+          status: "completed" as const,
+          scheduledDate: yesterdayStr,
+          nextRepetitionDate: todayStr,
+          repetitionLevel: 1,
+          completionHistory: [{ date: yesterdayStr + "T10:00:00.000Z", rating: 2, notes: "", timeSpentSeconds: 10, hintsUsed: 0, patternsDetected: [] }]
+        },
+        {
+          id: 2,
+          title: "Longest Substring",
+          slug: "longest-substring",
+          difficulty: "Medium",
+          category: "Sliding Window",
+          status: "pending" as const,
+          scheduledDate: todayStr,
+          nextRepetitionDate: null,
+          repetitionLevel: 0,
+          completionHistory: []
+        }
+      ];
+
+      await initState(workspaceRoot, "Test RoadMap", problems);
+
+      const plansDir = path.join(workspaceRoot, ".leetplus", "plans");
+      fs.mkdirSync(plansDir, { recursive: true });
+      const todayPlanFile = path.join(plansDir, `${todayStr}.json`);
+      fs.writeFileSync(todayPlanFile, JSON.stringify({
+        date: todayStr,
+        problems: [
+          { id: 1, type: "rep" },
+          { id: 2, type: "new" }
+        ]
+      }), "utf-8");
+
+      const mockContext = {
+        subscriptions: [],
+        workspaceState: {
+          get: () => undefined,
+          update: () => Promise.resolve()
+        }
+      } as any;
+      const provider = new DailyPlanProvider(mockContext);
+      
+      // Set active category filter to Arrays
+      provider.activeCategoryFilter = "Arrays";
+
+      const roots = await provider.getChildren();
+      const reviewRoot = roots.find(r => r.id === "review")!;
+      const newRoot = roots.find(r => r.id === "new")!;
+
+      // Count check: Review has 1 Arrays problem, New has 0 Arrays problems (it is Sliding Window)
+      assert.strictEqual(reviewRoot.label, "Review (1)");
+      assert.strictEqual(newRoot.label, "New (0)");
+
+      // Check children
+      const reviewChildren = await provider.getChildren(reviewRoot);
+      assert.strictEqual(reviewChildren.length, 1);
+      assert.strictEqual(reviewChildren[0].problem?.slug, "two-sum");
+
+      const newChildren = await provider.getChildren(newRoot);
+      assert.strictEqual(newChildren.length, 0);
+    } finally {
       vscode.workspace.workspaceFolders = originalWorkspaceFolders;
     }
   });

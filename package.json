@@ -375,6 +375,12 @@
         "title": "Switch Daily Plan Mode",
         "category": "LeetPlus",
         "icon": "$(list-selection)"
+      },
+      {
+        "command": "leetplus.filterDailyPlanByCategory",
+        "title": "Filter Daily Plan by Category",
+        "category": "LeetPlus",
+        "icon": "$(filter)"
       }
     ],
     "menus": {
@@ -505,7 +511,12 @@
         {
           "command": "leetplus.switchDailyPlanMode",
           "when": "view == leetplus-daily-plan",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "leetplus.filterDailyPlanByCategory",
+          "when": "view == leetplus-daily-plan",
+          "group": "navigation@2"
         }
       ]
     },
