@@ -21,4 +21,6 @@ These rules apply specifically to all development tasks in the LeetPlus codebase
 ## 4. Development Workflow
 *   **Media/Visual Assets:** Defer screenshot generation, GIF recording, and final asset preparation to the very end of development, right before publishing.
 *   **Interaction Discipline:** When the user asks a question, answer the question directly. Do NOT jump the gun and modify files or run actions without explicit permission.
+*   **Testing & Verification Guidance:** After completing every development task, the agent must provide clear step-by-step instructions on how to manually verify the change in the running extension. When relevant, the agent should assist by providing/updating sample code, files, or `state.json` templates to trigger and test specific execution paths. Workspace is initialised in ~/projects/leetplus. So you will have ~/projects/leetplus/.leetplus. Inform user if you cant find it.
+
 

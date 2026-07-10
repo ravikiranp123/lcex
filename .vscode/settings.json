@@ -2,7 +2,7 @@
     "workbench.colorTheme": "LeetCode Dark",
     "workbench.preferredDarkColorTheme": "LeetCode Dark",
     "zenMode.hideStatusBar": true,
-    "editor.fontFamily": "Fira Code iScript",
+    "editor.fontFamily": "Fira Code",
     "editor.tokenColorCustomizations": {
         "textMateRules": [
             {

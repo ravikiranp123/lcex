@@ -120,6 +120,7 @@ import {
   resolveDefaultProblemListSlug,
 } from "./modules/LeetPlusConfig";
 import { LeetPlusConfigEditorProvider } from "./modules/LeetPlusConfigEditor";
+import { initState } from "./modules/StateManager";
 import { initProblemTimer, disposeProblemTimer, TIMER_BY_DAY_KEY } from "./modules/ProblemTimer";
 import {
   addBonusXp,
@@ -1283,14 +1284,31 @@ async function migrateWorkspaces() {
       }
     } else {
       // It is a directory, scaffold subdirs if they don't exist
+      const recreatedDirs: string[] = [];
       for (const d of subdirs) {
         const subPath = path.join(leetplusDir, d);
         if (!fs.existsSync(subPath)) {
           try {
             fs.mkdirSync(subPath, { recursive: true });
+            recreatedDirs.push(d);
           } catch (e) {
             Logger.logError(`Failed to scaffold ${subPath}`, e);
           }
+        }
+      }
+      if (recreatedDirs.length > 0) {
+        vscode.window.showInformationMessage(`LeetPlus restored missing subdirectories: ${recreatedDirs.join(", ")}`);
+      }
+      
+      // Verify and repair missing state.json
+      const stateJson = path.join(leetplusDir, "state.json");
+      if (!fs.existsSync(stateJson)) {
+        try {
+          await initState(rootPath, "My Practice Plan", []);
+          Logger.log(`Repaired/recreated missing state.json in ${folder.name}`);
+          vscode.window.showWarningMessage(`LeetPlus restored a missing state.json file in your workspace.`);
+        } catch (e) {
+          Logger.logError(`Failed to recreate state.json in ${folder.name}`, e);
         }
       }
     }
@@ -1298,6 +1316,11 @@ async function migrateWorkspaces() {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
+  extensionContextForBars = context;
+  const outputChannel = vscode.window.createOutputChannel("LeetPlus");
+  context.subscriptions.push(outputChannel);
+  Logger.init(outputChannel);
+
   Logger.log("LeetPlus activating...");
   
   // Run migration and scaffold check
@@ -1307,10 +1330,6 @@ export async function activate(context: vscode.ExtensionContext) {
     Logger.logError("Workspace migration failed", e);
   }
 
-  extensionContextForBars = context;
-  const outputChannel = vscode.window.createOutputChannel("LeetPlus");
-  context.subscriptions.push(outputChannel);
-  Logger.init(outputChannel);
   Logger.log("Extension activated");
 
   if (isCurrentUserOnWellnessListSync()) {
@@ -1523,9 +1542,14 @@ export async function activate(context: vscode.ExtensionContext) {
           if (!fs.existsSync(configJson)) {
             fs.writeFileSync(configJson, "{\n  \"language\": \"typescript\"\n}\n", "utf-8");
           }
-          
-          vscode.window.showInformationMessage("Workspace successfully initialized for LeetPlus!");
         }
+
+        const stateJson = path.join(leetplusDir, "state.json");
+        if (!fs.existsSync(stateJson)) {
+          await initState(rootPath, "My Practice Plan", []);
+        }
+        
+        vscode.window.showInformationMessage("Workspace successfully initialized for LeetPlus!");
         
         hasMarkerCacheInitialized = false;
         updateHasMarkerContext();
