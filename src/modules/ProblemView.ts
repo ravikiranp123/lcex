@@ -37,7 +37,7 @@ import {
   bucketLanguage,
   track as trackAnalytics,
 } from "./cloud/analytics";
-import { createDefaultHintFileJson } from "./HintFile";
+import { createDefaultHintFileJson, recordHintAccess } from "./HintFile";
 import { lookupProblem as lookupCompaniesProblem, loadCompaniesDataset } from "./CompaniesData";
 import { getProblemTimer, TIMER_BY_DAY_KEY, TIMER_ELAPSED_KEY, type TimerByDay } from "./ProblemTimer";
 import {
@@ -540,6 +540,7 @@ export async function openHintFileForProblem(
   } catch {
     /* explorer command may be unavailable */
   }
+  recordHintAccess(slug);
   await vscode.window.showTextDocument(uri, { preview: false });
 }
 
@@ -632,6 +633,7 @@ export async function tryOpenExistingHintFile(
   } catch {
     /* */
   }
+  recordHintAccess(titleSlugStr);
   await vscode.window.showTextDocument(uri, { preview: false });
   return true;
 }

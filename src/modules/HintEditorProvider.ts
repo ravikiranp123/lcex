@@ -5,6 +5,7 @@ import {
   normalizeHintData,
   parseHintFileJson,
   serializeHintFile,
+  recordHintAccess,
 } from "./HintFile";
 import { renderHintViewHtml } from "./HintAnalysisHtml";
 
@@ -32,6 +33,13 @@ export class HintEditorProvider implements vscode.CustomTextEditorProvider {
     const iconUri = vscode.Uri.joinPath(this._context.extensionUri, "icons", "hint.svg");
     webviewPanel.iconPath = { light: iconUri, dark: iconUri };
     webviewPanel.webview.options = { enableScripts: true, localResourceRoots: [] };
+
+    try {
+      const initialParsed = parseHintFileJson(document.getText());
+      if (initialParsed.ok && initialParsed.data?.titleSlug) {
+        recordHintAccess(initialParsed.data.titleSlug);
+      }
+    } catch { /* ignore */ }
 
     const updateWebview = (): void => {
       const text = document.getText();

@@ -502,3 +502,21 @@ export function emptyCoachingPreserveMeta(base: LeetcodeHintFileV1): LeetcodeHin
     codeStyle: base.codeStyle,
   });
 }
+
+
+// In-memory hint access counter, mapped by titleSlug
+const hintAccesses = new Map<string, number>();
+
+export function recordHintAccess(slug: string): void {
+  const current = hintAccesses.get(slug) ?? 0;
+  hintAccesses.set(slug, current + 1);
+}
+
+export function getHintAccessCount(slug: string): number {
+  return hintAccesses.get(slug) ?? 0;
+}
+
+export function resetHintAccessCount(slug: string): void {
+  hintAccesses.delete(slug);
+}
+

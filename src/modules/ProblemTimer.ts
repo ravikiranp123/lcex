@@ -385,6 +385,10 @@ export class ProblemTimer {
     }
   }
 
+  getElapsedSeconds(titleSlug: string): number {
+    return this.getElapsed(titleSlug);
+  }
+
   sendInitialState(titleSlug: string): void {
     const elapsed = this.getElapsed(titleSlug);
     const paused = this.isPaused(titleSlug);
