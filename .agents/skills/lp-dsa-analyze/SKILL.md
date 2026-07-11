@@ -5,12 +5,23 @@ description: LeetCode solution analysis — scored review (1–10) for approach,
 
 # DSA implementation analysis
 
-They want **feedback on their current solution**: approach fit, complexity vs this problem, and code quality — with **numeric scores** so they can see where they stand.
+They want **feedback on their current solution**: approach fit, complexity vs this problem, and code quality — with **numeric scores** so they can see where they stand, running inside the **LeetPlus** VS Code extension workspace.
+
+## STRICT BOUNDARIES (No Workspace Discovery)
+- **Do NOT** call `list_dir`, `grep_search`, or command-line search tools.
+- **Do NOT** explore the directory tree, list `.agents` directories, or read other skill files (e.g. `lp-dsa-hint`, `lp-interview-generator`).
+- **Do NOT** search the web or the workspace for terms like "leetplus", "coaching", or "hint".
+- **Do NOT** read `config.json`, `state.json`, or other configuration files in the `.leetplus` directory.
+- You must **ONLY** read and write the exact active solution file and the `.hint` file path provided to you in the prompt/context. Any other file operations or directory scans are strictly prohibited.
 
 ## What this skill is **not**
 
 - **Not** coaching-only hints — that is **lp-dsa-hint** (`coaching` object).
 - **Not** rewriting their whole file unless a tiny snippet fixes a clear bug.
+
+## HARD RULES (non-negotiable)
+
+- **EXCLUSIVITY OF FILE ACCESS.** You must **ONLY** read/write the specified target hint file path and active solution file path. **Do NOT** read or write config files, `state.json` files, or explore directories in the `.leetplus` or workspace folders. **Do NOT** call `list_dir` or `grep_search` to search for files.
 
 ## Principles
 
@@ -73,6 +84,9 @@ When you update the file, **preserve** any existing `coaching` object unless the
 
 ### Automation (required)
 
+If a target hint file path is specified in the prompt/context, **read** and **write** to that path directly. **Do NOT** perform directory listings or workspace search commands.
+
+Otherwise:
 1. Resolve `<same-dir>/<id-or-slug>.hint`.
 2. If file exists, **read** it, merge analysis keys, **keep** `coaching`.
 3. **Write** merged JSON.

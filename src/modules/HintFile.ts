@@ -235,13 +235,19 @@ export function normalizeHintData(data: LeetcodeHintFileV1): LeetcodeHintFileV1 
 }
 
 export function createDefaultHintFileJson(titleSlug: string, problemTitle: string): string {
-  const doc: LeetcodeHintFileV1 = {
+  const doc = {
     version: 1,
     titleSlug,
     problemTitle,
-    updatedAt: new Date().toISOString(),
+    coaching: {
+      breakdown: "",
+      thinking: "",
+      pitfalls: "",
+      nextFocus: ""
+    },
+    updatedAt: new Date().toISOString()
   };
-  return serializeHintFile(doc);
+  return JSON.stringify(doc, null, 2);
 }
 
 export function parseHintFileJson(

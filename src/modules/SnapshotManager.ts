@@ -7,6 +7,7 @@ import { detectPatterns } from "./PatternDetector";
 import { getHintAccessCount, resetHintAccessCount } from "./HintFile";
 import { getProblemTimer } from "./ProblemTimer";
 import { languageFromFileExtension } from "./language/LanguageStrategy";
+import * as Database from "./Database";
 
 /**
  * Captures a solution file snapshot, registers the completion metadata in state.json,
@@ -62,8 +63,34 @@ export async function captureSnapshot(
   }
 
   // 4. Gather hint access metrics
-  const hintsUsed = getHintAccessCount(slug);
+  let hintsUsed = getHintAccessCount(slug);
   resetHintAccessCount(slug);
+
+  try {
+    const { idPath, slugPath, idSlugPath, preferredNewPath } = Database.getHintFilePathSet(undefined, String(problemId), slug);
+    let hintPath = preferredNewPath;
+    if (fs.existsSync(idSlugPath)) {
+      hintPath = idSlugPath;
+    } else if (fs.existsSync(slugPath)) {
+      hintPath = slugPath;
+    } else if (fs.existsSync(idPath)) {
+      hintPath = idPath;
+    }
+
+    if (fs.existsSync(hintPath)) {
+      const hintContent = fs.readFileSync(hintPath, "utf-8");
+      const parsed = JSON.parse(hintContent);
+      if (parsed && parsed.coaching) {
+        let populatedCoachingCount = 0;
+        const c = parsed.coaching;
+        if (typeof c.breakdown === "string" && c.breakdown.trim().length > 0) populatedCoachingCount++;
+        if (typeof c.thinking === "string" && c.thinking.trim().length > 0) populatedCoachingCount++;
+        if (typeof c.pitfalls === "string" && c.pitfalls.trim().length > 0) populatedCoachingCount++;
+        if (typeof c.nextFocus === "string" && c.nextFocus.trim().length > 0) populatedCoachingCount++;
+        hintsUsed = Math.max(hintsUsed, populatedCoachingCount);
+      }
+    }
+  } catch {}
 
   // 5. Run Pattern Detection
   let patternsDetected: string[] = [];

@@ -22,7 +22,8 @@ export async function estimateRating(
   slug: string,
   sourceCode: string,
   lang: SupportedLanguage,
-  problemDescriptionHtmlOrText: string
+  problemDescriptionHtmlOrText: string,
+  hintsUsed: number = 0
 ): Promise<HeuristicRatingResult> {
   // 1. Detect patterns used
   let patternsDetected: string[] = [];
@@ -75,6 +76,25 @@ export async function estimateRating(
   } catch (e: any) {
     rating = 2; // default
     justification = `Fallback to heuristic rating due to parsing error: ${e.message || String(e)}`;
+  }
+
+  // Apply hint penalties:
+  // - 0 hints: neutral
+  // - 1-2 hints: slight penalty (0 -> 1, 1 -> 2)
+  // - 3+ hints: at most rating 2 (if 0 or 1, capped to 2)
+  if (hintsUsed >= 3) {
+    if (rating === 0 || rating === 1) {
+      rating = 2;
+      justification += " Capped to 2 (Good) due to 3+ hints accessed.";
+    }
+  } else if (hintsUsed > 0) {
+    if (rating === 0) {
+      rating = 1;
+      justification += " Adjusted to 1 (Easy) due to hint usage.";
+    } else if (rating === 1) {
+      rating = 2;
+      justification += " Adjusted to 2 (Good) due to hint usage.";
+    }
   }
 
   return {

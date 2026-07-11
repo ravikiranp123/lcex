@@ -56,6 +56,8 @@ import {
   openOrCreateSolution,
   plainProblemSlugFromUri,
   getCachedProblem as getProblemFromViewCache,
+  interviewSolutionBaseDir,
+  interviewSolutionAttemptHex,
 } from "./modules/ProblemView";
 import { HintEditorProvider } from "./modules/HintEditorProvider";
 import { runExamples as runExamplesImpl, parseExampleBlocks, type ExampleResult } from "./modules/ExampleRunner";
@@ -1676,13 +1678,33 @@ export async function activate(context: vscode.ExtensionContext) {
         }
         const folders = vscode.workspace.workspaceFolders ?? [];
         const config = getEffectiveConfig(folders);
-        const basePrompt =
+        let basePrompt =
           config.agentPromptHint?.trim() ||
           "Load **lp-dsa-hint** and follow it. Nudge from the problem only—do not read or review my code. Each `coaching` value: one short line; no solution.";
-        // const ctxPath = await writeHintLadderContext(args?.titleSlug);
-        // const prompt = ctxPath
-        //   ? `${basePrompt}\n\nIf the **lp-dsa-hint** skill supports it, load auto-detected user state from \`${ctxPath}\` (JSON: static complexity, problem-size budget, verdict, top hotspot) and tailor \`coaching.nextFocus\` to the verdict. Otherwise ignore.`
-        //   : basePrompt;
+        
+        const slug = args?.titleSlug?.trim() || getTitleSlugForActiveSolutionFile(context);
+        if (slug) {
+          try {
+            const problem = await getProvider().getProblem(slug);
+            if (problem) {
+              const workspaceRoot = folders[0]?.uri.fsPath;
+              let hintPath = "";
+              let solutionPath = "";
+              if (workspaceRoot) {
+                const baseDir = interviewSolutionBaseDir(context.globalState);
+                const hex = interviewSolutionAttemptHex(context.globalState);
+                const resolvedHint = await Database.resolveHintFilePathForOpen(undefined, problem.id, slug, baseDir, hex);
+                hintPath = resolvedHint.path;
+
+                const resolvedSol = await Database.resolveSolutionFilePathForOpen(undefined, String(problem.id), slug, baseDir, hex);
+                solutionPath = resolvedSol.path;
+              }
+              basePrompt += `\n\n[Context]\n- Problem: ${problem.title} (${slug})`;
+              if (hintPath) basePrompt += `\n- Expected Hint File Path: "${hintPath}"`;
+              if (solutionPath) basePrompt += `\n- Solution File Path: "${solutionPath}"`;
+            }
+          } catch {}
+        }
         await openChatWithPrompt(basePrompt);
       }
     )
@@ -1709,9 +1731,33 @@ export async function activate(context: vscode.ExtensionContext) {
         }
         const folders = vscode.workspace.workspaceFolders ?? [];
         const config = getEffectiveConfig(folders);
-        const prompt =
+        let prompt =
           config.agentPromptAnalyze?.trim() ||
           "Load **lp-dsa-analyze** and follow it. Analyze my current LeetCode solution implementation.";
+
+        const slug = args?.titleSlug?.trim() || getTitleSlugForActiveSolutionFile(context);
+        if (slug) {
+          try {
+            const problem = await getProvider().getProblem(slug);
+            if (problem) {
+              const workspaceRoot = folders[0]?.uri.fsPath;
+              let hintPath = "";
+              let solutionPath = "";
+              if (workspaceRoot) {
+                const baseDir = interviewSolutionBaseDir(context.globalState);
+                const hex = interviewSolutionAttemptHex(context.globalState);
+                const resolvedHint = await Database.resolveHintFilePathForOpen(undefined, problem.id, slug, baseDir, hex);
+                hintPath = resolvedHint.path;
+
+                const resolvedSol = await Database.resolveSolutionFilePathForOpen(undefined, String(problem.id), slug, baseDir, hex);
+                solutionPath = resolvedSol.path;
+              }
+              prompt += `\n\n[Context]\n- Problem: ${problem.title} (${slug})`;
+              if (hintPath) prompt += `\n- Expected Hint File Path: "${hintPath}"`;
+              if (solutionPath) prompt += `\n- Solution File Path: "${solutionPath}"`;
+            }
+          } catch {}
+        }
         await openChatWithPrompt(prompt);
       }
     )
@@ -4583,7 +4629,8 @@ Please return a JSON object with keys "rating" (0-4) and "justification" (1-2 se
               slug,
               sourceCode,
               lang,
-              description
+              description,
+              snap.hintsUsed
             );
             computedRating = heuristic.rating;
             computedJustification = heuristic.justification;

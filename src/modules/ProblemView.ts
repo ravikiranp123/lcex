@@ -423,7 +423,7 @@ async function languagesWithSolutionFilesOnDisk(
   return found;
 }
 
-function interviewSolutionBaseDir(globalState: vscode.Memento): string | undefined {
+export function interviewSolutionBaseDir(globalState: vscode.Memento): string | undefined {
   const s = getInterviewSession(globalState);
   if (s?.active && s.solutionFolderPath?.trim()) {
     return s.solutionFolderPath.trim();
@@ -431,7 +431,7 @@ function interviewSolutionBaseDir(globalState: vscode.Memento): string | undefin
   return undefined;
 }
 
-function interviewSolutionAttemptHex(globalState: vscode.Memento): string | undefined {
+export function interviewSolutionAttemptHex(globalState: vscode.Memento): string | undefined {
   const s = getInterviewSession(globalState);
   if (!s?.active) return undefined;
   const h = typeof s.attemptHex === "string" ? s.attemptHex.trim().toLowerCase() : "";
@@ -541,7 +541,7 @@ export async function openHintFileForProblem(
     /* explorer command may be unavailable */
   }
   recordHintAccess(slug);
-  await vscode.window.showTextDocument(uri, { preview: false });
+  await vscode.commands.executeCommand("vscode.openWith", uri, "leetplus.hintEditor");
 }
 
 /** Numeric problem id from active solution tab (e.g. `2813.ts` → `2813`). */
@@ -634,7 +634,7 @@ export async function tryOpenExistingHintFile(
     /* */
   }
   recordHintAccess(titleSlugStr);
-  await vscode.window.showTextDocument(uri, { preview: false });
+  await vscode.commands.executeCommand("vscode.openWith", uri, "leetplus.hintEditor");
   return true;
 }
 
