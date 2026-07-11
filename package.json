@@ -74,6 +74,11 @@
         "category": "LeetPlus"
       },
       {
+        "command": "leetplus.completeProblem",
+        "title": "Complete Problem and Open Rating Review",
+        "category": "LeetPlus"
+      },
+      {
         "command": "leetplus.openSolutionFromText",
         "title": "Open Solution",
         "category": "LeetPlus",
@@ -585,6 +590,12 @@
         "command": "leetplus.runInTerminal",
         "key": "ctrl+shift+r",
         "mac": "cmd+shift+r",
+        "when": "leetplus.hasMarker && leetplus.isSolutionFile && editorTextFocus"
+      },
+      {
+        "command": "leetplus.completeProblem",
+        "key": "alt+r",
+        "mac": "ctrl+shift+r",
         "when": "leetplus.hasMarker && leetplus.isSolutionFile && editorTextFocus"
       },
       {

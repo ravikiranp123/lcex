@@ -40,8 +40,8 @@ export async function captureSnapshot(
   const sourceCode = fs.readFileSync(solutionFilePath, "utf-8");
   const ext = path.extname(solutionFilePath);
   
-  // Create snapshots target directory: .leetplus/snapshots/<problem_id>/
-  const problemSnapshotsDir = path.join(workspaceRoot, ".leetplus", "snapshots", String(problemId));
+  // Create snapshots target directory: .leetplus/snapshots/<slug>/
+  const problemSnapshotsDir = path.join(workspaceRoot, ".leetplus", "snapshots", slug);
   if (!fs.existsSync(problemSnapshotsDir)) {
     fs.mkdirSync(problemSnapshotsDir, { recursive: true });
   }
@@ -145,7 +145,7 @@ export async function captureSnapshot(
     }
   }
 
-  const problemDiffsDir = path.join(workspaceRoot, ".leetplus", "diffs", String(problemId));
+  const problemDiffsDir = path.join(workspaceRoot, ".leetplus", "diffs", slug);
   if (fs.existsSync(problemDiffsDir)) {
     if (diffRetention === "session" || diffRetention === "all") {
       // Copy all patches to snapshots directory
@@ -197,5 +197,85 @@ export async function getLatestSnapshot(
 ): Promise<LPSnapshot | null> {
   const snaps = await getSnapshots(workspaceRoot, problemId, slug);
   return snaps.length > 0 ? snaps[snaps.length - 1] : null;
+}
+
+/**
+ * Finalizes the rating, notes, and justification for a problem completed in the staged pipeline.
+ * Re-runs SRS calculations, updates pattern mastery, updates streaks, and writes state.json.
+ * Returns the next repetition date string.
+ */
+export async function finalizeProblemRating(
+  workspaceRoot: string,
+  slug: string,
+  finalRating: number,
+  finalNotes: string,
+  aiRating: number,
+  aiJustification: string
+): Promise<string> {
+  const state = await readState(workspaceRoot);
+  if (!state) {
+    throw new Error("Could not load state.");
+  }
+
+  const problem = state.problems.find((p) => p.slug === slug);
+  if (!problem) {
+    throw new Error(`Problem '${slug}' not found in state.`);
+  }
+
+  if (!problem.completionHistory || problem.completionHistory.length === 0) {
+    throw new Error(`Problem '${slug}' has no completion history to finalize.`);
+  }
+
+  // 1. Get the latest snapshot (recorded in Stage 1)
+  const snap = problem.completionHistory[problem.completionHistory.length - 1];
+
+  // 2. Determine previous level before this solve
+  let previousLevel = 0;
+  for (let i = 0; i < problem.completionHistory.length - 1; i++) {
+    const { nextLevel } = calculateNextInterval(problem.completionHistory[i].rating, previousLevel);
+    previousLevel = nextLevel;
+  }
+
+  // 3. Re-calculate SRS using the final rating and previous level
+  const { nextLevel, intervalDays } = calculateNextInterval(finalRating, previousLevel);
+  const now = new Date();
+  const nextRepTime = now.getTime() + intervalDays * 24 * 60 * 60 * 1000;
+
+  // 4. Update problem status and level
+  problem.status = "completed";
+  problem.repetitionLevel = nextLevel;
+  problem.nextRepetitionDate = new Date(nextRepTime).toISOString();
+
+  // 5. Update the snapshot entry fields
+  snap.rating = finalRating;
+  snap.notes = finalNotes;
+  snap.aiRating = aiRating;
+  snap.aiJustification = aiJustification;
+
+  // 6. Update Pattern Mastery scores
+  let outcome: "success" | "struggle" | "failure" = "success";
+  if (finalRating === 3) {
+    outcome = "struggle";
+  } else if (finalRating === 4) {
+    outcome = "failure";
+  }
+
+  // Detect patterns used from solution code (or snapshots)
+  const allRelatedPatterns = Array.from(new Set([...(problem.patterns || []), ...(snap.patternsDetected || [])]));
+  for (const pat of allRelatedPatterns) {
+    const currentScore = state.patternMastery[pat] ?? 0.0;
+    state.patternMastery[pat] = calculatePatternMastery(currentScore, outcome);
+  }
+
+  // 7. Update active streaks and last activity
+  const { currentStreak, bestStreak } = calculateStreaks(state);
+  state.currentStreak = currentStreak;
+  state.bestStreak = bestStreak;
+  state.lastActivityDate = new Date().toISOString();
+
+  // 8. Persist the updated state.json
+  await writeState(workspaceRoot, state);
+
+  return problem.nextRepetitionDate.slice(0, 10);
 }
 

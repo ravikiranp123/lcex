@@ -2384,6 +2384,9 @@ async function executeCode(
       vscode.window.showErrorMessage("Submit timed out.");
       return;
     }
+    // TODO (Phase 22): Fix the LeetCode submission status parsing so that runSuccess correctly
+    // reflects when a submission returns "Accepted" successfully. Once fixed, wire this to
+    // automatically trigger the rating review flow (vscode.commands.executeCommand("leetplus.completeProblem", problem.titleSlug)).
     const success = status.runSuccess === true;
     const heading = success
       ? "Accepted"

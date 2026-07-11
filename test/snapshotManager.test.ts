@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert";
-import { captureSnapshot, getSnapshots, getLatestSnapshot } from "../src/modules/SnapshotManager";
+import { captureSnapshot, getSnapshots, getLatestSnapshot, finalizeProblemRating } from "../src/modules/SnapshotManager";
 import { readState, writeState, initState } from "../src/modules/StateManager";
 import { recordHintAccess, getHintAccessCount } from "../src/modules/HintFile";
 import type { LPState } from "../src/modules/interface/LPState";
@@ -82,7 +82,7 @@ describe("SnapshotManager", () => {
     assert.strictEqual(getHintAccessCount("two-sum"), 0, "Hint count should be reset after capture");
 
     // Verify snapshot file creation
-    const snapshotBaseDir = path.join(workspaceRoot, ".leetplus", "snapshots", "1");
+    const snapshotBaseDir = path.join(workspaceRoot, ".leetplus", "snapshots", "two-sum");
     assert.ok(fs.existsSync(snapshotBaseDir), "Snapshots subdirectory should be created");
     
     const files = fs.readdirSync(snapshotBaseDir);
@@ -133,7 +133,7 @@ describe("SnapshotManager", () => {
       fs.writeFileSync(solutionFile, "function twoSum() {}", "utf-8");
 
       // Set up a mock diff patch file
-      const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", "1");
+      const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", "two-sum");
       fs.mkdirSync(diffsDir, { recursive: true });
       fs.writeFileSync(path.join(diffsDir, "test.patch"), "mock patch diff content", "utf-8");
 
@@ -155,7 +155,7 @@ describe("SnapshotManager", () => {
       await captureSnapshot(workspaceRoot, 1, "two-sum", solutionFile, 2, "notes");
 
       // Verify patch is in snapshots
-      const snapshotsDir = path.join(leetplusDir, "snapshots", "1");
+      const snapshotsDir = path.join(leetplusDir, "snapshots", "two-sum");
       const snapshotFiles = fs.readdirSync(snapshotsDir);
       assert.ok(snapshotFiles.includes("test.patch"), "test.patch should be copied to snapshots directory");
 
@@ -177,7 +177,7 @@ describe("SnapshotManager", () => {
       await captureSnapshot(workspaceRoot, 1, "two-sum", solutionFile, 2, "notes");
 
       // Verify patch is in snapshots
-      const snapshotsDir = path.join(leetplusDir, "snapshots", "1");
+      const snapshotsDir = path.join(leetplusDir, "snapshots", "two-sum");
       const snapshotFiles = fs.readdirSync(snapshotsDir);
       assert.ok(snapshotFiles.includes("test.patch"), "test.patch should be copied to snapshots directory");
 
@@ -200,12 +200,73 @@ describe("SnapshotManager", () => {
       await captureSnapshot(workspaceRoot, 1, "two-sum", solutionFile, 2, "notes");
 
       // Verify patch is NOT in snapshots
-      const snapshotsDir = path.join(leetplusDir, "snapshots", "1");
+      const snapshotsDir = path.join(leetplusDir, "snapshots", "two-sum");
       const snapshotFiles = fs.readdirSync(snapshotsDir);
       assert.strictEqual(snapshotFiles.includes("test.patch"), false, "test.patch should NOT be copied");
 
       // Verify diffs/1/ is deleted
       assert.strictEqual(fs.existsSync(diffsDir), false, "diffs directory should be deleted");
+    });
+  });
+
+  describe("finalizeProblemRating", () => {
+    it("should correctly update placeholder rating, re-calculate SRS, and set final notes/justification", async () => {
+      const workspaceRoot = path.join(TEST_DIR, "workspace-finalize");
+      fs.mkdirSync(workspaceRoot, { recursive: true });
+
+      const problems = [
+        {
+          id: 42,
+          title: "Trapping Rain Water",
+          slug: "trapping-rain-water",
+          difficulty: "Hard",
+          category: "Two Pointers",
+          status: "pending" as const,
+          scheduledDate: new Date().toISOString(),
+          nextRepetitionDate: null,
+          repetitionLevel: 0,
+          completionHistory: [],
+          patterns: ["Two Pointers"],
+        },
+      ];
+      await initState(workspaceRoot, "NeetCode 150", problems);
+
+      const solutionFile = path.join(workspaceRoot, "42.trapping-rain-water.ts");
+      fs.writeFileSync(solutionFile, "function trap() {}", "utf-8");
+
+      // Stage 1 snapshot capture
+      await captureSnapshot(workspaceRoot, 42, "trapping-rain-water", solutionFile, 2, "initial placeholder");
+
+      // Verify intermediate status
+      let state = await readState(workspaceRoot);
+      assert.strictEqual(state?.problems[0].completionHistory[0].rating, 2);
+      assert.strictEqual(state?.problems[0].repetitionLevel, 1);
+
+      // Finalize rating to 'Hard' (3)
+      const nextDate = await finalizeProblemRating(
+        workspaceRoot,
+        "trapping-rain-water",
+        3, // Hard
+        "actually it was quite hard and tricky",
+        3, // AI rating
+        "Used a lot of space and double pointer loops."
+      );
+
+      // Verifications
+      assert.ok(nextDate, "Should return a date string");
+      
+      state = await readState(workspaceRoot);
+      const problem = state?.problems[0];
+      assert.ok(problem);
+      assert.strictEqual(problem.status, "completed");
+      assert.strictEqual(problem.repetitionLevel, 0, "Level should decrease to 0 for Hard rating from 0");
+      assert.strictEqual(problem.completionHistory.length, 1);
+      
+      const snap = problem.completionHistory[0];
+      assert.strictEqual(snap.rating, 3);
+      assert.strictEqual(snap.notes, "actually it was quite hard and tricky");
+      assert.strictEqual(snap.aiRating, 3);
+      assert.strictEqual(snap.aiJustification, "Used a lot of space and double pointer loops.");
     });
   });
 });

@@ -129,7 +129,7 @@ async function handleDocumentChange(e: vscode.TextDocumentChangeEvent): Promise<
 
   // 7. Evaluate trigger modes
   const triggerSave = () => {
-    void saveDiff(workspaceRoot, docPath, problem.id, currentText);
+    void saveDiff(workspaceRoot, docPath, problem.slug || String(problem.id), currentText);
   };
 
   const mode = config.triggerMode;
@@ -152,7 +152,7 @@ async function handleDocumentChange(e: vscode.TextDocumentChangeEvent): Promise<
     if (!didTrigger) {
       const timer = setTimeout(() => {
         const freshText = doc.getText();
-        void saveDiff(workspaceRoot, docPath, problem.id, freshText);
+        void saveDiff(workspaceRoot, docPath, problem.slug || String(problem.id), freshText);
       }, config.debounceMs);
 
       debounceTimers.set(docPath, timer);
@@ -168,7 +168,7 @@ async function handleDocumentChange(e: vscode.TextDocumentChangeEvent): Promise<
 export async function saveDiff(
   workspaceRoot: string,
   docPath: string,
-  problemId: number,
+  slug: string,
   currentText: string
 ): Promise<void> {
   // Clear any active timers for this document since we are saving now
@@ -189,8 +189,8 @@ export async function saveDiff(
     fs.mkdirSync(tmpDir, { recursive: true });
   }
 
-  const baselineTmpPath = path.join(tmpDir, `baseline_${problemId}.tmp`);
-  const currentTmpPath = path.join(tmpDir, `current_${problemId}.tmp`);
+  const baselineTmpPath = path.join(tmpDir, `baseline_${slug}.tmp`);
+  const currentTmpPath = path.join(tmpDir, `current_${slug}.tmp`);
 
   try {
     fs.writeFileSync(baselineTmpPath, baselineText, "utf-8");
@@ -219,7 +219,7 @@ export async function saveDiff(
       patch = patch.replace(new RegExp(escapeRegExp(currentTmpPath), "g"), `b/${filename}`);
 
       // Create target diffs directory
-      const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", String(problemId));
+      const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", slug);
       if (!fs.existsSync(diffsDir)) {
         fs.mkdirSync(diffsDir, { recursive: true });
       }

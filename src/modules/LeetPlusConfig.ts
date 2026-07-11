@@ -20,7 +20,7 @@ export interface LeetPlusConfig {
   activeListSource?: ActiveListSource;
   theme?: "auto" | "leetcode-dark" | "none";
   defaultDirectory?: string;
-  fileNamePattern?: "id" | "slug";
+  fileNamePattern?: "id" | "slug" | "id.slug";
   language?: SupportedLanguage;
   internalApiUrl?: string;
   showProblemset?: boolean;
@@ -41,6 +41,8 @@ export interface LeetPlusConfig {
   agentPromptAnalyze?: string;
   /** Base prompt for "Explain my code" (selection appended). Only in LeetCode workspace. */
   agentPromptExplain?: string;
+  /** Prompt for AI auto-rating in background when completing problems. Only in LeetCode workspace. */
+  agentPromptAutoRate?: string;
   /** Rich webview vs plain text editor when opening a problem from sidebar lists. */
   problemViewMode?: "ui" | "text";
   /** Automatically apply LCEX font settings to the workspace when a .leetcode folder is present. */
@@ -65,6 +67,7 @@ export interface LeetPlusConfig {
   autoRating?: {
     enabled?: boolean;
     requireConfirmation?: boolean;
+    enableOllamaFallback?: boolean;
   };
   diffRetention?: "session" | "all" | "none";
 }
@@ -101,6 +104,8 @@ const DEFAULTS: Required<
     "Load **lp-dsa-analyze** and follow it. Analyze my current LeetCode solution implementation.",
   agentPromptExplain:
     "Explain my solution code for this LeetCode problem. Respond with: (1) Intuition — core idea in plain language; (2) Step-by-step dry run — walk through the algorithm with a small example, including loop/state changes; (3) Time and space complexity with brief justification. Do not rewrite the full solution unless needed for clarity.",
+  agentPromptAutoRate:
+    "Analyze the solution code correctness, complexity, and performance against constraints. Estimate a rating (0=Mastered, 1=Easy, 2=Good, 3=Hard, 4=Again for incomplete, incorrect, or placeholder code) and justification, responding in JSON format: { \"rating\": number, \"justification\": \"string\" }.",
   applyWorkspaceFontSettings: false,
   editorFontFamily: "Fira Code iScript",
   editorCursiveItalics: true,
@@ -119,7 +124,8 @@ const DEFAULTS: Required<
   },
   autoRating: {
     enabled: true,
-    requireConfirmation: true
+    requireConfirmation: true,
+    enableOllamaFallback: false
   },
   diffRetention: "session",
 };
@@ -354,8 +360,8 @@ export function parseLeetPlusConfig(workspaceFolders: readonly vscode.WorkspaceF
       if (parsed.defaultDirectory !== undefined && typeof parsed.defaultDirectory === "string") {
         merged.defaultDirectory = parsed.defaultDirectory;
       }
-      if (parsed.fileNamePattern !== undefined && ["id", "slug"].includes(String(parsed.fileNamePattern))) {
-        merged.fileNamePattern = parsed.fileNamePattern as "id" | "slug";
+      if (parsed.fileNamePattern !== undefined && ["id", "slug", "id.slug"].includes(String(parsed.fileNamePattern))) {
+        merged.fileNamePattern = parsed.fileNamePattern as "id" | "slug" | "id.slug";
       }
       if (parsed.language !== undefined && isSupportedLanguage(String(parsed.language))) {
         merged.language = parsed.language as SupportedLanguage;
@@ -449,7 +455,7 @@ export function getEffectiveConfig(
     activeListSource: leetcode.activeListSource ?? activeListSourceFromVs,
     theme: leetcode.theme ?? DEFAULTS.theme,
     defaultDirectory: leetcode.defaultDirectory ?? vscodeConfig.get<string>("defaultDirectory") ?? DEFAULTS.defaultDirectory,
-    fileNamePattern: (leetcode.fileNamePattern ?? vscodeConfig.get<string>("fileNamePattern") ?? DEFAULTS.fileNamePattern) as "id" | "slug",
+    fileNamePattern: (leetcode.fileNamePattern ?? vscodeConfig.get<string>("fileNamePattern") ?? DEFAULTS.fileNamePattern) as "id" | "slug" | "id.slug",
     language: (() => {
       const raw = leetcode.language ?? vscodeConfig.get<string>("language") ?? DEFAULTS.language;
       const s = String(raw);
@@ -473,6 +479,7 @@ export function getEffectiveConfig(
     agentPromptHint: leetcode.agentPromptHint ?? DEFAULTS.agentPromptHint,
     agentPromptAnalyze: leetcode.agentPromptAnalyze ?? DEFAULTS.agentPromptAnalyze,
     agentPromptExplain: leetcode.agentPromptExplain ?? DEFAULTS.agentPromptExplain,
+    agentPromptAutoRate: leetcode.agentPromptAutoRate ?? DEFAULTS.agentPromptAutoRate,
     problemViewMode: normalizeProblemViewMode(
       leetcode.problemViewMode ?? vscodeConfig.get<string>("problemViewMode")
     ),

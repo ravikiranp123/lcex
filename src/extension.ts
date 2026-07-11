@@ -121,12 +121,16 @@ import {
   updateSRSModeInConfig,
 } from "./modules/LeetPlusConfig";
 import { LeetPlusConfigEditorProvider } from "./modules/LeetPlusConfigEditor";
-import { initState } from "./modules/StateManager";
+import { initState, readState } from "./modules/StateManager";
 import { initStatusBar } from "./modules/StatusBarManager";
 import { initDiffLogger } from "./modules/DiffLogger";
 import { DailyPlanProvider } from "./modules/DailyPlanProvider";
 import { switchStudyPlan } from "./modules/StudyPlanSwitcher";
 import { initProblemTimer, disposeProblemTimer, TIMER_BY_DAY_KEY } from "./modules/ProblemTimer";
+import { captureSnapshot, finalizeProblemRating } from "./modules/SnapshotManager";
+import { estimateRating } from "./modules/HeuristicRater";
+import { computeAIRating } from "./modules/AIRater";
+import { RatingReviewPanel } from "./modules/RatingReviewPanel";
 import {
   addBonusXp,
   awardXpForFirstSolve,
@@ -3747,10 +3751,7 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   }
   webviewOptsHolder.current = {
     onMarkSolved: async (titleSlug) => {
-      setProblemStatus(globalState, titleSlug, "solved");
-      await handleProblemSolved(context, titleSlug, getProvider);
-      refreshAllProblemViews();
-      void refreshInterviewHubIfOpen(context, getProvider);
+      void vscode.commands.executeCommand("leetplus.completeProblem", titleSlug);
     },
     onMarkInterviewSolved: async (titleSlug) => {
       await recordInterviewSolve(globalState, titleSlug);
@@ -4298,6 +4299,297 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         setProblemStatus(globalState, node.item.titleSlug, undefined);
         refreshAllProblemViews();
       }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("leetplus.completeProblem", async (titleSlug?: string) => {
+      let slug = titleSlug;
+      if (!slug) {
+        const resolved = await resolveProblemContextForExplain(context);
+        slug = resolved?.titleSlug;
+      }
+      if (!slug) {
+        void vscode.window.showWarningMessage("No active problem found to complete.");
+        return;
+      }
+
+      const folders = vscode.workspace.workspaceFolders ?? [];
+      if (folders.length === 0) {
+        void vscode.window.showWarningMessage("No active workspace found.");
+        return;
+      }
+      const workspaceRoot = folders[0].uri.fsPath;
+
+      // Load state
+      const state = await readState(workspaceRoot);
+      if (!state) {
+        void vscode.window.showWarningMessage("No active study plan or state not loaded.");
+        return;
+      }
+
+      const problem = state.problems.find((p) => p.slug === slug);
+      if (!problem) {
+        void vscode.window.showWarningMessage(`Problem '${slug}' not found in active study plan.`);
+        return;
+      }
+
+      // Resolve solution file
+      let leetcodeId = getCachedProblemId(slug);
+      if (!leetcodeId) {
+        try {
+          const fetched = await getProvider().getProblem(slug);
+          leetcodeId = fetched?.id;
+        } catch {
+          // ignore
+        }
+      }
+      const lookupId = leetcodeId || String(problem.id);
+
+      const paths = Database.getSolutionPathSet(undefined, lookupId, slug);
+      const { path: solutionPath, exists } = await Database.resolveSolutionFilePathForOpen(
+        undefined,
+        lookupId,
+        slug
+      );
+
+
+
+      if (!exists) {
+        void vscode.window.showWarningMessage(`No solution file on disk found for ${problem.title}.`);
+        return;
+      }
+
+      const sourceCode = fs.readFileSync(solutionPath, "utf-8");
+      const ext = path.extname(solutionPath);
+      const lang = languageFromFileExtension(ext);
+      if (!lang) return;
+
+      // Stage 1: Immediate snapshot capture (0ms)
+      let snap;
+      try {
+        snap = await captureSnapshot(
+          workspaceRoot,
+          problem.id,
+          slug,
+          solutionPath,
+          2, // default rating
+          "" // default notes
+        );
+      } catch (err: any) {
+        void vscode.window.showErrorMessage(`Failed to capture initial snapshot: ${err.message || String(err)}`);
+        return;
+      }
+
+      // Stage 3 (UI): Open Rating Review Panel immediately in loading state
+      const panel = RatingReviewPanel.createOrShow(
+        context.extensionUri,
+        {
+          title: problem.title,
+          slug: slug,
+          recommendedRating: -1, // loader flag
+          justification: "",
+          source: "ai"
+        },
+        async (rating, notes) => {
+          try {
+            const nextDate = await finalizeProblemRating(
+              workspaceRoot,
+              slug,
+              rating,
+              notes,
+              computedRating,
+              computedJustification
+            );
+
+            // Refresh providers & views
+            dailyPlanProvider.refresh();
+            refreshAllProblemViews();
+
+            void vscode.window.showInformationMessage(`Scheduled for review on: ${nextDate}`);
+          } catch (err: any) {
+            void vscode.window.showErrorMessage(`Failed to finalize rating: ${err.message || String(err)}`);
+          }
+        },
+        () => {
+          // Clear any existing evaluation file
+          const evalFilePath = path.join(workspaceRoot, ".leetplus", "ai_evaluation.json");
+          if (fs.existsSync(evalFilePath)) {
+            try { fs.unlinkSync(evalFilePath); } catch {}
+          }
+
+          // Show loader state in the UI
+          if (RatingReviewPanel.currentPanel) {
+            RatingReviewPanel.currentPanel.updateData({
+              title: problem.title,
+              slug: slug,
+              recommendedRating: -1,
+              justification: "Waiting for Antigravity Agent evaluation in chat...",
+              source: "ai"
+            });
+          }
+
+          // Read session patches
+          const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", slug);
+          let sessionPatches: string[] = [];
+          if (fs.existsSync(diffsDir)) {
+            try {
+              const files = fs.readdirSync(diffsDir);
+              for (const file of files) {
+                if (file.endsWith(".patch")) {
+                  const content = fs.readFileSync(path.join(diffsDir, file), "utf-8");
+                  sessionPatches.push(content);
+                }
+              }
+            } catch {}
+          }
+
+          // Build prompt
+          const prompt = `Please review my solution for the problem "${problem.title}" (${slug}).
+
+Here is the context:
+- Solution Code:
+\`\`\`
+${sourceCode}
+\`\`\`
+- Time spent: ${snap.timeSpentSeconds} seconds
+- Hints used: ${snap.hintsUsed}
+- Diff patches: ${JSON.stringify(sessionPatches)}
+
+Please evaluate the solution's approach, complexity, and cleanliness. Decide on a rating from 0 to 4 (0=Mastered, 1=Easy, 2=Good, 3=Hard, 4=Again).
+Write your evaluation to the file "${evalFilePath}" with the following JSON structure:
+{
+  "rating": <number>,
+  "justification": "<your 1-2 sentence explanation>"
+}
+Ensure the file has valid JSON and no markdown formatting in its content. After writing the file, explain your analysis here in the chat.`;
+
+          // Setup watcher
+          const watcher = vscode.workspace.createFileSystemWatcher(
+            new vscode.RelativePattern(path.join(workspaceRoot, ".leetplus"), "ai_evaluation.json")
+          );
+
+          const onDidCreateOrChange = async (uri: vscode.Uri) => {
+            if (!RatingReviewPanel.currentPanel) {
+              watcher.dispose();
+              return;
+            }
+            try {
+              if (fs.existsSync(uri.fsPath)) {
+                const content = fs.readFileSync(uri.fsPath, "utf-8").trim();
+                if (content) {
+                  const parsed = JSON.parse(content);
+                  if (typeof parsed.rating === "number" && typeof parsed.justification === "string") {
+                    computedRating = parsed.rating;
+                    computedJustification = parsed.justification;
+                    computedSource = "ai";
+
+                    if (RatingReviewPanel.currentPanel) {
+                      RatingReviewPanel.currentPanel.updateData({
+                        title: problem.title,
+                        slug: slug,
+                        recommendedRating: computedRating,
+                        justification: computedJustification,
+                        source: "ai"
+                      });
+                    }
+
+                    watcher.dispose();
+                    try { fs.unlinkSync(uri.fsPath); } catch {}
+                  }
+                }
+              }
+            } catch {}
+          };
+
+          watcher.onDidCreate(onDidCreateOrChange);
+          watcher.onDidChange(onDidCreateOrChange);
+
+          // Trigger prompt opening
+          void openChatWithPrompt(prompt);
+        }
+      );
+
+      // Local variables to hold recommendation results
+      let computedRating = 2;
+      let computedJustification = "";
+      let computedSource: "ai" | "heuristic" = "ai";
+
+      // Stage 2: 2s debounce/delay before AI/heuristic invocation
+      setTimeout(async () => {
+        try {
+          // Read session patches
+          const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", slug);
+          let sessionPatches: string[] = [];
+          if (fs.existsSync(diffsDir)) {
+            try {
+              const files = fs.readdirSync(diffsDir);
+              for (const file of files) {
+                if (file.endsWith(".patch")) {
+                  const content = fs.readFileSync(path.join(diffsDir, file), "utf-8");
+                  sessionPatches.push(content);
+                }
+              }
+            } catch {}
+          }
+
+          // Build AI Prompt
+          const config = getEffectiveConfig(folders);
+          const basePrompt = config.agentPromptAutoRate || "Analyze the solution code complexity and performance against constraints, then estimate rating and justification in JSON format: { \"rating\": 2, \"justification\": \"Complexity matches bounds.\" }.";
+
+          const finalPrompt = `${basePrompt}
+Here is the context:
+- Problem: ${problem.title} (${slug})
+- Solution Code:
+\`\`\`
+${sourceCode}
+\`\`\`
+- Time spent: ${snap.timeSpentSeconds} seconds
+- Hints used: ${snap.hintsUsed}
+- Patterns detected: ${JSON.stringify(snap.patternsDetected)}
+- Previous attempts: ${JSON.stringify(problem.completionHistory.slice(0, -1).map(h => ({ date: h.date, rating: h.rating })))}
+- Diff patches: ${JSON.stringify(sessionPatches)}
+
+Please return a JSON object with keys "rating" (0-4) and "justification" (1-2 sentences explaining why).`;
+
+          try {
+            // Attempt AI Rating first with 5-second timeout (handled inside computeAIRating)
+            const aiResult = await computeAIRating(finalPrompt, config.autoRating?.enableOllamaFallback ?? false);
+            computedRating = aiResult.rating;
+            computedJustification = aiResult.justification;
+            computedSource = "ai";
+          } catch (aiErr: any) {
+            Logger.log(`[completeProblem] AI Rating failed or timed out. Falling back to Heuristic Rater.`);
+            Logger.log(`  → Error: ${aiErr?.message || String(aiErr)}`);
+            // Fallback to Heuristic Rater
+            const fetchedProblem = await getProvider().getProblem(slug);
+            const description = fetchedProblem?.content || "";
+            const heuristic = await estimateRating(
+              workspaceRoot,
+              slug,
+              sourceCode,
+              lang,
+              description
+            );
+            computedRating = heuristic.rating;
+            computedJustification = heuristic.justification;
+            computedSource = "heuristic";
+          }
+
+          // Update Panel UI if still open
+          if (RatingReviewPanel.currentPanel) {
+            RatingReviewPanel.currentPanel.updateData({
+              title: problem.title,
+              slug: slug,
+              recommendedRating: computedRating,
+              justification: computedJustification,
+              source: computedSource
+            });
+          }
+        } catch (err: any) {
+          console.error("Staged rating background process failed:", err);
+        }
+      }, 2000);
     })
   );
   } catch (e) {

@@ -74,7 +74,12 @@ export function getFileName(problemId: string, titleSlug: string): string {
   const pattern = config.fileNamePattern ?? "id";
   const lang = config.language ?? "typescript";
   const ext = getLanguageStrategy(lang).fileExtension;
-  const base = pattern === "slug" ? titleSlug : problemId;
+  const base =
+    pattern === "id.slug"
+      ? `${problemId}.${titleSlug}`
+      : pattern === "slug"
+      ? titleSlug
+      : problemId;
   return solutionFileBaseName(lang, base) + ext;
 }
 
@@ -88,7 +93,7 @@ export function getSolutionPathSet(
   solutionBaseDir?: string,
   attemptHex?: string,
   language?: SupportedLanguage
-): { idPath: string; slugPath: string; preferredNewPath: string } {
+): { idPath: string; slugPath: string; idSlugPath: string; preferredNewPath: string } {
   const targetDir =
     typeof solutionBaseDir === "string" && solutionBaseDir.trim()
       ? path.resolve(solutionBaseDir.trim())
@@ -104,8 +109,9 @@ export function getSolutionPathSet(
       : "";
   const idPath = path.join(targetDir, solutionFileBaseName(lang, problemId, suffix) + ext);
   const slugPath = path.join(targetDir, solutionFileBaseName(lang, titleSlug, suffix) + ext);
-  const preferredNewPath = pattern === "slug" ? slugPath : idPath;
-  return { idPath, slugPath, preferredNewPath };
+  const idSlugPath = path.join(targetDir, solutionFileBaseName(lang, `${problemId}.${titleSlug}`, suffix) + ext);
+  const preferredNewPath = pattern === "id.slug" ? idSlugPath : pattern === "slug" ? slugPath : idPath;
+  return { idPath, slugPath, idSlugPath, preferredNewPath };
 }
 
 /**
@@ -120,7 +126,7 @@ export async function resolveSolutionFilePathForOpen(
   attemptHex?: string,
   language?: SupportedLanguage
 ): Promise<{ path: string; exists: boolean }> {
-  const { idPath, slugPath, preferredNewPath } = getSolutionPathSet(
+  const { idPath, slugPath, idSlugPath, preferredNewPath } = getSolutionPathSet(
     baseUri,
     problemId,
     titleSlug,
@@ -132,6 +138,7 @@ export async function resolveSolutionFilePathForOpen(
   const pattern = getEffectiveConfig(folders).fileNamePattern ?? "id";
   let idExists = false;
   let slugExists = false;
+  let idSlugExists = false;
   try {
     await vscode.workspace.fs.stat(vscode.Uri.file(idPath));
     idExists = true;
@@ -144,11 +151,23 @@ export async function resolveSolutionFilePathForOpen(
   } catch {
     /* missing */
   }
-  if (idExists && slugExists) {
-    return { path: pattern === "slug" ? slugPath : idPath, exists: true };
+  try {
+    await vscode.workspace.fs.stat(vscode.Uri.file(idSlugPath));
+    idSlugExists = true;
+  } catch {
+    /* missing */
   }
-  if (idExists) return { path: idPath, exists: true };
+
+  // If the preferred one exists, use it
+  if (pattern === "id.slug" && idSlugExists) return { path: idSlugPath, exists: true };
+  if (pattern === "slug" && slugExists) return { path: slugPath, exists: true };
+  if (pattern === "id" && idExists) return { path: idPath, exists: true };
+
+  // Otherwise, fallback to whichever exists
+  if (idSlugExists) return { path: idSlugPath, exists: true };
   if (slugExists) return { path: slugPath, exists: true };
+  if (idExists) return { path: idPath, exists: true };
+
   return { path: preferredNewPath, exists: false };
 }
 
@@ -159,7 +178,7 @@ export function getHintFilePathSet(
   titleSlug: string,
   solutionBaseDir?: string,
   attemptHex?: string
-): { idPath: string; slugPath: string; preferredNewPath: string } {
+): { idPath: string; slugPath: string; idSlugPath: string; preferredNewPath: string } {
   const targetDir =
     typeof solutionBaseDir === "string" && solutionBaseDir.trim()
       ? path.resolve(solutionBaseDir.trim())
@@ -172,8 +191,9 @@ export function getHintFilePathSet(
       : "";
   const idPath = path.join(targetDir, `${problemId}${suffix}.hint`);
   const slugPath = path.join(targetDir, `${titleSlug}${suffix}.hint`);
-  const preferredNewPath = pattern === "slug" ? slugPath : idPath;
-  return { idPath, slugPath, preferredNewPath };
+  const idSlugPath = path.join(targetDir, `${problemId}.${titleSlug}${suffix}.hint`);
+  const preferredNewPath = pattern === "id.slug" ? idSlugPath : pattern === "slug" ? slugPath : idPath;
+  return { idPath, slugPath, idSlugPath, preferredNewPath };
 }
 
 /** Picks `*.hint` path using the same rules as solution files. */
@@ -184,7 +204,7 @@ export async function resolveHintFilePathForOpen(
   solutionBaseDir?: string,
   attemptHex?: string
 ): Promise<{ path: string; exists: boolean }> {
-  const { idPath, slugPath, preferredNewPath } = getHintFilePathSet(
+  const { idPath, slugPath, idSlugPath, preferredNewPath } = getHintFilePathSet(
     baseUri,
     problemId,
     titleSlug,
@@ -195,6 +215,7 @@ export async function resolveHintFilePathForOpen(
   const pattern = getEffectiveConfig(folders).fileNamePattern ?? "id";
   let idExists = false;
   let slugExists = false;
+  let idSlugExists = false;
   try {
     await vscode.workspace.fs.stat(vscode.Uri.file(idPath));
     idExists = true;
@@ -207,10 +228,22 @@ export async function resolveHintFilePathForOpen(
   } catch {
     /* missing */
   }
-  if (idExists && slugExists) {
-    return { path: pattern === "slug" ? slugPath : idPath, exists: true };
+  try {
+    await vscode.workspace.fs.stat(vscode.Uri.file(idSlugPath));
+    idSlugExists = true;
+  } catch {
+    /* missing */
   }
-  if (idExists) return { path: idPath, exists: true };
+
+  // If preferred exists, use it
+  if (pattern === "id.slug" && idSlugExists) return { path: idSlugPath, exists: true };
+  if (pattern === "slug" && slugExists) return { path: slugPath, exists: true };
+  if (pattern === "id" && idExists) return { path: idPath, exists: true };
+
+  // Otherwise fallback to whichever exists
+  if (idSlugExists) return { path: idSlugPath, exists: true };
   if (slugExists) return { path: slugPath, exists: true };
+  if (idExists) return { path: idPath, exists: true };
+
   return { path: preferredNewPath, exists: false };
 }

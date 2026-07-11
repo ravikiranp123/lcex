@@ -79,8 +79,8 @@ export function parseConfig(text: string): LeetPlusConfig {
       config.theme = parsed.theme as LeetPlusConfig["theme"];
     }
     if (typeof parsed.defaultDirectory === "string") config.defaultDirectory = parsed.defaultDirectory;
-    if (["id", "slug"].includes(String(parsed.fileNamePattern))) {
-      config.fileNamePattern = parsed.fileNamePattern as "id" | "slug";
+    if (["id", "slug", "id.slug"].includes(String(parsed.fileNamePattern))) {
+      config.fileNamePattern = parsed.fileNamePattern as "id" | "slug" | "id.slug";
     }
     if (parsed.language !== undefined && isSupportedLanguage(String(parsed.language))) {
       config.language = parsed.language as SupportedLanguage;
@@ -401,6 +401,7 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
       <select id="fileNamePattern">
         <option value="id" ${config.fileNamePattern === "id" ? "selected" : ""}>ID (e.g. 167.ts)</option>
         <option value="slug" ${config.fileNamePattern === "slug" ? "selected" : ""}>Slug (e.g. two-sum.ts)</option>
+        <option value="id.slug" ${config.fileNamePattern === "id.slug" ? "selected" : ""}>ID.Slug (e.g. 167.two-sum.ts)</option>
       </select>
     </div>
     <div class="field">

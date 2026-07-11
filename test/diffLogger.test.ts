@@ -96,7 +96,7 @@ describe("DiffLogger", () => {
       await vscode._fireDidChangeTextDocument(mockEventInit);
 
       // Verify that no diff is generated on first load (since it just initializes the baseline)
-      const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", "42");
+      const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", "trapping-rain-water");
       assert.strictEqual(fs.existsSync(diffsDir), false);
 
       // Simulate a small change (< threshold = 20 characters)
