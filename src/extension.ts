@@ -4531,8 +4531,9 @@ Write your evaluation to the file "${evalFilePath}" with the following JSON stru
                   if (match) {
                     const parsed = JSON.parse(match[0]);
                     if (typeof parsed.rating === "number" && typeof parsed.justification === "string") {
-                      computedRating = parsed.rating;
-                      computedJustification = parsed.justification;
+                      const adjusted = applyHintPenaltyToRating(parsed.rating, parsed.justification, snap.hintsUsed);
+                      computedRating = adjusted.rating;
+                      computedJustification = adjusted.justification;
                       computedSource = "ai";
 
                       if (RatingReviewPanel.currentPanel) {
@@ -4615,8 +4616,9 @@ Please return a JSON object with keys "rating" (0-4) and "justification" (1-2 se
           try {
             // Attempt AI Rating first with 5-second timeout (handled inside computeAIRating)
             const aiResult = await computeAIRating(finalPrompt, config.autoRating?.enableOllamaFallback ?? false);
-            computedRating = aiResult.rating;
-            computedJustification = aiResult.justification;
+            const adjusted = applyHintPenaltyToRating(aiResult.rating, aiResult.justification, snap.hintsUsed);
+            computedRating = adjusted.rating;
+            computedJustification = adjusted.justification;
             computedSource = "ai";
           } catch (aiErr: any) {
             Logger.log(`[completeProblem] AI Rating failed or timed out. Falling back to Heuristic Rater.`);
@@ -4688,4 +4690,26 @@ Please return a JSON object with keys "rating" (0-4) and "justification" (1-2 se
 export function deactivate(): Thenable<void> {
   disposeInlineDecorationTypes();
   return Promise.resolve(flushAnalytics()).catch(() => {});
+}
+
+function applyHintPenaltyToRating(rating: number, justification: string, hintsUsed: number): { rating: number; justification: string } {
+  let adjustedRating = rating;
+  let adjustedJustification = justification;
+
+  if (hintsUsed >= 3) {
+    if (adjustedRating === 0 || adjustedRating === 1) {
+      adjustedRating = 2;
+      adjustedJustification += " (Capped to 2 (Good) due to 3+ hints accessed)";
+    }
+  } else if (hintsUsed > 0) {
+    if (adjustedRating === 0) {
+      adjustedRating = 1;
+      adjustedJustification += " (Adjusted to 1 (Easy) due to hint usage)";
+    } else if (adjustedRating === 1) {
+      adjustedRating = 2;
+      adjustedJustification += " (Adjusted to 2 (Good) due to hint usage)";
+    }
+  }
+
+  return { rating: adjustedRating, justification: adjustedJustification };
 }
