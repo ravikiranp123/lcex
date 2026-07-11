@@ -326,10 +326,64 @@ export async function ensureCursorLeetPlusPluginInstalled(_context: vscode.Exten
     const agyDsaAnalyzeSkillPath = path.join(wsRoot, ".agents", "skills", "lp-dsa-analyze", "SKILL.md");
     const agyRecapPlannerSkillPath = path.join(wsRoot, ".agents", "skills", "lp-recap-planner", "SKILL.md");
     
-    await writeIfDifferent(agyInterviewSkillPath, SKILL_MD);
-    await writeIfDifferent(agyDsaHintSkillPath, DSA_HINT_SKILL_MD);
-    await writeIfDifferent(agyDsaAnalyzeSkillPath, DSA_ANALYZE_SKILL_MD);
-    await writeIfDifferent(agyRecapPlannerSkillPath, RECAP_PLANNER_SKILL_MD);
+    const skillsToCheck = [
+      { path: agyInterviewSkillPath, name: "lp-interview-generator", content: SKILL_MD },
+      { path: agyDsaHintSkillPath, name: "lp-dsa-hint", content: DSA_HINT_SKILL_MD },
+      { path: agyDsaAnalyzeSkillPath, name: "lp-dsa-analyze", content: DSA_ANALYZE_SKILL_MD },
+      { path: agyRecapPlannerSkillPath, name: "lp-recap-planner", content: RECAP_PLANNER_SKILL_MD }
+    ];
+
+    const modifiedSkills: typeof skillsToCheck = [];
+    for (const sk of skillsToCheck) {
+      try {
+        const existing = await fs.readFile(sk.path, "utf-8");
+        if (existing !== sk.content) {
+          modifiedSkills.push(sk);
+        }
+      } catch {
+        try {
+          await fs.mkdir(path.dirname(sk.path), { recursive: true });
+          await fs.writeFile(sk.path, sk.content, "utf-8");
+        } catch (err) {
+          Logger.logError(`Could not initialize default skill ${sk.name}`, err);
+        }
+      }
+    }
+
+    if (modifiedSkills.length > 0) {
+      const names = modifiedSkills.map(s => s.name).join(", ");
+      const choice = await vscode.window.showInformationMessage(
+        `LeetPlus has updated default agent skills. Your workspace has custom modifications to: ${names}. Would you like to update?`,
+        "Overwrite",
+        "Backup & Overwrite",
+        "Skip"
+      );
+
+      if (choice === "Overwrite") {
+        for (const sk of modifiedSkills) {
+          try {
+            await fs.writeFile(sk.path, sk.content, "utf-8");
+          } catch (err) {
+            Logger.logError(`Could not overwrite skill ${sk.name}`, err);
+          }
+        }
+      } else if (choice === "Backup & Overwrite") {
+        for (const sk of modifiedSkills) {
+          try {
+            const bakPath = `${sk.path}.bak`;
+            await fs.copyFile(sk.path, bakPath);
+          } catch (err) {
+            Logger.logError(`Could not backup skill ${sk.name}`, err);
+          }
+          try {
+            await fs.writeFile(sk.path, sk.content, "utf-8");
+          } catch (err) {
+            Logger.logError(`Could not overwrite skill ${sk.name}`, err);
+          }
+        }
+        vscode.window.showInformationMessage("Successfully updated skills and backed up existing modifications.");
+      }
+    }
 
     // VS Code Copilot
     const copilotInstructionsPath = path.join(wsRoot, ".github", "copilot-instructions.md");
