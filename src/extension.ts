@@ -4381,71 +4381,79 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
         return;
       }
 
-      // Stage 3 (UI): Open Rating Review Panel immediately in loading state
-      const panel = RatingReviewPanel.createOrShow(
-        context.extensionUri,
-        {
-          title: problem.title,
-          slug: slug,
-          recommendedRating: -1, // loader flag
-          justification: "",
-          source: "ai"
-        },
-        async (rating, notes) => {
-          try {
-            const nextDate = await finalizeProblemRating(
-              workspaceRoot,
-              slug,
-              rating,
-              notes,
-              computedRating,
-              computedJustification
-            );
+      const config = getEffectiveConfig(folders);
+      const requireConfirmation = config.autoRating?.requireConfirmation !== false;
 
-            // Refresh providers & views
-            dailyPlanProvider.refresh();
-            refreshAllProblemViews();
+      // Local variables to hold recommendation results
+      let computedRating = 2;
+      let computedJustification = "";
+      let computedSource: "ai" | "heuristic" = "ai";
 
-            void vscode.window.showInformationMessage(`Scheduled for review on: ${nextDate}`);
-          } catch (err: any) {
-            void vscode.window.showErrorMessage(`Failed to finalize rating: ${err.message || String(err)}`);
-          }
-        },
-        () => {
-          // Clear any existing evaluation file
-          const evalFilePath = path.join(workspaceRoot, ".leetplus", "ai_evaluation.json");
-          if (fs.existsSync(evalFilePath)) {
-            try { fs.unlinkSync(evalFilePath); } catch {}
-          }
-
-          // Show loader state in the UI
-          if (RatingReviewPanel.currentPanel) {
-            RatingReviewPanel.currentPanel.updateData({
-              title: problem.title,
-              slug: slug,
-              recommendedRating: -1,
-              justification: "Waiting for Antigravity Agent evaluation in chat...",
-              source: "ai"
-            });
-          }
-
-          // Read session patches
-          const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", slug);
-          let sessionPatches: string[] = [];
-          if (fs.existsSync(diffsDir)) {
+      const openConfirmationPanel = () => {
+        RatingReviewPanel.createOrShow(
+          context.extensionUri,
+          {
+            title: problem.title,
+            slug: slug,
+            recommendedRating: computedRating,
+            justification: computedJustification,
+            source: computedSource
+          },
+          async (rating, notes) => {
             try {
-              const files = fs.readdirSync(diffsDir);
-              for (const file of files) {
-                if (file.endsWith(".patch")) {
-                  const content = fs.readFileSync(path.join(diffsDir, file), "utf-8");
-                  sessionPatches.push(content);
-                }
-              }
-            } catch {}
-          }
+              const nextDate = await finalizeProblemRating(
+                workspaceRoot,
+                slug,
+                rating,
+                notes,
+                computedRating,
+                computedJustification
+              );
 
-          // Build prompt
-          const prompt = `Please review my solution for the problem "${problem.title}" (${slug}).
+              // Refresh providers & views
+              dailyPlanProvider.refresh();
+              refreshAllProblemViews();
+
+              void vscode.window.showInformationMessage(`Scheduled for review on: ${nextDate}`);
+            } catch (err: any) {
+              void vscode.window.showErrorMessage(`Failed to finalize rating: ${err.message || String(err)}`);
+            }
+          },
+          () => {
+            // Clear any existing evaluation file
+            const evalFilePath = path.join(workspaceRoot, ".leetplus", "ai_evaluation.json");
+            if (fs.existsSync(evalFilePath)) {
+              try { fs.unlinkSync(evalFilePath); } catch {}
+            }
+
+            // Show loader state in the UI
+            if (RatingReviewPanel.currentPanel) {
+              RatingReviewPanel.currentPanel.updateData({
+                title: problem.title,
+                slug: slug,
+                recommendedRating: -1,
+                justification: "Waiting for Antigravity Agent evaluation in chat...",
+                source: "ai"
+              });
+            }
+
+            // Read session patches
+            const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", slug);
+            let sessionPatches: string[] = [];
+            if (fs.existsSync(diffsDir)) {
+              try {
+                const files = fs.readdirSync(diffsDir);
+                for (const file of files) {
+                  if (file.endsWith(".patch")) {
+                    const content = fs.readFileSync(path.join(diffsDir, file), "utf-8");
+                    sessionPatches.push(content);
+                  }
+                }
+              } catch {}
+            }
+
+            // Build prompt
+            const prompt = `Please review my solution for the problem "${problem.title}" (${slug}).
 
 Here is the context:
 - Solution Code:
@@ -4458,64 +4466,71 @@ ${sourceCode}
 
 Please evaluate the solution's approach, complexity, and cleanliness. Decide on a rating from 0 to 4 (0=Mastered, 1=Easy, 2=Good, 3=Hard, 4=Again).
 Write your evaluation to the file "${evalFilePath}" with the following JSON structure:
+\`\`\`json
 {
   "rating": <number>,
-  "justification": "<your 1-2 sentence explanation>"
+  "justification": "<string>"
 }
-Ensure the file has valid JSON and no markdown formatting in its content. After writing the file, explain your analysis here in the chat.`;
+\`\`\``;
 
-          // Setup watcher
-          const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(path.join(workspaceRoot, ".leetplus"), "ai_evaluation.json")
-          );
+            const watcher = vscode.workspace.createFileSystemWatcher(
+              new vscode.RelativePattern(workspaceRoot, ".leetplus/ai_evaluation.json")
+            );
 
-          const onDidCreateOrChange = async (uri: vscode.Uri) => {
-            if (!RatingReviewPanel.currentPanel) {
-              watcher.dispose();
-              return;
-            }
-            try {
-              if (fs.existsSync(uri.fsPath)) {
-                const content = fs.readFileSync(uri.fsPath, "utf-8").trim();
-                if (content) {
-                  const parsed = JSON.parse(content);
-                  if (typeof parsed.rating === "number" && typeof parsed.justification === "string") {
-                    computedRating = parsed.rating;
-                    computedJustification = parsed.justification;
-                    computedSource = "ai";
+            const onDidCreateOrChange = async (uri: vscode.Uri) => {
+              try {
+                if (fs.existsSync(uri.fsPath)) {
+                  const content = fs.readFileSync(uri.fsPath, "utf-8");
+                  const match = content.match(/\{[\s\S]*?\}/);
+                  if (match) {
+                    const parsed = JSON.parse(match[0]);
+                    if (typeof parsed.rating === "number" && typeof parsed.justification === "string") {
+                      computedRating = parsed.rating;
+                      computedJustification = parsed.justification;
+                      computedSource = "ai";
 
-                    if (RatingReviewPanel.currentPanel) {
-                      RatingReviewPanel.currentPanel.updateData({
-                        title: problem.title,
-                        slug: slug,
-                        recommendedRating: computedRating,
-                        justification: computedJustification,
-                        source: "ai"
-                      });
+                      if (RatingReviewPanel.currentPanel) {
+                        RatingReviewPanel.currentPanel.updateData({
+                          title: problem.title,
+                          slug: slug,
+                          recommendedRating: computedRating,
+                          justification: computedJustification,
+                          source: "ai"
+                        });
+                      }
+
+                      watcher.dispose();
+                      try { fs.unlinkSync(uri.fsPath); } catch {}
                     }
-
-                    watcher.dispose();
-                    try { fs.unlinkSync(uri.fsPath); } catch {}
                   }
                 }
-              }
-            } catch {}
-          };
+              } catch {}
+            };
 
-          watcher.onDidCreate(onDidCreateOrChange);
-          watcher.onDidChange(onDidCreateOrChange);
+            watcher.onDidCreate(onDidCreateOrChange);
+            watcher.onDidChange(onDidCreateOrChange);
 
-          // Trigger prompt opening
-          void openChatWithPrompt(prompt);
+            // Trigger prompt opening
+            void openChatWithPrompt(prompt);
+          }
+        );
+      };
+
+      if (requireConfirmation) {
+        // Stage 3 (UI): Open Rating Review Panel immediately in loading state
+        openConfirmationPanel();
+        if (RatingReviewPanel.currentPanel) {
+          RatingReviewPanel.currentPanel.updateData({
+            title: problem.title,
+            slug: slug,
+            recommendedRating: -1, // loader flag
+            justification: "Analyzing solution...",
+            source: "ai"
+          });
         }
-      );
+      }
 
-      // Local variables to hold recommendation results
-      let computedRating = 2;
-      let computedJustification = "";
-      let computedSource: "ai" | "heuristic" = "ai";
-
-      // Stage 2: 2s debounce/delay before AI/heuristic invocation
+      // Stage 2: 2s delay before AI/heuristic invocation
       setTimeout(async () => {
         try {
           // Read session patches
@@ -4534,7 +4549,6 @@ Ensure the file has valid JSON and no markdown formatting in its content. After 
           }
 
           // Build AI Prompt
-          const config = getEffectiveConfig(folders);
           const basePrompt = config.agentPromptAutoRate || "Analyze the solution code complexity and performance against constraints, then estimate rating and justification in JSON format: { \"rating\": 2, \"justification\": \"Complexity matches bounds.\" }.";
 
           const finalPrompt = `${basePrompt}
@@ -4576,15 +4590,39 @@ Please return a JSON object with keys "rating" (0-4) and "justification" (1-2 se
             computedSource = "heuristic";
           }
 
-          // Update Panel UI if still open
-          if (RatingReviewPanel.currentPanel) {
-            RatingReviewPanel.currentPanel.updateData({
-              title: problem.title,
-              slug: slug,
-              recommendedRating: computedRating,
-              justification: computedJustification,
-              source: computedSource
-            });
+          if (!requireConfirmation && computedSource === "ai") {
+            // Auto-accept AI rating silently without showing review panel
+            try {
+              const nextDate = await finalizeProblemRating(
+                workspaceRoot,
+                slug,
+                computedRating,
+                computedJustification,
+                computedRating,
+                computedJustification
+              );
+
+              // Refresh providers & views
+              dailyPlanProvider.refresh();
+              refreshAllProblemViews();
+
+              void vscode.window.showInformationMessage(`[AI Auto-Rating] Accepted silently. Scheduled for review: ${nextDate}`);
+            } catch (err: any) {
+              void vscode.window.showErrorMessage(`Failed to auto-finalize rating: ${err.message || String(err)}`);
+            }
+          } else {
+            // Update Panel UI if still open, or open it now (if requireConfirmation was false but we fell back to heuristic)
+            if (RatingReviewPanel.currentPanel) {
+              RatingReviewPanel.currentPanel.updateData({
+                title: problem.title,
+                slug: slug,
+                recommendedRating: computedRating,
+                justification: computedJustification,
+                source: computedSource
+              });
+            } else {
+              openConfirmationPanel();
+            }
           }
         } catch (err: any) {
           console.error("Staged rating background process failed:", err);
