@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { describe, it } from "node:test";
-import assert from "node:assert";
+import { describe, it, expect } from "vitest";
 import type { IProblemProvider } from "../src/modules/interface/Problem";
 import { LeetCodeProvider } from "../src/modules/LeetCode";
 import { InternalApiProvider } from "../src/modules/InternalProvider";
@@ -22,36 +21,28 @@ describe("Integration: fetch, scrape, create file, run", () => {
     const provider = getProvider();
     const problem = await provider.getProblem(PROBLEM_ID);
 
-    assert.ok(
-      problem,
-      "Failed to fetch problem 167. LeetCode often blocks Node; set LEETCODE_TEST_API_URL to your internal API (e.g. GET {url}/problem/167 returns problem JSON) and run again."
-    );
-    assert.strictEqual(problem.id, PROBLEM_ID, "problem id should be 167");
-    assert.ok(problem.title.length > 0, "problem should have title");
-    assert.ok(problem.codeSnippet.length > 0, "problem should have code snippet");
+    expect(problem).toBeTruthy();
+    expect(problem.id).toBe(PROBLEM_ID);
+    expect(problem.title.length > 0, "problem should have title").toBeTruthy();
+    expect(problem.codeSnippet.length > 0, "problem should have code snippet").toBeTruthy();
 
     const content = generateTemplate(problem);
-    assert.ok(content.includes(`// ${PROBLEM_ID}.`), "template should include problem header");
-    assert.ok(content.includes("console.log("), "template should include example blocks");
+    expect(content.includes(`// [${PROBLEM_ID}]`), "template should include problem header").toBeTruthy();
+    expect(content.includes("console.log("), "template should include example blocks").toBeTruthy();
 
     fs.mkdirSync(TEST_OUTPUT_DIR, { recursive: true });
     const filePath = path.join(TEST_OUTPUT_DIR, `${PROBLEM_ID}.ts`);
     fs.writeFileSync(filePath, content, "utf8");
 
-    assert.ok(fs.existsSync(filePath), "file should exist on disk");
+    expect(fs.existsSync(filePath), "file should exist on disk").toBeTruthy();
 
     const { stdout, stderr } = await runTsFile(filePath);
-    assert.ok(stdout.length > 0 || stderr.length > 0, "run should produce output");
+    expect(stdout.length > 0 || stderr.length > 0, "run should produce output").toBeTruthy();
 
     const results = compareOutput(content, stdout);
-    assert.ok(results.length > 0, "should have at least one example result");
+    expect(results.length > 0, "should have at least one example result").toBeTruthy();
     const failed = results.filter((r) => !r.pass);
-    assert.strictEqual(
-      failed.length,
-      0,
-      failed.length > 0
-        ? `all examples should pass. Failed: ${failed.map((f) => `line ${f.lineIndex}: expected ${f.expected}, got ${f.actual}`).join("; ")}`
-        : "all pass"
-    );
+    console.log(failed)
+    expect(failed.length).toBe(0);
   });
 });

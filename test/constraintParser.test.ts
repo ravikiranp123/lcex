@@ -1,5 +1,4 @@
-import { describe, it } from "node:test";
-import assert from "node:assert";
+import { describe, it, expect } from "vitest";
 import { parseProblemConstraints } from "../src/modules/ConstraintParser";
 
 describe("ConstraintParser", () => {
@@ -13,11 +12,11 @@ Constraints:
 0 <= k <= 100
 `;
     const c = parseProblemConstraints(text);
-    assert.strictEqual(c.byName.get("nums.length")?.min, 1);
-    assert.strictEqual(c.byName.get("nums.length")?.max, 100000);
-    assert.strictEqual(c.byName.get("nums[i]")?.min, -1_000_000_000);
-    assert.strictEqual(c.byName.get("nums[i]")?.max, 1_000_000_000);
-    assert.strictEqual(c.byName.get("k")?.max, 100);
+    expect(c.byName.get("nums.length")?.min).toBe(1);
+    expect(c.byName.get("nums.length")?.max).toBe(100000);
+    expect(c.byName.get("nums[i]")?.min).toBe(-1_000_000_000);
+    expect(c.byName.get("nums[i]")?.max).toBe(1_000_000_000);
+    expect(c.byName.get("k")?.max).toBe(100);
   });
 
   it("parses HTML-wrapped constraints with &le; and &lt;= entities", () => {
@@ -32,9 +31,9 @@ Constraints:
 `;
     const c = parseProblemConstraints(html);
     const s = c.byName.get("s.length");
-    assert.strictEqual(s?.min, 1);
-    assert.strictEqual(s?.max, 100000);
-    assert.strictEqual(c.byName.get("s")?.charset, "lowercase");
+    expect(s?.min).toBe(1);
+    expect(s?.max).toBe(100000);
+    expect(c.byName.get("s")?.charset).toBe("lowercase");
   });
 
   it("detects sorted / distinct flags", () => {
@@ -45,8 +44,8 @@ nums is sorted in non-decreasing order.
 All the integers of nums are unique.
 `;
     const c = parseProblemConstraints(text);
-    assert.strictEqual(c.byName.get("nums")?.sorted, "asc");
-    assert.strictEqual(c.byName.get("nums")?.distinct, true);
+    expect(c.byName.get("nums")?.sorted).toBe("asc");
+    expect(c.byName.get("nums")?.distinct).toBe(true);
   });
 
   it("handles LeetCode's <sup>N</sup> exponent markup", () => {
@@ -60,9 +59,9 @@ All the integers of nums are unique.
 <p><strong>Example 1:</strong></p>
 `;
     const c = parseProblemConstraints(html);
-    assert.strictEqual(c.byName.get("nums.length")?.max, 10000);
-    assert.strictEqual(c.byName.get("nums[i]")?.min, -1_000_000_000);
-    assert.strictEqual(c.byName.get("nums[i]")?.max, 1_000_000_000);
+    expect(c.byName.get("nums.length")?.max).toBe(10000);
+    expect(c.byName.get("nums[i]")?.min).toBe(-1_000_000_000);
+    expect(c.byName.get("nums[i]")?.max).toBe(1_000_000_000);
   });
 
   it("stops at Example / Follow-up section", () => {
@@ -73,7 +72,7 @@ Follow-up: can you solve in O(1) space?
 2 <= m <= 20
 `;
     const c = parseProblemConstraints(text);
-    assert.strictEqual(c.byName.has("n"), true);
-    assert.strictEqual(c.byName.has("m"), false);
+    expect(c.byName.has("n")).toBe(true);
+    expect(c.byName.has("m")).toBe(false);
   });
 });

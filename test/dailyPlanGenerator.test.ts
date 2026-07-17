@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { describe, it, before, after } from "node:test";
-import assert from "node:assert";
+import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import * as vscode from "vscode";
 import { generateDailyPlan } from "../src/modules/DailyPlanGenerator";
 import { initState, readState } from "../src/modules/StateManager";
@@ -10,13 +9,13 @@ import { updateSRSModeInConfig } from "../src/modules/LeetPlusConfig";
 const TEST_DIR = path.join(__dirname, "..", "test-daily-plan-generator-output");
 
 describe("DailyPlanGenerator", () => {
-  before(() => {
+  beforeAll(() => {
     if (!fs.existsSync(TEST_DIR)) {
       fs.mkdirSync(TEST_DIR, { recursive: true });
     }
   });
 
-  after(() => {
+  afterAll(() => {
     if (fs.existsSync(TEST_DIR)) {
       fs.rmSync(TEST_DIR, { recursive: true, force: true });
     }
@@ -142,7 +141,7 @@ describe("DailyPlanGenerator", () => {
     try {
       // Setup state with "Binary Search" as the weakest pattern:
       const state = await readState(workspaceRoot);
-      assert.ok(state);
+      expect(state).toBeTruthy();
       state.patternMastery = {
         "Hash Map": 0.9,
         "Binary Search": 0.2 // Binary Search is much weaker!
@@ -162,8 +161,8 @@ describe("DailyPlanGenerator", () => {
       // 2. new: Problem 4
       // 3. normal: Problem 1
       // 4. new: Problem 3
-      assert.strictEqual(plan.problems.length, 4);
-      assert.deepStrictEqual(plan.problems, [
+      expect(plan.problems.length).toBe(4);
+      expect(plan.problems).toEqual([
         { id: 2, type: "rep" },
         { id: 4, type: "new" },
         { id: 1, type: "rep" },
@@ -202,14 +201,14 @@ describe("DailyPlanGenerator", () => {
 
     try {
       const state = await readState(workspaceRoot);
-      assert.ok(state);
+      expect(state).toBeTruthy();
 
       const plan = await generateDailyPlan(workspaceRoot, state);
 
       // Expected: Problem 2 (urgent), Problem 1 (normal), Problem 3/4 (new)
-      assert.strictEqual(plan.problems.length, 4);
-      assert.deepStrictEqual(plan.problems[0], { id: 2, type: "rep" });
-      assert.deepStrictEqual(plan.problems[1], { id: 1, type: "rep" });
+      expect(plan.problems.length).toBe(4);
+      expect(plan.problems[0]).toEqual({ id: 2, type: "rep" });
+      expect(plan.problems[1]).toEqual({ id: 1, type: "rep" });
     } finally {
       vscode.workspace.workspaceFolders = originalWorkspaceFolders;
     }
@@ -243,16 +242,16 @@ describe("DailyPlanGenerator", () => {
 
     try {
       const state = await readState(workspaceRoot);
-      assert.ok(state);
+      expect(state).toBeTruthy();
 
       const plan = await generateDailyPlan(workspaceRoot, state);
 
       // Expected: Problem 2 (urgent), Problem 3 & 4 (new), Problem 1 (normal)
-      assert.strictEqual(plan.problems.length, 4);
-      assert.deepStrictEqual(plan.problems[0], { id: 2, type: "rep" });
-      assert.strictEqual(plan.problems[1].type, "new");
-      assert.strictEqual(plan.problems[2].type, "new");
-      assert.deepStrictEqual(plan.problems[3], { id: 1, type: "rep" });
+      expect(plan.problems.length).toBe(4);
+      expect(plan.problems[0]).toEqual({ id: 2, type: "rep" });
+      expect(plan.problems[1].type).toBe("new");
+      expect(plan.problems[2].type).toBe("new");
+      expect(plan.problems[3]).toEqual({ id: 1, type: "rep" });
     } finally {
       vscode.workspace.workspaceFolders = originalWorkspaceFolders;
     }
@@ -286,14 +285,14 @@ describe("DailyPlanGenerator", () => {
 
     try {
       const state = await readState(workspaceRoot);
-      assert.ok(state);
+      expect(state).toBeTruthy();
 
       const plan = await generateDailyPlan(workspaceRoot, state);
 
       // Expected: only reviews (Problem 2 & Problem 1)
-      assert.strictEqual(plan.problems.length, 2);
-      assert.deepStrictEqual(plan.problems[0], { id: 2, type: "rep" });
-      assert.deepStrictEqual(plan.problems[1], { id: 1, type: "rep" });
+      expect(plan.problems.length).toBe(2);
+      expect(plan.problems[0]).toEqual({ id: 2, type: "rep" });
+      expect(plan.problems[1]).toEqual({ id: 1, type: "rep" });
     } finally {
       vscode.workspace.workspaceFolders = originalWorkspaceFolders;
     }
@@ -318,8 +317,8 @@ describe("DailyPlanGenerator", () => {
     updateSRSModeInConfig(mockFolders, "review-first");
 
     const content = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-    assert.strictEqual(content.srs?.defaultMode, "review-first");
-    assert.strictEqual(content.theme, "leetcode-dark"); // verify existing settings are preserved
+    expect(content.srs?.defaultMode).toBe("review-first");
+    expect(content.theme).toBe("leetcode-dark"); // verify existing settings are preserved
   });
 });
 

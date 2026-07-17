@@ -1,20 +1,19 @@
 import * as fs from "fs";
 import * as path from "path";
-import { describe, it, before, after } from "node:test";
-import assert from "node:assert";
+import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { readState, writeState, initState } from "../src/modules/StateManager";
 import type { LPState } from "../src/modules/interface/LPState";
 
 const TEST_DIR = path.join(__dirname, "..", "test-state-output");
 
 describe("StateManager", () => {
-  before(() => {
+  beforeAll(() => {
     if (!fs.existsSync(TEST_DIR)) {
       fs.mkdirSync(TEST_DIR, { recursive: true });
     }
   });
 
-  after(() => {
+  afterAll(() => {
     if (fs.existsSync(TEST_DIR)) {
       fs.rmSync(TEST_DIR, { recursive: true, force: true });
     }
@@ -56,15 +55,15 @@ describe("StateManager", () => {
     // Test writing
     await writeState(TEST_DIR, testState);
     const stateFile = path.join(TEST_DIR, ".leetplus", "state.json");
-    assert.ok(fs.existsSync(stateFile), "State file should exist on disk");
+    expect(fs.existsSync(stateFile)).toBeTruthy();
 
     // Test reading
     const read = await readState(TEST_DIR);
-    assert.ok(read, "State should be read successfully");
-    assert.strictEqual(read.version, "1.0");
-    assert.strictEqual(read.planName, "NeetCode 150");
-    assert.strictEqual(read.problems.length, 1);
-    assert.strictEqual(read.problems[0].title, "Two Sum");
+    expect(read).toBeTruthy();
+    expect(read.version).toBe("1.0");
+    expect(read.planName).toBe("NeetCode 150");
+    expect(read.problems.length).toBe(1);
+    expect(read.problems[0].title).toBe("Two Sum");
   });
 
   it("should initialize a new state", async () => {
@@ -72,11 +71,11 @@ describe("StateManager", () => {
     fs.mkdirSync(workspaceRoot, { recursive: true });
 
     const state = await initState(workspaceRoot, "Custom Study Plan", []);
-    assert.ok(state, "Init state should return the state object");
-    assert.strictEqual(state.planName, "Custom Study Plan");
+    expect(state).toBeTruthy();
+    expect(state.planName).toBe("Custom Study Plan");
     
     const read = await readState(workspaceRoot);
-    assert.ok(read, "State file should exist and be readable");
-    assert.strictEqual(read.planName, "Custom Study Plan");
+    expect(read).toBeTruthy();
+    expect(read.planName).toBe("Custom Study Plan");
   });
 });

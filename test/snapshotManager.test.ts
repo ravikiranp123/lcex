@@ -2,8 +2,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { describe, it, before, after } from "node:test";
-import assert from "node:assert";
+import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { captureSnapshot, getSnapshots, getLatestSnapshot, finalizeProblemRating } from "../src/modules/SnapshotManager";
 import { readState, writeState, initState } from "../src/modules/StateManager";
 import { recordHintAccess, getHintAccessCount } from "../src/modules/HintFile";
@@ -12,13 +11,13 @@ import type { LPState } from "../src/modules/interface/LPState";
 const TEST_DIR = path.join(__dirname, "..", "test-snapshot-output");
 
 describe("SnapshotManager", () => {
-  before(() => {
+  beforeAll(() => {
     if (!fs.existsSync(TEST_DIR)) {
       fs.mkdirSync(TEST_DIR, { recursive: true });
     }
   });
 
-  after(() => {
+  afterAll(() => {
     if (fs.existsSync(TEST_DIR)) {
       fs.rmSync(TEST_DIR, { recursive: true, force: true });
     }
@@ -58,7 +57,7 @@ describe("SnapshotManager", () => {
     // 3. Record hint accesses in memory
     recordHintAccess("two-sum");
     recordHintAccess("two-sum");
-    assert.strictEqual(getHintAccessCount("two-sum"), 2);
+    expect(getHintAccessCount("two-sum")).toBe(2);
 
     // 4. Run captureSnapshot
     const snap = await captureSnapshot(
@@ -73,40 +72,40 @@ describe("SnapshotManager", () => {
     );
 
     // 5. Verifications
-    assert.ok(snap, "Should return a snapshot object");
-    assert.strictEqual(snap.rating, 2);
-    assert.strictEqual(snap.notes, "Used a map approach");
-    assert.strictEqual(snap.hintsUsed, 2, "Should capture hint accesses count");
+    expect(snap).toBeTruthy();
+    expect(snap.rating).toBe(2);
+    expect(snap.notes).toBe("Used a map approach");
+    expect(snap.hintsUsed).toBe(2);
     
     // Verifying HintCount reset
-    assert.strictEqual(getHintAccessCount("two-sum"), 0, "Hint count should be reset after capture");
+    expect(getHintAccessCount("two-sum")).toBe(0);
 
     // Verify snapshot file creation
     const snapshotBaseDir = path.join(workspaceRoot, ".leetplus", "snapshots", "two-sum");
-    assert.ok(fs.existsSync(snapshotBaseDir), "Snapshots subdirectory should be created");
+    expect(fs.existsSync(snapshotBaseDir)).toBeTruthy();
     
     const files = fs.readdirSync(snapshotBaseDir);
-    assert.strictEqual(files.length, 1, "One snapshot file should be written");
-    assert.ok(files[0].endsWith(".ts"), "Snapshot file should preserve original extension");
+    expect(files.length).toBe(1);
+    expect(files[0].endsWith(".ts")).toBeTruthy();
 
     // Verify state updating
     const state = await readState(workspaceRoot);
-    assert.ok(state, "Should read updated state");
-    assert.strictEqual(state.problems[0].status, "completed");
-    assert.strictEqual(state.problems[0].repetitionLevel, 1, "Level should increase for Good rating");
-    assert.ok(state.problems[0].nextRepetitionDate, "Should schedule next repetition date");
-    assert.strictEqual(state.problems[0].completionHistory.length, 1);
-    assert.strictEqual(state.problems[0].completionHistory[0].notes, "Used a map approach");
-    assert.strictEqual(state.currentStreak, 1, "Streak should update to 1");
+    expect(state).toBeTruthy();
+    expect(state.problems[0].status).toBe("completed");
+    expect(state.problems[0].repetitionLevel).toBe(1);
+    expect(state.problems[0].nextRepetitionDate).toBeTruthy();
+    expect(state.problems[0].completionHistory.length).toBe(1);
+    expect(state.problems[0].completionHistory[0].notes).toBe("Used a map approach");
+    expect(state.currentStreak).toBe(1);
 
     // Verify snapshot getters
     const snaps = await getSnapshots(workspaceRoot, 1, "two-sum");
-    assert.strictEqual(snaps.length, 1);
-    assert.strictEqual(snaps[0].notes, "Used a map approach");
+    expect(snaps.length).toBe(1);
+    expect(snaps[0].notes).toBe("Used a map approach");
 
     const latest = await getLatestSnapshot(workspaceRoot, 1, "two-sum");
-    assert.ok(latest);
-    assert.strictEqual(latest.notes, "Used a map approach");
+    expect(latest).toBeTruthy();
+    expect(latest.notes).toBe("Used a map approach");
   });
 
   describe("diffRetention strategies", () => {
@@ -157,10 +156,10 @@ describe("SnapshotManager", () => {
       // Verify patch is in snapshots
       const snapshotsDir = path.join(leetplusDir, "snapshots", "two-sum");
       const snapshotFiles = fs.readdirSync(snapshotsDir);
-      assert.ok(snapshotFiles.includes("test.patch"), "test.patch should be copied to snapshots directory");
+      expect(snapshotFiles.includes("test.patch")).toBeTruthy();
 
       // Verify diffs/1/ is deleted
-      assert.strictEqual(fs.existsSync(diffsDir), false, "diffs directory should be deleted");
+      expect(fs.existsSync(diffsDir)).toBe(false);
     });
 
     it("should handle 'all' retention: copy patch to snapshots and retain diffs directory", async () => {
@@ -179,11 +178,11 @@ describe("SnapshotManager", () => {
       // Verify patch is in snapshots
       const snapshotsDir = path.join(leetplusDir, "snapshots", "two-sum");
       const snapshotFiles = fs.readdirSync(snapshotsDir);
-      assert.ok(snapshotFiles.includes("test.patch"), "test.patch should be copied to snapshots directory");
+      expect(snapshotFiles.includes("test.patch")).toBeTruthy();
 
       // Verify diffs/1/ is retained
-      assert.strictEqual(fs.existsSync(diffsDir), true, "diffs directory should be retained");
-      assert.strictEqual(fs.existsSync(path.join(diffsDir, "test.patch")), true, "test.patch should remain in diffs");
+      expect(fs.existsSync(diffsDir)).toBe(true);
+      expect(fs.existsSync(path.join(diffsDir, "test.patch"))).toBe(true);
     });
 
     it("should handle 'none' retention: remove diffs directory without copying", async () => {
@@ -202,10 +201,10 @@ describe("SnapshotManager", () => {
       // Verify patch is NOT in snapshots
       const snapshotsDir = path.join(leetplusDir, "snapshots", "two-sum");
       const snapshotFiles = fs.readdirSync(snapshotsDir);
-      assert.strictEqual(snapshotFiles.includes("test.patch"), false, "test.patch should NOT be copied");
+      expect(snapshotFiles.includes("test.patch")).toBe(false);
 
       // Verify diffs/1/ is deleted
-      assert.strictEqual(fs.existsSync(diffsDir), false, "diffs directory should be deleted");
+      expect(fs.existsSync(diffsDir)).toBe(false);
     });
   });
 
@@ -239,8 +238,8 @@ describe("SnapshotManager", () => {
 
       // Verify intermediate status
       let state = await readState(workspaceRoot);
-      assert.strictEqual(state?.problems[0].completionHistory[0].rating, 2);
-      assert.strictEqual(state?.problems[0].repetitionLevel, 1);
+      expect(state?.problems[0].completionHistory[0].rating).toBe(2);
+      expect(state?.problems[0].repetitionLevel).toBe(1);
 
       // Finalize rating to 'Hard' (3)
       const nextDate = await finalizeProblemRating(
@@ -253,20 +252,20 @@ describe("SnapshotManager", () => {
       );
 
       // Verifications
-      assert.ok(nextDate, "Should return a date string");
+      expect(nextDate).toBeTruthy();
       
       state = await readState(workspaceRoot);
       const problem = state?.problems[0];
-      assert.ok(problem);
-      assert.strictEqual(problem.status, "completed");
-      assert.strictEqual(problem.repetitionLevel, 0, "Level should decrease to 0 for Hard rating from 0");
-      assert.strictEqual(problem.completionHistory.length, 1);
+      expect(problem).toBeTruthy();
+      expect(problem.status).toBe("completed");
+      expect(problem.repetitionLevel).toBe(0);
+      expect(problem.completionHistory.length).toBe(1);
       
       const snap = problem.completionHistory[0];
-      assert.strictEqual(snap.rating, 3);
-      assert.strictEqual(snap.notes, "actually it was quite hard and tricky");
-      assert.strictEqual(snap.aiRating, 3);
-      assert.strictEqual(snap.aiJustification, "Used a lot of space and double pointer loops.");
+      expect(snap.rating).toBe(3);
+      expect(snap.notes).toBe("actually it was quite hard and tricky");
+      expect(snap.aiRating).toBe(3);
+      expect(snap.aiJustification).toBe("Used a lot of space and double pointer loops.");
     });
   });
 });

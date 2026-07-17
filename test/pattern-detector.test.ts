@@ -1,5 +1,4 @@
-import { test } from "node:test";
-import assert from "node:assert/strict";
+import { test, expect } from "vitest";
 import { detectPatterns, PATTERNS } from "../src/modules/PatternDetector.js";
 
 // Canonical solutions per pattern. Inputs are intentionally short, idiomatic
@@ -21,7 +20,7 @@ test("two pointers", () => {
     }
   `;
   const out = detectPatterns(src, "typescript");
-  assert.ok(out.matched.includes("twoPointers"), `expected twoPointers in ${out.matched.join(",")}`);
+  expect(out.matched.includes("twoPointers"), `expected twoPointers in ${out.matched.join(",")}`).toBeTruthy();
 });
 
 test("binary search", () => {
@@ -38,7 +37,7 @@ test("binary search", () => {
     }
   `;
   const out = detectPatterns(src, "typescript");
-  assert.ok(out.matched.includes("binarySearch"), `expected binarySearch in ${out.matched.join(",")}`);
+  expect(out.matched.includes("binarySearch"), `expected binarySearch in ${out.matched.join(",")}`).toBeTruthy();
 });
 
 test("BFS", () => {
@@ -55,7 +54,7 @@ test("BFS", () => {
     }
   `;
   const out = detectPatterns(src, "typescript");
-  assert.ok(out.matched.includes("bfs"), `expected bfs in ${out.matched.join(",")}`);
+  expect(out.matched.includes("bfs"), `expected bfs in ${out.matched.join(",")}`).toBeTruthy();
 });
 
 test("DFS iterative", () => {
@@ -72,7 +71,7 @@ test("DFS iterative", () => {
     }
   `;
   const out = detectPatterns(src, "typescript");
-  assert.ok(out.matched.includes("dfsIterative"), `expected dfsIterative in ${out.matched.join(",")}`);
+  expect(out.matched.includes("dfsIterative"), `expected dfsIterative in ${out.matched.join(",")}`).toBeTruthy();
 });
 
 test("DP top-down memoization", () => {
@@ -90,7 +89,7 @@ test("DP top-down memoization", () => {
     }
   `;
   const out = detectPatterns(src, "typescript");
-  assert.ok(out.matched.includes("dpTopDown"), `expected dpTopDown in ${out.matched.join(",")}`);
+  expect(out.matched.includes("dpTopDown"), `expected dpTopDown in ${out.matched.join(",")}`).toBeTruthy();
 });
 
 test("DP bottom-up", () => {
@@ -103,7 +102,7 @@ test("DP bottom-up", () => {
     }
   `;
   const out = detectPatterns(src, "typescript");
-  assert.ok(out.matched.includes("dpBottomUp"), `expected dpBottomUp in ${out.matched.join(",")}`);
+  expect(out.matched.includes("dpBottomUp"), `expected dpBottomUp in ${out.matched.join(",")}`).toBeTruthy();
 });
 
 test("heap / priority queue", () => {
@@ -117,7 +116,7 @@ test("heap / priority queue", () => {
       return h[0]
   `;
   const out = detectPatterns(src, "python");
-  assert.ok(out.matched.includes("heap"), `expected heap in ${out.matched.join(",")}`);
+  expect(out.matched.includes("heap"), `expected heap in ${out.matched.join(",")}`).toBeTruthy();
 });
 
 test("trie", () => {
@@ -132,7 +131,7 @@ test("trie", () => {
     }
   `;
   const out = detectPatterns(src, "typescript");
-  assert.ok(out.matched.includes("trie"), `expected trie in ${out.matched.join(",")}`);
+  expect(out.matched.includes("trie"), `expected trie in ${out.matched.join(",")}`).toBeTruthy();
 });
 
 test("union find", () => {
@@ -145,7 +144,7 @@ test("union find", () => {
     }
   `;
   const out = detectPatterns(src, "typescript");
-  assert.ok(out.matched.includes("unionFind"), `expected unionFind in ${out.matched.join(",")}`);
+  expect(out.matched.includes("unionFind"), `expected unionFind in ${out.matched.join(",")}`).toBeTruthy();
 });
 
 test("monotonic stack", () => {
@@ -163,7 +162,7 @@ test("monotonic stack", () => {
     }
   `;
   const out = detectPatterns(src, "typescript");
-  assert.ok(out.matched.includes("monotonicStack"), `expected monotonicStack in ${out.matched.join(",")}`);
+  expect(out.matched.includes("monotonicStack"), `expected monotonicStack in ${out.matched.join(",")}`).toBeTruthy();
 });
 
 test("linked list", () => {
@@ -181,7 +180,7 @@ test("linked list", () => {
     }
   `;
   const out = detectPatterns(src, "typescript");
-  assert.ok(out.matched.includes("linkedList"), `expected linkedList in ${out.matched.join(",")}`);
+  expect(out.matched.includes("linkedList"), `expected linkedList in ${out.matched.join(",")}`).toBeTruthy();
 });
 
 test("prefix sum", () => {
@@ -203,7 +202,7 @@ test("prefix sum", () => {
     }
   `;
   const out2 = detectPatterns(better, "typescript");
-  assert.ok(out2.matched.includes("prefixSum"), `expected prefixSum in ${out2.matched.join(",")} (also tried first form: ${out.matched.join(",")})`);
+  expect(out2.matched.includes("prefixSum"), `expected prefixSum in ${out2.matched.join(",")} (also tried first form: ${out.matched.join(",")})`).toBeTruthy();
 });
 
 test("comments are stripped before matching", () => {
@@ -213,11 +212,11 @@ test("comments are stripped before matching", () => {
     function noop() { return 42; }
   `;
   const out = detectPatterns(src, "typescript");
-  assert.equal(out.matched.length, 0, `unexpected matches: ${out.matched.join(",")}`);
+  expect(out.matched.length).toBe(0);
 });
 
 test("PATTERNS catalogue covers 20 patterns", () => {
-  assert.equal(PATTERNS.length, 20);
+  expect(PATTERNS.length).toBe(20);
   const ids = new Set(PATTERNS.map((p) => p.id));
-  assert.equal(ids.size, 20, "duplicate pattern id detected");
+  expect(ids.size).toBe(20);
 });

@@ -1,20 +1,19 @@
 import * as fs from "fs";
 import * as path from "path";
-import { describe, it, before, after } from "node:test";
-import assert from "node:assert";
+import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { initDiffLogger, saveDiff } from "../src/modules/DiffLogger";
 import { initState, readState } from "../src/modules/StateManager";
 
 const TEST_DIR = path.join(__dirname, "..", "test-diff-output");
 
 describe("DiffLogger", () => {
-  before(() => {
+  beforeAll(() => {
     if (!fs.existsSync(TEST_DIR)) {
       fs.mkdirSync(TEST_DIR, { recursive: true });
     }
   });
 
-  after(() => {
+  afterAll(() => {
     if (fs.existsSync(TEST_DIR)) {
       fs.rmSync(TEST_DIR, { recursive: true, force: true });
     }
@@ -97,7 +96,7 @@ describe("DiffLogger", () => {
 
       // Verify that no diff is generated on first load (since it just initializes the baseline)
       const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", "trapping-rain-water");
-      assert.strictEqual(fs.existsSync(diffsDir), false);
+      expect(fs.existsSync(diffsDir)).toBe(false);
 
       // Simulate a small change (< threshold = 20 characters)
       docText = "function trap(height: number[]): number {\n  return 1;\n}";
@@ -108,20 +107,20 @@ describe("DiffLogger", () => {
       await vscode._fireDidChangeTextDocument(mockEventSmall);
 
       // Verify no diff created immediately because it's below character threshold (20) and timer hasn't fired
-      assert.strictEqual(fs.existsSync(diffsDir), false);
+      expect(fs.existsSync(diffsDir)).toBe(false);
 
       // Wait 100ms for time-based debounce trigger to execute
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Verify diff patch file was created by the time trigger
-      assert.ok(fs.existsSync(diffsDir), "Diffs directory should be created");
+      expect(fs.existsSync(diffsDir)).toBeTruthy();
       let files = fs.readdirSync(diffsDir);
-      assert.strictEqual(files.length, 1, "One patch file should be created by time trigger");
-      assert.ok(files[0].endsWith(".patch"));
+      expect(files.length).toBe(1);
+      expect(files[0].endsWith(".patch")).toBeTruthy();
 
       const patchContent = fs.readFileSync(path.join(diffsDir, files[0]), "utf-8");
-      assert.ok(patchContent.includes("-  return 0;"), "Patch should contain deletion");
-      assert.ok(patchContent.includes("+  return 1;"), "Patch should contain addition");
+      expect(patchContent.includes("-  return 0;")).toBeTruthy();
+      expect(patchContent.includes("+  return 1;")).toBeTruthy();
 
       // Simulate a large change (> threshold = 20 characters) to trigger immediate change-based save
       docText = "function trap(height: number[]): number {\n  // Let's write more code to exceed character threshold of twenty characters\n  return 2;\n}";
@@ -133,7 +132,7 @@ describe("DiffLogger", () => {
 
       // Verify diff was created immediately without waiting for timeout
       files = fs.readdirSync(diffsDir);
-      assert.strictEqual(files.length, 2, "A second patch file should be created immediately by change trigger");
+      expect(files.length).toBe(2);
     } finally {
       // Restore original workspace folders
       vscode.workspace.workspaceFolders = originalWorkspaceFolders;

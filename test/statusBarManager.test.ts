@@ -1,20 +1,19 @@
 import * as fs from "fs";
 import * as path from "path";
-import { describe, it, before, after } from "node:test";
-import assert from "node:assert";
+import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { initStatusBar, updateStatusBar } from "../src/modules/StatusBarManager";
 import { initState } from "../src/modules/StateManager";
 
 const TEST_DIR = path.join(__dirname, "..", "test-statusbar-output");
 
 describe("StatusBarManager", () => {
-  before(() => {
+  beforeAll(() => {
     if (!fs.existsSync(TEST_DIR)) {
       fs.mkdirSync(TEST_DIR, { recursive: true });
     }
   });
 
-  after(() => {
+  afterAll(() => {
     if (fs.existsSync(TEST_DIR)) {
       fs.rmSync(TEST_DIR, { recursive: true, force: true });
     }
@@ -65,14 +64,14 @@ describe("StatusBarManager", () => {
       initStatusBar(context);
 
       // Verify command registration
-      assert.strictEqual(subscriptions.length, 4); // 1 item + 1 command + 1 watcher + 1 workspace change listener
+      expect(subscriptions.length).toBe(4); // 1 item + 1 command + 1 watcher + 1 workspace change listener
 
       // 3. Update Status Bar
       await updateStatusBar();
 
-      // Retrieve mock status bar item instance (our vscode mock implements window.createStatusBarItem)
-      const mockItem = vscode.window.createStatusBarItem();
-      assert.strictEqual(mockItem.text, "🔥 0 | 📋 1 due", "Status bar text should match state.json data");
+      // Retrieve the status bar item created during initStatusBar (stored in mock's _statusBarItems array)
+      const mockItem = (vscode as any)._statusBarItems[0];
+      expect(mockItem.text).toBe("🔥 0 | 📋 1 due");
     } finally {
       // Restore original workspace folders
       vscode.workspace.workspaceFolders = originalWorkspaceFolders;

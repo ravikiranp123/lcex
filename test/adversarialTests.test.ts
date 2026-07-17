@@ -1,5 +1,4 @@
-import { describe, it } from "node:test";
-import assert from "node:assert";
+import { describe, it, expect } from "vitest";
 import {
   buildAdversarialSummary,
   findSignatureLine,
@@ -19,11 +18,11 @@ const TWO_SUM_HTML = `
 describe("AdversarialTests", () => {
   it("surfaces max-size, boundaries, and negative hints for Two Sum shape", () => {
     const s = buildAdversarialSummary(TWO_SUM_HTML);
-    assert.ok(s.perCase.length >= 3, `expected multiple cases, got ${s.perCase.length}`);
+    expect(s.perCase.length >= 3, `expected multiple cases, got ${s.perCase.length}`).toBeTruthy();
     const labels = s.perCase.map((c) => c.label).join(" | ");
-    assert.match(labels, /size=/, "should suggest a max-size probe");
-    assert.match(labels, /negative|at int bounds/i, "should flag numeric range risks");
-    assert.ok(s.signatureLine.startsWith("  ⚠"), "signature line should warn");
+    expect(labels).toMatch(/size=/);
+    expect(labels).toMatch(/negative|at int bounds/i);
+    expect(s.signatureLine.startsWith("  ⚠"), "signature line should warn").toBeTruthy();
   });
 
   it("renders 10^k sizes with superscript instead of '104'", () => {
@@ -36,14 +35,14 @@ describe("AdversarialTests", () => {
 `;
     const s = buildAdversarialSummary(html);
     const labels = s.perCase.map((c) => c.label).join(" | ");
-    assert.match(labels, /10⁴/, `expected superscript form, got labels: ${labels}`);
-    assert.doesNotMatch(labels, /size=104\b/, "should not render as '104'");
+    expect(labels).toMatch(/10⁴/);
+    expect(labels).not.toMatch(/size=104\b/);
   });
 
   it("falls back cleanly when no constraints section exists", () => {
     const s = buildAdversarialSummary("<p>Just a description with no constraints.</p>");
-    assert.strictEqual(s.perCase.length, 0);
-    assert.match(s.signatureLine, /no structured constraints/i);
+    expect(s.perCase.length).toBe(0);
+    expect(s.signatureLine).toMatch(/no structured constraints/i);
   });
 
   it("finds the def line for Python solutions", () => {
@@ -55,7 +54,7 @@ describe("AdversarialTests", () => {
       "        return []",
     ].join("\n");
     const line = findSignatureLine(src, "python");
-    assert.strictEqual(line, 2, "should land on `class Solution` (line 2)");
+    expect(line).toBe(2);
   });
 
   it("finds the function line for TypeScript solutions", () => {
@@ -66,6 +65,6 @@ describe("AdversarialTests", () => {
       "}",
     ].join("\n");
     const line = findSignatureLine(src, "typescript");
-    assert.strictEqual(line, 1);
+    expect(line).toBe(1);
   });
 });

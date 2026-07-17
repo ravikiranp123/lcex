@@ -2,8 +2,7 @@ import { execFileSync } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { describe, it } from "node:test";
-import assert from "node:assert";
+import { describe, it, expect } from "vitest";
 import type { Problem } from "../src/modules/interface/Problem";
 import { generateTemplate } from "../src/modules/TemplateEngine";
 import { compareOutput } from "../src/modules/ExampleRunner";
@@ -60,24 +59,24 @@ function problem(p: Partial<Problem> & { id: string; titleSlug: string }): Probl
 
 describe("Java solution file naming", () => {
   it("names files after the entry class so javac/java can run them", () => {
-    assert.strictEqual(solutionFileBaseName("java", "2"), "LCexMain2");
-    assert.strictEqual(solutionFileBaseName("java", "two-sum"), "LCexMainTwoSum");
-    assert.strictEqual(solutionFileBaseName("java", "2", "-abc"), "LCexMain2_abc");
-    assert.strictEqual(solutionFileBaseName("typescript", "2"), "2");
-    assert.strictEqual(solutionFileBaseName("python", "two-sum", "-abc"), "two-sum-abc");
+    expect(solutionFileBaseName("java", "2")).toBe("LeetPlusMain2");
+    expect(solutionFileBaseName("java", "two-sum")).toBe("LeetPlusMainTwoSum");
+    expect(solutionFileBaseName("java", "2", "-abc")).toBe("LeetPlusMain2_abc");
+    expect(solutionFileBaseName("typescript", "2")).toBe("2");
+    expect(solutionFileBaseName("python", "two-sum", "-abc")).toBe("two-sum-abc");
   });
 
   it("maps file bases back to problem ids/slugs", () => {
-    assert.strictEqual(problemKeyFromSolutionFileBase("LCexMain2"), "2");
-    assert.strictEqual(problemKeyFromSolutionFileBase("LCexMain2_abc"), "2");
-    assert.strictEqual(problemKeyFromSolutionFileBase("LCexMainTwoSum"), "two-sum");
-    assert.strictEqual(problemKeyFromSolutionFileBase("2"), "2");
-    assert.strictEqual(problemKeyFromSolutionFileBase("two-sum"), "two-sum");
+    expect(problemKeyFromSolutionFileBase("LeetPlusMain2")).toBe("2");
+    expect(problemKeyFromSolutionFileBase("LeetPlusMain2_abc")).toBe("2");
+    expect(problemKeyFromSolutionFileBase("LeetPlusMainTwoSum")).toBe("two-sum");
+    expect(problemKeyFromSolutionFileBase("2")).toBe("2");
+    expect(problemKeyFromSolutionFileBase("two-sum")).toBe("two-sum");
   });
 
   it("builds valid Java class names", () => {
     for (const name of [javaEntryClassName("2"), javaEntryClassName("two-sum"), javaEntryClassName("3sum")]) {
-      assert.match(name, /^[A-Za-z_$][\w$]*$/, `${name} should be a valid Java identifier`);
+      expect(name).toMatch(/^[A-Za-z_$][\w$]*$/);
     }
   });
 });
@@ -103,15 +102,12 @@ describe("Java template generation", () => {
 
   it("emits an entry class matching the file base, with typed example calls and expected comments", () => {
     const content = generateTemplate(twoSum, { language: "java", fileBaseName: "LCexMain1" });
-    assert.ok(content.includes("class LCexMain1 {"), "entry class should match file base");
-    assert.ok(content.includes("public static void main(String[] args)"), "should have main");
-    assert.ok(content.includes("import java.util.*;"), "should import java.util");
-    assert.ok(
-      content.includes("new Solution().twoSum(new int[]{2, 7, 11, 15}, 9)"),
-      `should render typed Java args, got:\n${content}`
-    );
-    assert.ok(content.includes("// [0,1]"), "should carry expected output as comment");
-    assert.ok(content.includes("Arrays.toString("), "int[] result should print via Arrays.toString");
+    expect(content.includes("class LCexMain1 {"), "entry class should match file base").toBeTruthy();
+    expect(content.includes("public static void main(String[] args)"), "should have main").toBeTruthy();
+    expect(content.includes("import java.util.*;"), "should import java.util").toBeTruthy();
+    expect(content.includes("new Solution().twoSum(new int[]{2, 7, 11, 15}, 9)")).toBeTruthy();
+    expect(content.includes("// [0,1]"), "should carry expected output as comment").toBeTruthy();
+    expect(content.includes("Arrays.toString("), "int[] result should print via Arrays.toString").toBeTruthy();
   });
 
   it("generated two-sum file compiles, runs, and examples pass once solved", (t) => {
@@ -127,9 +123,9 @@ describe("Java template generation", () => {
     );
     const stdout = compileAndRun("LCexMain1", content);
     const results = compareOutput(content, stdout, "java");
-    assert.strictEqual(results.length, 2, "should find two example lines");
+    expect(results.length).toBe(2);
     for (const r of results) {
-      assert.ok(r.pass, `example at line ${r.lineIndex} should pass: expected ${r.expected}, got ${r.actual}`);
+      expect(r.pass, `example at line ${r.lineIndex} should pass: expected ${r.expected}, got ${r.actual}`).toBeTruthy();
     }
   });
 
@@ -150,10 +146,10 @@ describe("Java template generation", () => {
       },
     });
     const content = generateTemplate(lru, { language: "java", fileBaseName: "LCexMain146" });
-    assert.ok(content.includes("LRUCache obj1 = new LRUCache(2);"), `ctor call missing:\n${content}`);
-    assert.ok(content.includes("obj1.put(1, 1);"), "void method should be a bare call");
-    assert.ok(content.includes("System.out.println(obj1.get(1));  // 1"), "non-void should print with expected");
-    assert.ok(content.includes("class LCexMain146 {"), "entry class should match file base");
+    expect(content.includes("LRUCache obj1 = new LRUCache(2);"), `ctor call missing:\n${content}`).toBeTruthy();
+    expect(content.includes("obj1.put(1, 1);"), "void method should be a bare call").toBeTruthy();
+    expect(content.includes("System.out.println(obj1.get(1));  // 1"), "non-void should print with expected").toBeTruthy();
+    expect(content.includes("class LCexMain146 {"), "entry class should match file base").toBeTruthy();
 
     if (!JAVAC) return t.skip("no JDK available");
     const solved = content
@@ -169,9 +165,9 @@ describe("Java template generation", () => {
       );
     const stdout = compileAndRun("LCexMain146", solved);
     const results = compareOutput(solved, stdout, "java");
-    assert.strictEqual(results.length, 2, "two println lines (get calls)");
+    expect(results.length).toBe(2);
     for (const r of results) {
-      assert.ok(r.pass, `design example at line ${r.lineIndex}: expected ${r.expected}, got ${r.actual}`);
+      expect(r.pass, `design example at line ${r.lineIndex}: expected ${r.expected}, got ${r.actual}`).toBeTruthy();
     }
   });
 
@@ -189,19 +185,15 @@ describe("Java template generation", () => {
       },
     });
     const content = generateTemplate(addTwo, { language: "java", fileBaseName: "LCexMain2" });
-    assert.ok(content.includes("// LCex: needs manual setup"), "should fall back to a comment");
-    assert.ok(content.includes("class LCexMain2 {"), "entry class should still exist");
-    assert.strictEqual(
-      compareOutput(content, "", "java").length,
-      0,
-      "commented fallback must not count as an example"
-    );
+    expect(content.includes("// LCex: needs manual setup"), "should fall back to a comment").toBeTruthy();
+    expect(content.includes("class LCexMain2 {"), "entry class should still exist").toBeTruthy();
+    expect(compareOutput(content, "", "java").length).toBe(0);
 
     if (!JAVAC) return t.skip("no JDK available");
     // Must compile as-is even though the example can't run (Solution body returns nothing yet).
     const compilable = content.replace("        \n    }", "        return null;\n    }");
     const stdout = compileAndRun("LCexMain2", compilable.replace(/^\/\*\*[\s\S]*?\*\/\n/m, "class ListNode { int val; }\n"));
-    assert.strictEqual(stdout, "", "main runs with no examples");
+    expect(stdout).toBe("");
   });
 
   it("handles void in-place problems by printing the mutated argument", (t) => {
@@ -216,8 +208,8 @@ describe("Java template generation", () => {
       },
     });
     const content = generateTemplate(rotate, { language: "java", fileBaseName: "LCexMain189" });
-    assert.ok(content.includes("int[] lcexArg = new int[]{1, 2, 3, 4, 5, 6, 7};"), `void path missing:\n${content}`);
-    assert.ok(content.includes("new Solution().rotate(lcexArg, 3);"), "should call with the named arg");
+    expect(content.includes("int[] lcexArg = new int[]{1, 2, 3, 4, 5, 6, 7};"), `void path missing:\n${content}`).toBeTruthy();
+    expect(content.includes("new Solution().rotate(lcexArg, 3);"), "should call with the named arg").toBeTruthy();
 
     if (!JAVAC) return t.skip("no JDK available");
     const solved = content.replace(
@@ -228,7 +220,7 @@ describe("Java template generation", () => {
     );
     const stdout = compileAndRun("LCexMain189", solved);
     const results = compareOutput(solved, stdout, "java");
-    assert.strictEqual(results.length, 1);
-    assert.ok(results[0].pass, `expected ${results[0].expected}, got ${results[0].actual}`);
+    expect(results.length).toBe(1);
+    expect(results[0].pass, `expected ${results[0].expected}, got ${results[0].actual}`).toBeTruthy();
   });
 });

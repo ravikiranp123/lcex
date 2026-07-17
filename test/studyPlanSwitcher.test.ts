@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { describe, it, before, after } from "node:test";
-import assert from "node:assert";
+import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { readState, writeState, initState } from "../src/modules/StateManager";
 import { switchStudyPlan } from "../src/modules/StudyPlanSwitcher";
 import type { LPState } from "../src/modules/interface/LPState";
@@ -11,7 +10,7 @@ const TEST_DIR = path.join(__dirname, "..", "test-switcher-output");
 describe("StudyPlanSwitcher", () => {
   const vscode = require("vscode");
 
-  before(() => {
+  beforeAll(() => {
     if (!fs.existsSync(TEST_DIR)) {
       fs.mkdirSync(TEST_DIR, { recursive: true });
     }
@@ -22,7 +21,7 @@ describe("StudyPlanSwitcher", () => {
   });
 
 
-  after(() => {
+  afterAll(() => {
     if (fs.existsSync(TEST_DIR)) {
       fs.rmSync(TEST_DIR, { recursive: true, force: true });
     }
@@ -50,13 +49,13 @@ describe("StudyPlanSwitcher", () => {
       async () => seeds
     );
 
-    assert.strictEqual(result, "switched");
+    expect(result).toBe("switched");
     const state = await readState(workspaceRoot);
-    assert.ok(state);
-    assert.strictEqual(state.planSlug, "neetcode-150");
-    assert.strictEqual(state.planName, "NeetCode 150");
-    assert.strictEqual(state.problems.length, 1);
-    assert.strictEqual(state.problems[0].slug, "two-sum");
+    expect(state).toBeTruthy();
+    expect(state.planSlug).toBe("neetcode-150");
+    expect(state.planName).toBe("NeetCode 150");
+    expect(state.problems.length).toBe(1);
+    expect(state.problems[0].slug).toBe("two-sum");
   });
 
   it("should return cancelled if switching to the same plan", async () => {
@@ -92,7 +91,7 @@ describe("StudyPlanSwitcher", () => {
       async () => []
     );
 
-    assert.strictEqual(result, "cancelled");
+    expect(result).toBe("cancelled");
   });
 
   it("should diff plans and handle disposition: archive", async () => {
@@ -145,17 +144,17 @@ describe("StudyPlanSwitcher", () => {
       async () => seeds
     );
 
-    assert.strictEqual(result, "switched");
+    expect(result).toBe("switched");
     const updatedState = await readState(workspaceRoot);
-    assert.ok(updatedState);
-    assert.strictEqual(updatedState.planSlug, "plan-b");
+    expect(updatedState).toBeTruthy();
+    expect(updatedState.planSlug).toBe("plan-b");
     
     // Two Sum is archived (moved to archivedProblems)
-    assert.strictEqual(updatedState.problems.length, 1);
-    assert.strictEqual(updatedState.problems[0].slug, "add-two-numbers");
-    assert.strictEqual(updatedState.archivedProblems?.length, 1);
-    assert.strictEqual(updatedState.archivedProblems?.[0].slug, "two-sum");
-    assert.strictEqual(updatedState.archivedProblems?.[0].switchedOut, true);
+    expect(updatedState.problems.length).toBe(1);
+    expect(updatedState.problems[0].slug).toBe("add-two-numbers");
+    expect(updatedState.archivedProblems?.length).toBe(1);
+    expect(updatedState.archivedProblems?.[0].slug).toBe("two-sum");
+    expect(updatedState.archivedProblems?.[0].switchedOut).toBe(true);
   });
 
   it("should diff plans and handle disposition: skip", async () => {
@@ -205,15 +204,15 @@ describe("StudyPlanSwitcher", () => {
       async () => seeds
     );
 
-    assert.strictEqual(result, "switched");
+    expect(result).toBe("switched");
     const updatedState = await readState(workspaceRoot);
-    assert.ok(updatedState);
-    assert.strictEqual(updatedState.problems.length, 2); // both remain in problems array
+    expect(updatedState).toBeTruthy();
+    expect(updatedState.problems.length).toBe(2); // both remain in problems array
 
     const twoSum = updatedState.problems.find(p => p.slug === "two-sum");
-    assert.ok(twoSum);
-    assert.strictEqual(twoSum.status, "skipped");
-    assert.strictEqual(twoSum.switchedOut, true);
+    expect(twoSum).toBeTruthy();
+    expect(twoSum.status).toBe("skipped");
+    expect(twoSum.switchedOut).toBe(true);
   });
 
   it("should diff plans and handle disposition: remove", async () => {
@@ -263,12 +262,12 @@ describe("StudyPlanSwitcher", () => {
       async () => seeds
     );
 
-    assert.strictEqual(result, "switched");
+    expect(result).toBe("switched");
     const updatedState = await readState(workspaceRoot);
-    assert.ok(updatedState);
-    assert.strictEqual(updatedState.problems.length, 1); // only the new problem remains
-    assert.strictEqual(updatedState.problems[0].slug, "add-two-numbers");
-    assert.strictEqual(updatedState.archivedProblems?.length, 0);
+    expect(updatedState).toBeTruthy();
+    expect(updatedState.problems.length).toBe(1); // only the new problem remains
+    expect(updatedState.problems[0].slug).toBe("add-two-numbers");
+    expect(updatedState.archivedProblems?.length).toBe(0);
   });
 
   it("should auto-restore switched-out problems when switching back to their plan", async () => {
@@ -343,17 +342,17 @@ describe("StudyPlanSwitcher", () => {
       async () => seeds
     );
 
-    assert.strictEqual(result, "switched");
+    expect(result).toBe("switched");
     const updatedState = await readState(workspaceRoot);
-    assert.ok(updatedState);
-    assert.strictEqual(updatedState.planSlug, "plan-a");
+    expect(updatedState).toBeTruthy();
+    expect(updatedState.planSlug).toBe("plan-a");
     
     // Two Sum should be moved back from archivedProblems, reset to status="pending" and switchedOut=undefined
     const twoSum = updatedState.problems.find(p => p.slug === "two-sum");
-    assert.ok(twoSum);
-    assert.strictEqual(twoSum.status, "pending");
-    assert.strictEqual(twoSum.switchedOut, undefined);
-    assert.strictEqual(updatedState.archivedProblems?.length, 1); // Add Two Numbers was archived from Plan B
-    assert.strictEqual(updatedState.archivedProblems[0].slug, "add-two-numbers");
+    expect(twoSum).toBeTruthy();
+    expect(twoSum.status).toBe("pending");
+    expect(twoSum.switchedOut).toBe(undefined);
+    expect(updatedState.archivedProblems?.length).toBe(1); // Add Two Numbers was archived from Plan B
+    expect(updatedState.archivedProblems[0].slug).toBe("add-two-numbers");
   });
 });

@@ -1,5 +1,4 @@
-import { describe, it } from "node:test";
-import assert from "node:assert";
+import { describe, it, expect } from "vitest";
 import { lintSolutionSource, firstFindingPerLine } from "../src/modules/InterviewLint";
 
 describe("InterviewLint", () => {
@@ -12,9 +11,9 @@ describe("InterviewLint", () => {
     ].join("\n");
     const findings = lintSolutionSource(src, "python");
     const mutate = findings.find((f) => f.rule === "mutate-input");
-    assert.ok(mutate, "should flag nums.sort()");
-    assert.strictEqual(mutate?.line, 2);
-    assert.match(mutate?.message ?? "", /nums/);
+    expect(mutate, "should flag nums.sort()").toBeTruthy();
+    expect(mutate?.line).toBe(2);
+    expect(mutate?.message ?? "").toMatch(/nums/);
   });
 
   it("flags mutating calls on parameters (typescript)", () => {
@@ -26,8 +25,8 @@ describe("InterviewLint", () => {
     ].join("\n");
     const findings = lintSolutionSource(src, "typescript");
     const mutate = findings.find((f) => f.rule === "mutate-input");
-    assert.ok(mutate, "should flag nums.push()");
-    assert.strictEqual(mutate?.severity, "warning");
+    expect(mutate, "should flag nums.push()").toBeTruthy();
+    expect(mutate?.severity).toBe("warning");
   });
 
   it("flags builtin sort even on non-param arrays", () => {
@@ -40,7 +39,7 @@ describe("InterviewLint", () => {
     ].join("\n");
     const findings = lintSolutionSource(src, "typescript");
     const builtin = findings.find((f) => f.rule === "builtin-sort");
-    assert.ok(builtin, "should flag copy.sort()");
+    expect(builtin, "should flag copy.sort()").toBeTruthy();
   });
 
   it("flags magic numbers but skips const declarations", () => {
@@ -55,7 +54,7 @@ describe("InterviewLint", () => {
     const magics = findings.filter((f) => f.rule === "magic-number");
     // Lines: 2 (Array(26).fill), 3 (return 26) — NOT line 1 (const ALPHABET = 26).
     const lines = magics.map((m) => m.line);
-    assert.deepStrictEqual(lines.sort(), [2, 3]);
+    expect(lines.sort()).toEqual([2, 3]);
   });
 
   it("flags indented debug prints without expected comment", () => {
@@ -69,8 +68,8 @@ describe("InterviewLint", () => {
     ].join("\n");
     const findings = lintSolutionSource(src, "python");
     const debugs = findings.filter((f) => f.rule === "debug-print");
-    assert.strictEqual(debugs.length, 1, "only the indented print w/o expected should flag");
-    assert.strictEqual(debugs[0].line, 2);
+    expect(debugs.length).toBe(1);
+    expect(debugs[0].line).toBe(2);
   });
 
   it("respects // lcex-lint-ignore per-rule suppression", () => {
@@ -81,9 +80,9 @@ describe("InterviewLint", () => {
       "}",
     ].join("\n");
     const findings = lintSolutionSource(src, "typescript");
-    assert.strictEqual(findings.find((f) => f.rule === "mutate-input"), undefined);
+    expect(findings.find((f) => f.rule === "mutate-input")).toBe(undefined);
     // builtin-sort is NOT suppressed, should still fire.
-    assert.ok(findings.find((f) => f.rule === "builtin-sort"));
+    expect(findings.find((f) => f.rule === "builtin-sort")).toBeTruthy();
   });
 
   it("respects // lcex-lint-ignore: all", () => {
@@ -95,7 +94,7 @@ describe("InterviewLint", () => {
     ].join("\n");
     const findings = lintSolutionSource(src, "typescript");
     const onLine1 = findings.filter((f) => f.line === 1);
-    assert.strictEqual(onLine1.length, 0, "all rules suppressed on line 1");
+    expect(onLine1.length).toBe(0);
   });
 
   it("firstFindingPerLine dedupes by line", () => {
@@ -106,10 +105,10 @@ describe("InterviewLint", () => {
       "}",
     ].join("\n");
     const all = lintSolutionSource(src, "typescript");
-    assert.ok(all.length >= 2, "expected at least 2 findings on mutating-sort line");
+    expect(all.length >= 2, "expected at least 2 findings on mutating-sort line").toBeTruthy();
     const dedup = firstFindingPerLine(all);
     const line1 = dedup.filter((f) => f.line === 1);
-    assert.strictEqual(line1.length, 1);
+    expect(line1.length).toBe(1);
   });
 
   it("ignores code inside string literals", () => {
@@ -119,6 +118,6 @@ describe("InterviewLint", () => {
       "}",
     ].join("\n");
     const findings = lintSolutionSource(src, "typescript");
-    assert.strictEqual(findings.length, 0, "nothing inside a string literal should trigger");
+    expect(findings.length).toBe(0);
   });
 });

@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { describe, it, before, after } from "node:test";
-import assert from "node:assert";
+import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import * as vscode from "vscode";
 import { DailyPlanProvider } from "../src/modules/DailyPlanProvider";
 import { initState } from "../src/modules/StateManager";
@@ -9,13 +8,13 @@ import { initState } from "../src/modules/StateManager";
 const TEST_DIR = path.join(__dirname, "..", "test-daily-plan-output");
 
 describe("DailyPlanProvider", () => {
-  before(() => {
+  beforeAll(() => {
     if (!fs.existsSync(TEST_DIR)) {
       fs.mkdirSync(TEST_DIR, { recursive: true });
     }
   });
 
-  after(() => {
+  afterAll(() => {
     if (fs.existsSync(TEST_DIR)) {
       fs.rmSync(TEST_DIR, { recursive: true, force: true });
     }
@@ -131,45 +130,45 @@ describe("DailyPlanProvider", () => {
 
       // 3. Get Root Nodes
       const roots = await provider.getChildren();
-      assert.strictEqual(roots.length, 3);
+      expect(roots.length).toBe(3);
       
       const reviewRoot = roots.find(r => r.id === "review")!;
       const newRoot = roots.find(r => r.id === "new")!;
       const doneRoot = roots.find(r => r.id === "done")!;
 
-      assert.strictEqual(reviewRoot.label, "Review (1)", "Problem 1 should be under Review");
-      assert.strictEqual(newRoot.label, "New (1)", "Problem 3 should be under New");
-      assert.strictEqual(doneRoot.label, "Done (1)", "Problem 2 should be under Done since it was completed today");
+      expect(reviewRoot.label).toBe("Review (1)");
+      expect(newRoot.label).toBe("New (1)");
+      expect(doneRoot.label).toBe("Done (1)");
 
       // 4. Get Children of Review Root
       const reviewChildren = await provider.getChildren(reviewRoot);
-      assert.strictEqual(reviewChildren.length, 1);
-      assert.strictEqual(reviewChildren[0].problem?.id, 1);
-      assert.strictEqual(reviewChildren[0].itemType, "rep");
+      expect(reviewChildren.length).toBe(1);
+      expect(reviewChildren[0].problem?.id).toBe(1);
+      expect(reviewChildren[0].itemType).toBe("rep");
 
       // 5. Get Children of New Root
       const newChildren = await provider.getChildren(newRoot);
-      assert.strictEqual(newChildren.length, 1);
-      assert.strictEqual(newChildren[0].problem?.id, 3);
-      assert.strictEqual(newChildren[0].itemType, "new");
+      expect(newChildren.length).toBe(1);
+      expect(newChildren[0].problem?.id).toBe(3);
+      expect(newChildren[0].itemType).toBe("new");
 
       // 6. Get Children of Done Root
       const doneChildren = await provider.getChildren(doneRoot);
-      assert.strictEqual(doneChildren.length, 1);
-      assert.strictEqual(doneChildren[0].problem?.id, 2);
+      expect(doneChildren.length).toBe(1);
+      expect(doneChildren[0].problem?.id).toBe(2);
 
       // 7. Verify TreeItem formatting
       const reviewItem = provider.getTreeItem(reviewChildren[0]);
-      assert.ok(reviewItem.label?.toString().includes("Two Sum"));
-      assert.strictEqual(reviewItem.description, "Due today");
+      expect(reviewItem.label?.toString().includes("Two Sum")).toBeTruthy();
+      expect(reviewItem.description).toBe("Due today");
 
       const newItem = provider.getTreeItem(newChildren[0]);
-      assert.ok(newItem.label?.toString().includes("Longest Substring"));
-      assert.strictEqual(newItem.description, "New problem");
+      expect(newItem.label?.toString().includes("Longest Substring")).toBeTruthy();
+      expect(newItem.description).toBe("New problem");
 
       const doneItem = provider.getTreeItem(doneChildren[0]);
-      assert.ok(doneItem.label?.toString().includes("Add Two Numbers"));
-      assert.strictEqual(doneItem.description, "Completed");
+      expect(doneItem.label?.toString().includes("Add Two Numbers")).toBeTruthy();
+      expect(doneItem.description).toBe("Completed");
     } finally {
       // Restore workspaceFolders
       vscode.workspace.workspaceFolders = originalWorkspaceFolders;
@@ -251,16 +250,16 @@ describe("DailyPlanProvider", () => {
       const newRoot = roots.find(r => r.id === "new")!;
 
       // Count check: Review has 1 Arrays problem, New has 0 Arrays problems (it is Sliding Window)
-      assert.strictEqual(reviewRoot.label, "Review (1)");
-      assert.strictEqual(newRoot.label, "New (0)");
+      expect(reviewRoot.label).toBe("Review (1)");
+      expect(newRoot.label).toBe("New (0)");
 
       // Check children
       const reviewChildren = await provider.getChildren(reviewRoot);
-      assert.strictEqual(reviewChildren.length, 1);
-      assert.strictEqual(reviewChildren[0].problem?.slug, "two-sum");
+      expect(reviewChildren.length).toBe(1);
+      expect(reviewChildren[0].problem?.slug).toBe("two-sum");
 
       const newChildren = await provider.getChildren(newRoot);
-      assert.strictEqual(newChildren.length, 0);
+      expect(newChildren.length).toBe(0);
     } finally {
       vscode.workspace.workspaceFolders = originalWorkspaceFolders;
     }
@@ -336,10 +335,10 @@ describe("DailyPlanProvider", () => {
       const provider = new DailyPlanProvider(mockContext);
       await provider.getChildren();
 
-      assert.strictEqual(showInfoCalled, true, "Should show welcome-back popup");
-      assert.strictEqual(executedCommand, "leetplus.openChatWithPrompt", "Should trigger chat prompt");
-      assert.ok(executedPrompt.includes("lp-recap-planner"), "Prompt should ask to load recap-planner");
-      assert.ok(executedPrompt.includes("10 days"), "Prompt should state correct inactive days count");
+      expect(showInfoCalled).toBe(true);
+      expect(executedCommand).toBe("leetplus.openChatWithPrompt");
+      expect(executedPrompt.includes("lp-recap-planner")).toBeTruthy();
+      expect(executedPrompt.includes("10 days")).toBeTruthy();
     } finally {
       vscode.workspace.workspaceFolders = originalWorkspaceFolders;
     }

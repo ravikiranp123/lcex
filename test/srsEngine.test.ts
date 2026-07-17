@@ -1,5 +1,4 @@
-import { describe, it } from "node:test";
-import assert from "node:assert";
+import { describe, it, expect } from "vitest";
 import {
   calculateNextInterval,
   calculateStreaks,
@@ -13,45 +12,45 @@ describe("SRSEngine", () => {
   describe("calculateNextInterval", () => {
     it("should handle Mastered rating (rating=0)", () => {
       const r = calculateNextInterval(0, 5);
-      assert.strictEqual(r.nextLevel, 99);
-      assert.strictEqual(r.intervalDays, 365);
+      expect(r.nextLevel).toBe(99);
+      expect(r.intervalDays).toBe(365);
     });
 
     it("should handle Easy rating (rating=1)", () => {
       const r = calculateNextInterval(1, 5);
-      assert.strictEqual(r.nextLevel, 6);
-      assert.strictEqual(r.intervalDays, 20);
+      expect(r.nextLevel).toBe(6);
+      expect(r.intervalDays).toBe(20);
     });
 
     it("should handle Good rating (rating=2) with level index lookup", () => {
       // REPETITION_INTERVALS = [1, 7, 16, 35, 90]
       const r0 = calculateNextInterval(2, 0);
-      assert.strictEqual(r0.nextLevel, 1);
-      assert.strictEqual(r0.intervalDays, 1);
+      expect(r0.nextLevel).toBe(1);
+      expect(r0.intervalDays).toBe(1);
 
       const r3 = calculateNextInterval(2, 3);
-      assert.strictEqual(r3.nextLevel, 4);
-      assert.strictEqual(r3.intervalDays, 35);
+      expect(r3.nextLevel).toBe(4);
+      expect(r3.intervalDays).toBe(35);
 
       const rOver = calculateNextInterval(2, 10);
-      assert.strictEqual(rOver.nextLevel, 11);
-      assert.strictEqual(rOver.intervalDays, 90); // max index 4 (value 90)
+      expect(rOver.nextLevel).toBe(11);
+      expect(rOver.intervalDays).toBe(90); // max index 4 (value 90)
     });
 
     it("should handle Hard rating (rating=3)", () => {
       const r = calculateNextInterval(3, 5);
-      assert.strictEqual(r.nextLevel, 4);
-      assert.strictEqual(r.intervalDays, 2);
+      expect(r.nextLevel).toBe(4);
+      expect(r.intervalDays).toBe(2);
 
       const rClamp = calculateNextInterval(3, 0);
-      assert.strictEqual(rClamp.nextLevel, 0);
-      assert.strictEqual(rClamp.intervalDays, 2);
+      expect(rClamp.nextLevel).toBe(0);
+      expect(rClamp.intervalDays).toBe(2);
     });
 
     it("should handle Again rating (rating=4)", () => {
       const r = calculateNextInterval(4, 10);
-      assert.strictEqual(r.nextLevel, 0);
-      assert.strictEqual(r.intervalDays, 1);
+      expect(r.nextLevel).toBe(0);
+      expect(r.intervalDays).toBe(1);
     });
   });
 
@@ -72,8 +71,8 @@ describe("SRSEngine", () => {
         behavioralStories: [],
       };
       const res = calculateStreaks(state, today);
-      assert.strictEqual(res.currentStreak, 0);
-      assert.strictEqual(res.bestStreak, 0);
+      expect(res.currentStreak).toBe(0);
+      expect(res.bestStreak).toBe(0);
     });
 
     it("should calculate active streaks", () => {
@@ -133,8 +132,8 @@ describe("SRSEngine", () => {
       };
 
       const res = calculateStreaks(state, today);
-      assert.strictEqual(res.currentStreak, 3, "should be 3 days: 8th, 9th, 10th");
-      assert.strictEqual(res.bestStreak, 3);
+      expect(res.currentStreak).toBe(3);
+      expect(res.bestStreak).toBe(3);
     });
 
     it("should handle broken and expired streaks", () => {
@@ -178,31 +177,31 @@ describe("SRSEngine", () => {
       };
 
       const res = calculateStreaks(state, today);
-      assert.strictEqual(res.currentStreak, 0, "Last activity was 8th (today is 10th), so streak is broken");
-      assert.strictEqual(res.bestStreak, 3, "Best streak was 1st-3rd (3 days)");
+      expect(res.currentStreak).toBe(0);
+      expect(res.bestStreak).toBe(3);
     });
   });
 
   describe("calculatePatternMastery", () => {
     it("should compute success scores", () => {
       const r = calculatePatternMastery(0.5, "success");
-      assert.strictEqual(r, 0.5 + 0.1 * 0.5); // 0.55
+      expect(r).toBe(0.5 + 0.1 * 0.5); // 0.55
     });
 
     it("should compute struggle scores", () => {
       const r = calculatePatternMastery(0.5, "struggle");
-      assert.strictEqual(r, 0.5 + 0.05 * 0.5); // 0.525
+      expect(r).toBe(0.5 + 0.05 * 0.5); // 0.525
     });
 
     it("should compute failure scores", () => {
       const r = calculatePatternMastery(0.5, "failure");
-      assert.strictEqual(r, 0.4);
+      expect(r).toBe(0.4);
     });
 
     it("should clamp values between 0.0 and 1.0", () => {
-      assert.strictEqual(calculatePatternMastery(0.95, "success"), 0.955);
-      assert.strictEqual(calculatePatternMastery(0.05, "failure"), 0);
-      assert.strictEqual(calculatePatternMastery(1.0, "success"), 1.0);
+      expect(calculatePatternMastery(0.95, "success")).toBe(0.955);
+      expect(calculatePatternMastery(0.05, "failure")).toBe(0);
+      expect(calculatePatternMastery(1.0, "success")).toBe(1.0);
     });
   });
 
@@ -297,9 +296,9 @@ describe("SRSEngine", () => {
       };
 
       const due = getDueProblems(state, checkDate);
-      assert.strictEqual(due.length, 2);
-      assert.strictEqual(due[0].id, 1);
-      assert.strictEqual(due[1].id, 3);
+      expect(due.length).toBe(2);
+      expect(due[0].id).toBe(1);
+      expect(due[1].id).toBe(3);
     });
   });
 });

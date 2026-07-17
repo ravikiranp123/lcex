@@ -542,7 +542,7 @@
           "when": "!leetplus.hasMarker"
         }
       ],
-    "explorer": [
+      "explorer": [
         {
           "id": "leetplus-daily-plan",
           "name": "Daily Plan",
@@ -966,7 +966,9 @@
     "compile": "npm run typecheck && npm run bundle",
     "build:companies-data": "node scripts/build-companies-data.mjs",
     "watch": "node esbuild.config.mjs --watch",
-    "test": "node --test --import tsx 'test/*.test.ts'",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "package": "npm run compile && npx vsce package",
     "install-extension": "npm run package && node -e \"const v=require('./package.json').version;require('child_process').execSync('code --install-extension leet-plus-'+v+'.vsix --force',{stdio:'inherit'})\""
   },
@@ -974,11 +976,13 @@
     "@types/ejs": "^3.1.3",
     "@types/node": "^20.10.0",
     "@types/vscode": "^1.85.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "@vscode/vsce": "^3.2.1",
     "copyfiles": "^2.4.1",
     "esbuild": "^0.28.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "ejs": "^3.1.9",

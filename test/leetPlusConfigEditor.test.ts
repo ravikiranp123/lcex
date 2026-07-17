@@ -1,23 +1,22 @@
-import { describe, it } from "node:test";
-import assert from "node:assert";
+import { describe, it, expect } from "vitest";
 import { parseConfig, configToJson } from "../src/modules/LeetPlusConfigEditor";
 
 describe("LeetPlusConfigEditor", () => {
   it("should parse default configuration values for empty input", () => {
     const config = parseConfig("");
-    assert.strictEqual(config.theme, "auto");
-    assert.strictEqual(config.srs?.enabled, true);
-    assert.strictEqual(config.srs?.problemsPerDay, 5);
-    assert.strictEqual(config.srs?.defaultMode, "interleaved");
-    assert.deepStrictEqual(config.srs?.intervals, [1, 7, 16, 35, 90]);
-    assert.strictEqual(config.diffLogger?.enabled, true);
-    assert.strictEqual(config.diffLogger?.triggerMode, "smart");
-    assert.strictEqual(config.diffLogger?.debounceMs, 10000);
-    assert.strictEqual(config.diffLogger?.charThreshold, 100);
-    assert.deepStrictEqual(config.diffLogger?.trackedExtensions, [".py", ".ts", ".js", ".cpp", ".java", ".go"]);
-    assert.strictEqual(config.autoRating?.enabled, true);
-    assert.strictEqual(config.autoRating?.requireConfirmation, true);
-    assert.strictEqual(config.diffRetention, "session");
+    expect(config.theme).toBe("auto");
+    expect(config.srs?.enabled).toBe(true);
+    expect(config.srs?.problemsPerDay).toBe(5);
+    expect(config.srs?.defaultMode).toBe("interleaved");
+    expect(config.srs?.intervals).toEqual([1, 7, 16, 35, 90]);
+    expect(config.diffLogger?.enabled).toBe(true);
+    expect(config.diffLogger?.triggerMode).toBe("smart");
+    expect(config.diffLogger?.debounceMs).toBe(10000);
+    expect(config.diffLogger?.charThreshold).toBe(100);
+    expect(config.diffLogger?.trackedExtensions).toEqual([".py", ".ts", ".js", ".cpp", ".java", ".go"]);
+    expect(config.autoRating?.enabled).toBe(true);
+    expect(config.autoRating?.requireConfirmation).toBe(true);
+    expect(config.diffRetention).toBe("session");
   });
 
   it("should parse custom srs and diffLogger settings successfully", () => {
@@ -44,20 +43,20 @@ describe("LeetPlusConfigEditor", () => {
     });
 
     const config = parseConfig(rawJson);
-    assert.strictEqual(config.theme, "leetcode-dark");
-    assert.strictEqual(config.srs?.enabled, false);
-    assert.strictEqual(config.srs?.problemsPerDay, 8);
-    assert.strictEqual(config.srs?.defaultMode, "push");
-    assert.deepStrictEqual(config.srs?.intervals, [3, 10, 30]);
+    expect(config.theme).toBe("leetcode-dark");
+    expect(config.srs?.enabled).toBe(false);
+    expect(config.srs?.problemsPerDay).toBe(8);
+    expect(config.srs?.defaultMode).toBe("push");
+    expect(config.srs?.intervals).toEqual([3, 10, 30]);
 
-    assert.strictEqual(config.diffLogger?.enabled, false);
-    assert.strictEqual(config.diffLogger?.triggerMode, "change");
-    assert.strictEqual(config.diffLogger?.debounceMs, 5000);
-    assert.strictEqual(config.diffLogger?.charThreshold, 50);
-    assert.deepStrictEqual(config.diffLogger?.trackedExtensions, [".py"]);
+    expect(config.diffLogger?.enabled).toBe(false);
+    expect(config.diffLogger?.triggerMode).toBe("change");
+    expect(config.diffLogger?.debounceMs).toBe(5000);
+    expect(config.diffLogger?.charThreshold).toBe(50);
+    expect(config.diffLogger?.trackedExtensions).toEqual([".py"]);
 
-    assert.strictEqual(config.autoRating?.enabled, false);
-    assert.strictEqual(config.autoRating?.requireConfirmation, false);
-    assert.strictEqual(config.diffRetention, "all");
+    expect(config.autoRating?.enabled).toBe(false);
+    expect(config.autoRating?.requireConfirmation).toBe(false);
+    expect(config.diffRetention).toBe("all");
   });
 });

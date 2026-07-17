@@ -1,5 +1,4 @@
-import { describe, it } from "node:test";
-import assert from "node:assert";
+import { describe, it, expect } from "vitest";
 import { parseProblemConstraints } from "../src/modules/ConstraintParser";
 import {
   deriveBudget,
@@ -15,10 +14,10 @@ Constraints:
 1 <= nums.length <= 10^5
 `);
     const b = deriveBudget(c);
-    assert.ok(b);
-    assert.strictEqual(b!.maxSize, 100000);
-    assert.strictEqual(b!.targetDepth, 1);
-    assert.match(b!.targetLabel, /log n/);
+    expect(b).toBeTruthy();
+    expect(b!.maxSize).toBe(100000);
+    expect(b!.targetDepth).toBe(1);
+    expect(b!.targetLabel).toMatch(/log n/);
   });
 
   it("derives O(n²) budget for n ≤ 1000", () => {
@@ -27,8 +26,8 @@ Constraints:
 1 <= n <= 1000
 `);
     const b = deriveBudget(c);
-    assert.ok(b);
-    assert.strictEqual(b!.targetDepth, 2);
+    expect(b).toBeTruthy();
+    expect(b!.targetDepth).toBe(2);
   });
 
   it("allows O(2^n) for tiny n ≤ 20", () => {
@@ -37,8 +36,8 @@ Constraints:
 1 <= n <= 20
 `);
     const b = deriveBudget(c);
-    assert.ok(b);
-    assert.strictEqual(b!.targetDepth, 99);
+    expect(b).toBeTruthy();
+    expect(b!.targetDepth).toBe(99);
   });
 
   it("estimates nested-loop depth via indentation (python)", () => {
@@ -52,8 +51,8 @@ Constraints:
       "        return False",
     ].join("\n");
     const est = estimateLoopNesting(src, "python");
-    assert.strictEqual(est.maxDepth, 2);
-    assert.strictEqual(est.loops.length, 2);
+    expect(est.maxDepth).toBe(2);
+    expect(est.loops.length).toBe(2);
   });
 
   it("estimates depth 3 for triple-nested (typescript)", () => {
@@ -70,7 +69,7 @@ Constraints:
       "}",
     ].join("\n");
     const est = estimateLoopNesting(src, "typescript");
-    assert.strictEqual(est.maxDepth, 3);
+    expect(est.maxDepth).toBe(3);
   });
 
   it("flags over-budget: O(n²) with n ≤ 10^5", () => {
@@ -84,8 +83,8 @@ Constraints:
       "python"
     );
     const v = compareToBudget(est, b);
-    assert.strictEqual(v.tone, "over");
-    assert.strictEqual(v.icon, "🔴");
+    expect(v.tone).toBe("over");
+    expect(v.icon).toBe("🔴");
   });
 
   it("marks within-budget: O(n) with n ≤ 10^5", () => {
@@ -99,8 +98,8 @@ Constraints:
       "typescript"
     );
     const v = compareToBudget(est, b);
-    assert.strictEqual(v.tone, "ok");
-    assert.strictEqual(v.icon, "🟢");
+    expect(v.tone).toBe("ok");
+    expect(v.icon).toBe("🟢");
   });
 
   it("detects hasSort and upgrades O(n) estimate to O(n log n)", () => {
@@ -111,7 +110,7 @@ Constraints:
       "}",
     ].join("\n");
     const est = estimateLoopNesting(src, "typescript");
-    assert.strictEqual(est.hasSort, true);
+    expect(est.hasSort).toBe(true);
   });
 
   it("builds inline items tagged with correct severities", () => {
@@ -125,10 +124,10 @@ Constraints:
       "typescript"
     );
     const items = buildComplexityInlineItems(0, est, b);
-    assert.strictEqual(items[0].severity, "error", "signature should be error for over-budget");
+    expect(items[0].severity).toBe("error");
     const inner = items.find((i) => i.line === 2);
-    assert.ok(inner);
-    assert.strictEqual(inner!.severity, "error", "depth-2 loop line is error vs target depth 1");
+    expect(inner).toBeTruthy();
+    expect(inner!.severity).toBe("error");
   });
 
   it("returns null budget when constraints have no size cap", () => {
@@ -137,7 +136,7 @@ Constraints:
 Answer fits in a 32-bit integer.
 `);
     const b = deriveBudget(c);
-    assert.strictEqual(b, null);
+    expect(b).toBe(null);
   });
 });
 
@@ -158,9 +157,9 @@ describe("ComplexityEngine — loop bounds", () => {
       "                pass",
     ].join("\n");
     const e = estimateLoopNesting(src, "python");
-    assert.strictEqual(e.maxDepth, 1, `got bigO=${e.bigO}`);
-    assert.match(e.bigO, /^O\(n\)$/);
-    assert.notStrictEqual(e.confidence, "low");
+    expect(e.maxDepth).toBe(1);
+    expect(e.bigO).toMatch(/^O\(n\)$/);
+    expect(e.confidence).not.toBe("low");
   });
 
   it("logarithmic inner loop (x //= 2) inside linear outer → O(n log n)", () => {
@@ -172,9 +171,9 @@ describe("ComplexityEngine — loop bounds", () => {
       "            x //= 2",
     ].join("\n");
     const e = estimateLoopNesting(src, "python");
-    assert.strictEqual(e.bigO, "O(n log n)");
-    assert.strictEqual(e.maxDepth, 1);
-    assert.strictEqual(e.hasLogFactor, true);
+    expect(e.bigO).toBe("O(n log n)");
+    expect(e.maxDepth).toBe(1);
+    expect(e.hasLogFactor).toBe(true);
   });
 
   it("sqrt loop (i*i <= n) → O(√n)", () => {
@@ -187,8 +186,8 @@ describe("ComplexityEngine — loop bounds", () => {
       "}",
     ].join("\n");
     const e = estimateLoopNesting(src, "typescript");
-    assert.match(e.bigO, /√n|sqrt/i);
-    assert.strictEqual(e.maxDepth, 0);
+    expect(e.bigO).toMatch(/√n|sqrt/i);
+    expect(e.maxDepth).toBe(0);
   });
 });
 
@@ -205,8 +204,8 @@ describe("ComplexityEngine — amortized", () => {
       "    return []",
     ].join("\n");
     const e = estimateLoopNesting(src, "python");
-    assert.strictEqual(e.bigO, "O(n)");
-    assert.strictEqual(e.maxDepth, 1);
+    expect(e.bigO).toBe("O(n)");
+    expect(e.maxDepth).toBe(1);
   });
 
   it("sliding window (for outer + while-advance inner) → O(n)", () => {
@@ -223,8 +222,8 @@ describe("ComplexityEngine — amortized", () => {
       "    return best",
     ].join("\n");
     const e = estimateLoopNesting(src, "python");
-    assert.strictEqual(e.bigO, "O(n)", `got ${e.bigO}, reasoning: ${e.reasoning.join("; ")}`);
-    assert.strictEqual(e.maxDepth, 1);
+    expect(e.bigO).toBe("O(n)");
+    expect(e.maxDepth).toBe(1);
   });
 
   it("monotonic stack (while stack and ...: stack.pop()) inside for → O(n)", () => {
@@ -240,8 +239,8 @@ describe("ComplexityEngine — amortized", () => {
       "    return res",
     ].join("\n");
     const e = estimateLoopNesting(src, "python");
-    assert.strictEqual(e.bigO, "O(n)", `got ${e.bigO}`);
-    assert.strictEqual(e.maxDepth, 1);
+    expect(e.bigO).toBe("O(n)");
+    expect(e.maxDepth).toBe(1);
   });
 });
 
@@ -256,9 +255,9 @@ describe("ComplexityEngine — call catalog", () => {
       "    return h",
     ].join("\n");
     const e = estimateLoopNesting(src, "python");
-    assert.strictEqual(e.bigO, "O(n log n)", `got ${e.bigO}`);
-    assert.strictEqual(e.maxDepth, 1);
-    assert.strictEqual(e.hasLogFactor, true);
+    expect(e.bigO).toBe("O(n log n)");
+    expect(e.maxDepth).toBe(1);
+    expect(e.hasLogFactor).toBe(true);
   });
 
   it("Array.includes in a loop → O(n²)", () => {
@@ -272,8 +271,8 @@ describe("ComplexityEngine — call catalog", () => {
       "}",
     ].join("\n");
     const e = estimateLoopNesting(src, "typescript");
-    assert.strictEqual(e.bigO, "O(n²)", `got ${e.bigO}`);
-    assert.strictEqual(e.maxDepth, 2);
+    expect(e.bigO).toBe("O(n²)");
+    expect(e.maxDepth).toBe(2);
   });
 
   it("sort + single pass → O(n log n)", () => {
@@ -284,7 +283,7 @@ describe("ComplexityEngine — call catalog", () => {
       "}",
     ].join("\n");
     const e = estimateLoopNesting(src, "typescript");
-    assert.strictEqual(e.bigO, "O(n log n)");
+    expect(e.bigO).toBe("O(n log n)");
   });
 });
 
@@ -306,7 +305,7 @@ describe("ComplexityEngine — recursion", () => {
       "    return out + left[i:] + right[j:]",
     ].join("\n");
     const e = estimateLoopNesting(src, "python");
-    assert.strictEqual(e.bigO, "O(n log n)", `got ${e.bigO}; reasoning=${e.reasoning.join(" | ")}`);
+    expect(e.bigO).toBe("O(n log n)");
   });
 
   it("linear recursion T(n-1) + O(1) → O(n)", () => {
@@ -316,7 +315,7 @@ describe("ComplexityEngine — recursion", () => {
       "    return n * fact(n - 1)",
     ].join("\n");
     const e = estimateLoopNesting(src, "python");
-    assert.strictEqual(e.bigO, "O(n)");
+    expect(e.bigO).toBe("O(n)");
   });
 
   it("two recursive calls without halving → exponential", () => {
@@ -326,7 +325,7 @@ describe("ComplexityEngine — recursion", () => {
       "    return fib(n - 1) + fib(n - 2)",
     ].join("\n");
     const e = estimateLoopNesting(src, "python");
-    assert.match(e.bigO, /2ⁿ|exp/i);
+    expect(e.bigO).toMatch(/2ⁿ|exp/i);
   });
 
   it("DFS over adjacency list with visited → O(V+E)", () => {
@@ -338,7 +337,7 @@ describe("ComplexityEngine — recursion", () => {
       "        dfs(v, adj, visited)",
     ].join("\n");
     const e = estimateLoopNesting(src, "python");
-    assert.match(e.bigO, /V\+E/);
+    expect(e.bigO).toMatch(/V\+E/);
   });
 });
 
@@ -351,20 +350,20 @@ describe("ComplexityEngine — confidence", () => {
       "            g.step()",
     ].join("\n");
     const e = estimateLoopNesting(src, "python");
-    assert.strictEqual(e.confidence, "low");
+    expect(e.confidence).toBe("low");
 
     const c = parseProblemConstraints(`Constraints:\n1 <= n <= 10^5\n`);
     const b = deriveBudget(c);
     const v = compareToBudget(e, b);
     // Even though depth-2 unknowns mean overall could be O(n²), severity must NOT escalate to 🔴.
-    assert.notStrictEqual(v.icon, "🔴", `low-confidence verdicts must not be red, got ${v.icon}`);
+    expect(v.icon).not.toBe("🔴");
   });
 
   it("empty body → O(1) with high confidence", () => {
     const src = "function f() { return 1; }";
     const e = estimateLoopNesting(src, "typescript");
-    assert.strictEqual(e.maxDepth, 0);
-    assert.strictEqual(e.confidence, "high");
+    expect(e.maxDepth).toBe(0);
+    expect(e.confidence).toBe("high");
   });
 });
 
@@ -383,7 +382,7 @@ describe("ComplexityEngine — multi-language two-pointer", () => {
       "}",
     ].join("\n");
     const e = estimateLoopNesting(src, "typescript");
-    assert.strictEqual(e.bigO, "O(n)");
+    expect(e.bigO).toBe("O(n)");
   });
 
   it("two-pointer in C++ → O(n)", () => {
@@ -400,6 +399,6 @@ describe("ComplexityEngine — multi-language two-pointer", () => {
       "}",
     ].join("\n");
     const e = estimateLoopNesting(src, "cpp");
-    assert.strictEqual(e.bigO, "O(n)");
+    expect(e.bigO).toBe("O(n)");
   });
 });
