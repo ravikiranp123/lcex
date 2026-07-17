@@ -103,6 +103,7 @@ import {
   compareToBudget,
 } from "./modules/ComplexityBudget";
 import * as Logger from "./modules/Logger";
+import { initializeWorkspaceFolder } from "./modules/WorkspaceInitializer";
 import {
   bucketCount,
   bucketDifficulty,
@@ -1241,87 +1242,17 @@ let extensionContextForBars: vscode.ExtensionContext | null = null;
 
 async function migrateWorkspaces() {
   const folders = vscode.workspace.workspaceFolders ?? [];
-  const subdirs = ["snapshots", "diffs", "guides", "designs", "behavioral", "plans", "whiteboard"];
-  
   for (const folder of folders) {
-    const rootPath = folder.uri.fsPath;
-    const leetplusDir = path.join(rootPath, ".leetplus");
-    const leetcodeFile = path.join(rootPath, ".leetcode");
-
-    const exists = fs.existsSync(leetplusDir);
-    const isFile = exists ? fs.statSync(leetplusDir).isFile() : false;
-
-    if (isFile) {
-      // User created `.leetplus` as a file. Let's convert it to a directory.
-      try {
-        let configContent = "{}";
-        try {
-          configContent = fs.readFileSync(leetplusDir, "utf-8");
-        } catch { /* ignore */ }
-        
-        fs.unlinkSync(leetplusDir);
-        fs.mkdirSync(leetplusDir, { recursive: true });
-        
-        for (const d of subdirs) {
-          fs.mkdirSync(path.join(leetplusDir, d), { recursive: true });
-        }
-        
-        fs.writeFileSync(path.join(leetplusDir, "config.json"), configContent, "utf-8");
-        Logger.log(`Converted .leetplus file to directory in ${folder.name}`);
-      } catch (e) {
-        Logger.logError(`Failed to convert .leetplus file in ${folder.name}`, e);
+    try {
+      const result = await initializeWorkspaceFolder(folder.uri.fsPath);
+      if (result.subdirsCreated.length > 0) {
+        vscode.window.showInformationMessage(`LeetPlus restored missing subdirectories: ${result.subdirsCreated.join(", ")}`);
       }
-    } else if (!exists) {
-      if (fs.existsSync(leetcodeFile)) {
-        // Silent automatic migration of legacy config
-        try {
-          fs.mkdirSync(leetplusDir, { recursive: true });
-          for (const d of subdirs) {
-            fs.mkdirSync(path.join(leetplusDir, d), { recursive: true });
-          }
-          
-          let configContent = "{}";
-          try {
-            configContent = fs.readFileSync(leetcodeFile, "utf-8");
-          } catch { /* ignore */ }
-          
-          fs.writeFileSync(path.join(leetplusDir, "config.json"), configContent, "utf-8");
-          fs.unlinkSync(leetcodeFile);
-          
-          Logger.log(`Successfully migrated legacy config in ${folder.name} to LeetPlus`);
-        } catch (e) {
-          Logger.logError(`Migration failed for legacy config in ${folder.name}`, e);
-        }
+      if (result.stateRepaired) {
+        vscode.window.showWarningMessage(`LeetPlus restored a missing state.json file in your workspace.`);
       }
-    } else {
-      // It is a directory, scaffold subdirs if they don't exist
-      const recreatedDirs: string[] = [];
-      for (const d of subdirs) {
-        const subPath = path.join(leetplusDir, d);
-        if (!fs.existsSync(subPath)) {
-          try {
-            fs.mkdirSync(subPath, { recursive: true });
-            recreatedDirs.push(d);
-          } catch (e) {
-            Logger.logError(`Failed to scaffold ${subPath}`, e);
-          }
-        }
-      }
-      if (recreatedDirs.length > 0) {
-        vscode.window.showInformationMessage(`LeetPlus restored missing subdirectories: ${recreatedDirs.join(", ")}`);
-      }
-      
-      // Verify and repair missing state.json
-      const stateJson = path.join(leetplusDir, "state.json");
-      if (!fs.existsSync(stateJson)) {
-        try {
-          await initState(rootPath, "My Practice Plan", []);
-          Logger.log(`Repaired/recreated missing state.json in ${folder.name}`);
-          vscode.window.showWarningMessage(`LeetPlus restored a missing state.json file in your workspace.`);
-        } catch (e) {
-          Logger.logError(`Failed to recreate state.json in ${folder.name}`, e);
-        }
-      }
+    } catch (e) {
+      Logger.logError(`Failed to initialize workspace for ${folder.name}`, e);
     }
   }
 }
@@ -1554,50 +1485,14 @@ export async function activate(context: vscode.ExtensionContext) {
       
       const folder = folders[0];
       const rootPath = folder.uri.fsPath;
-      const leetplusDir = path.join(rootPath, ".leetplus");
-      const leetcodeFile = path.join(rootPath, ".leetcode");
-      const subdirs = ["snapshots", "diffs", "guides", "designs", "behavioral", "plans", "whiteboard"];
 
       try {
-        if (fs.existsSync(leetcodeFile)) {
-          fs.mkdirSync(leetplusDir, { recursive: true });
-          for (const d of subdirs) {
-            fs.mkdirSync(path.join(leetplusDir, d), { recursive: true });
-          }
-          
-          let configContent = "{}";
-          try {
-            configContent = fs.readFileSync(leetcodeFile, "utf-8");
-          } catch { /* ignore */ }
-          
-          fs.writeFileSync(path.join(leetplusDir, "config.json"), configContent, "utf-8");
-          fs.unlinkSync(leetcodeFile);
-          
+        const result = await initializeWorkspaceFolder(rootPath);
+        
+        if (result.migratedFromLegacy) {
           vscode.window.showInformationMessage("Migrated legacy .leetcode configuration to LeetPlus!");
-        } else {
-          if (!fs.existsSync(leetplusDir)) {
-            fs.mkdirSync(leetplusDir, { recursive: true });
-          } else if (fs.statSync(leetplusDir).isFile()) {
-            fs.unlinkSync(leetplusDir);
-            fs.mkdirSync(leetplusDir, { recursive: true });
-          }
-          
-          for (const d of subdirs) {
-            const subPath = path.join(leetplusDir, d);
-            if (!fs.existsSync(subPath)) {
-              fs.mkdirSync(subPath, { recursive: true });
-            }
-          }
-          
-          const configJson = path.join(leetplusDir, "config.json");
-          if (!fs.existsSync(configJson)) {
-            fs.writeFileSync(configJson, "{\n  \"language\": \"typescript\"\n}\n", "utf-8");
-          }
-        }
-
-        const stateJson = path.join(leetplusDir, "state.json");
-        if (!fs.existsSync(stateJson)) {
-          await initState(rootPath, "My Practice Plan", []);
+        } else if (result.convertedFileToDir) {
+          vscode.window.showInformationMessage("Converted .leetplus file to directory.");
         }
         
         vscode.window.showInformationMessage("Workspace successfully initialized for LeetPlus!");
