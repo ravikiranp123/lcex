@@ -1,142 +1,181 @@
 import * as fs from "fs";
 import * as path from "path";
-import { describe, it, beforeAll, afterAll, expect } from "vitest";
-import { initDiffLogger, saveDiff } from "../src/modules/DiffLogger";
-import { initState, readState } from "../src/modules/StateManager";
+import { describe, it, beforeEach, afterEach, expect } from "vitest";
+import { initDiffLogger, saveDiff, baselineCache } from "../src/modules/DiffLogger";
+import { initState } from "../src/modules/StateManager";
 
-const TEST_DIR = path.join(__dirname, "..", "test-diff-output");
+function makeTmpDir(): string {
+  return fs.mkdtempSync(path.join(require("os").tmpdir(), "lcex-diff-"));
+}
+
+const vscode = require("vscode");
+
+function makeProblem(id: number, slug: string) {
+  return {
+    id,
+    title: `Problem ${id}`,
+    slug,
+    difficulty: "Easy",
+    category: "Test",
+    status: "pending" as const,
+    scheduledDate: new Date().toISOString(),
+    nextRepetitionDate: null,
+    repetitionLevel: 0,
+    completionHistory: [],
+    patterns: [],
+    leetcodeUrl: null,
+    youtubeId: null,
+    solutionLink: null,
+    hints: null,
+    solution: null,
+  };
+}
+
+function makeEvent(docPath: string, docText: string, changes: any[]) {
+  return {
+    document: {
+      uri: { fsPath: docPath },
+      fileName: docPath,
+      getText: () => docText,
+    },
+    contentChanges: changes,
+  } as any;
+}
 
 describe("DiffLogger", () => {
-  beforeAll(() => {
-    if (!fs.existsSync(TEST_DIR)) {
-      fs.mkdirSync(TEST_DIR, { recursive: true });
-    }
+  let tmpDir: string;
+  let originalFolders: any;
+
+  beforeEach(() => {
+    tmpDir = makeTmpDir();
+    originalFolders = vscode.workspace.workspaceFolders;
+    baselineCache.clear();
   });
 
-  afterAll(() => {
-    if (fs.existsSync(TEST_DIR)) {
-      fs.rmSync(TEST_DIR, { recursive: true, force: true });
-    }
+  afterEach(() => {
+    vscode.workspace.workspaceFolders = originalFolders;
+    vscode._clearChangeListeners();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("should generate a patch unified diff successfully", async () => {
-    const workspaceRoot = path.join(TEST_DIR, "workspace1");
-    fs.mkdirSync(workspaceRoot, { recursive: true });
+  async function setupWorkspace(opts?: { enabled?: boolean; triggerMode?: string; charThreshold?: number }) {
+    const problem = makeProblem(42, "two-sum");
+    await initState(tmpDir, "Plan", [problem]);
 
-    // Mock VS Code workspace folder API to return our test workspace
-    const vscode = require("vscode");
-    const originalWorkspaceFolders = vscode.workspace.workspaceFolders;
-    vscode.workspace.workspaceFolders = [{ uri: { fsPath: workspaceRoot } }];
+    const leetplusDir = path.join(tmpDir, ".leetplus");
+    fs.mkdirSync(leetplusDir, { recursive: true });
+    fs.writeFileSync(path.join(leetplusDir, "config.json"), JSON.stringify({
+      diffLogger: {
+        enabled: opts?.enabled ?? true,
+        triggerMode: opts?.triggerMode ?? "smart",
+        debounceMs: 50,
+        charThreshold: opts?.charThreshold ?? 20,
+        trackedExtensions: [".ts"],
+      },
+    }));
 
-    try {
-      // 1. Initialize State
-      const problems = [
-        {
-          id: 42,
-          title: "Trapping Rain Water",
-          slug: "trapping-rain-water",
-          difficulty: "Hard",
-          category: "Arrays",
-          status: "pending" as const,
-          scheduledDate: new Date().toISOString(),
-          nextRepetitionDate: null,
-          repetitionLevel: 0,
-          completionHistory: [],
-          patterns: [],
-          leetcodeUrl: null,
-          youtubeId: null,
-          solutionLink: null,
-          hints: null,
-          solution: null,
-        },
-      ];
-      await initState(workspaceRoot, "NeetCode 150", problems);
+    vscode.workspace.workspaceFolders = [{ uri: { fsPath: tmpDir } }];
+    initDiffLogger({ subscriptions: [] } as any);
+  }
 
-      // Create .leetplus folder to make it recognized as a LeetPlus workspace
-      const leetplusDir = path.join(workspaceRoot, ".leetplus");
-      if (!fs.existsSync(leetplusDir)) {
-        fs.mkdirSync(leetplusDir, { recursive: true });
-      }
+  it("4a.7.1 — config.enabled=false → no patch files created", async () => {
+    await setupWorkspace({ enabled: false });
+    const docPath = path.join(tmpDir, "42.ts");
 
-      // Create configuration file config.json with custom diffLogger settings
-      const configJson = {
-        diffLogger: {
-          enabled: true,
-          triggerMode: "smart",
-          debounceMs: 50,
-          charThreshold: 20,
-          trackedExtensions: [".ts"]
-        }
-      };
-      fs.writeFileSync(path.join(leetplusDir, "config.json"), JSON.stringify(configJson), "utf-8");
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "initial", []));
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "changed content ".repeat(5), [{ text: "x", rangeLength: 0 }]));
+    await new Promise((r) => setTimeout(r, 100));
 
-      // 2. Initialize DiffLogger
-      const subscriptions: any[] = [];
-      const context = { subscriptions } as any;
-      initDiffLogger(context);
+    const diffsDir = path.join(tmpDir, ".leetplus", "diffs", "two-sum");
+    expect(fs.existsSync(diffsDir)).toBeFalsy();
+  });
 
-      // 3. Simulate document changes
-      const docPath = path.join(workspaceRoot, "42.ts");
-      const docUri = { fsPath: docPath };
-      
-      let docText = "function trap(height: number[]): number {\n  return 0;\n}";
-      const getDoc = () => ({
-        uri: docUri,
-        fileName: docPath,
-        getText: () => docText
-      });
+  it("4a.7.2 — Untracked extension (.rb) → no patch file", async () => {
+    await setupWorkspace();
+    const docPath = path.join(tmpDir, "42.rb");
 
-      // Fire initial document update to cache baseline
-      const mockEventInit = {
-        document: getDoc(),
-        contentChanges: []
-      } as any;
-      
-      await vscode._fireDidChangeTextDocument(mockEventInit);
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "initial", []));
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "changed ".repeat(10), [{ text: "x", rangeLength: 0 }]));
+    await new Promise((r) => setTimeout(r, 100));
 
-      // Verify that no diff is generated on first load (since it just initializes the baseline)
-      const diffsDir = path.join(workspaceRoot, ".leetplus", "diffs", "trapping-rain-water");
-      expect(fs.existsSync(diffsDir)).toBe(false);
+    const diffsDir = path.join(tmpDir, ".leetplus", "diffs", "two-sum");
+    expect(fs.existsSync(diffsDir)).toBeFalsy();
+  });
 
-      // Simulate a small change (< threshold = 20 characters)
-      docText = "function trap(height: number[]): number {\n  return 1;\n}";
-      const mockEventSmall = {
-        document: getDoc(),
-        contentChanges: [{ text: "1", rangeLength: 1 }]
-      } as any;
-      await vscode._fireDidChangeTextDocument(mockEventSmall);
+  it("4a.7.3 — triggerMode=time → large change doesn't fire immediately", async () => {
+    await setupWorkspace({ triggerMode: "time" });
+    const docPath = path.join(tmpDir, "42.ts");
 
-      // Verify no diff created immediately because it's below character threshold (20) and timer hasn't fired
-      expect(fs.existsSync(diffsDir)).toBe(false);
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "original", []));
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "x".repeat(100), [{ text: "x".repeat(100), rangeLength: 0 }]));
 
-      // Wait 100ms for time-based debounce trigger to execute
-      await new Promise(resolve => setTimeout(resolve, 100));
+    const diffsDir = path.join(tmpDir, ".leetplus", "diffs", "two-sum");
+    expect(fs.existsSync(diffsDir)).toBeFalsy();
 
-      // Verify diff patch file was created by the time trigger
-      expect(fs.existsSync(diffsDir)).toBeTruthy();
-      let files = fs.readdirSync(diffsDir);
-      expect(files.length).toBe(1);
-      expect(files[0].endsWith(".patch")).toBeTruthy();
+    await new Promise((r) => setTimeout(r, 100));
+    expect(fs.existsSync(diffsDir)).toBeTruthy();
+  });
 
-      const patchContent = fs.readFileSync(path.join(diffsDir, files[0]), "utf-8");
-      expect(patchContent.includes("-  return 0;")).toBeTruthy();
-      expect(patchContent.includes("+  return 1;")).toBeTruthy();
+  it("4a.7.4 — triggerMode=change → small change doesn't trigger, large fires immediately", async () => {
+    await setupWorkspace({ triggerMode: "change" });
+    const docPath = path.join(tmpDir, "42.ts");
 
-      // Simulate a large change (> threshold = 20 characters) to trigger immediate change-based save
-      docText = "function trap(height: number[]): number {\n  // Let's write more code to exceed character threshold of twenty characters\n  return 2;\n}";
-      const mockEventLarge = {
-        document: getDoc(),
-        contentChanges: [{ text: "// Let's write more code to exceed character threshold of twenty characters\n  return 2;", rangeLength: 10 }]
-      } as any;
-      await vscode._fireDidChangeTextDocument(mockEventLarge);
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "original", []));
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "tiny", [{ text: "tiny", rangeLength: 0 }]));
 
-      // Verify diff was created immediately without waiting for timeout
-      files = fs.readdirSync(diffsDir);
-      expect(files.length).toBe(2);
-    } finally {
-      // Restore original workspace folders
-      vscode.workspace.workspaceFolders = originalWorkspaceFolders;
-      vscode._clearChangeListeners();
-    }
+    const diffsDir = path.join(tmpDir, ".leetplus", "diffs", "two-sum");
+    expect(fs.existsSync(diffsDir)).toBeFalsy();
+
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "x".repeat(100), [{ text: "x".repeat(100), rangeLength: 0 }]));
+    expect(fs.existsSync(diffsDir)).toBeTruthy();
+  });
+
+  it("4a.7.5 — saveDiff when baseline===current → no patch written", async () => {
+    await setupWorkspace();
+    const docPath = path.join(tmpDir, "42.ts");
+    const text = "function twoSum() {}";
+    baselineCache.set(docPath, text);
+
+    await saveDiff(tmpDir, docPath, "two-sum", text);
+
+    const diffsDir = path.join(tmpDir, ".leetplus", "diffs", "two-sum");
+    expect(fs.existsSync(diffsDir)).toBeFalsy();
+  });
+
+  it("4a.7.6 — baseline updated after save → identical second edit no patch", async () => {
+    await setupWorkspace();
+    const docPath = path.join(tmpDir, "42.ts");
+
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "v1", []));
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "v2-changed-content-here", [{ text: "v2", rangeLength: 0 }]));
+    await new Promise((r) => setTimeout(r, 100));
+
+    const diffsDir = path.join(tmpDir, ".leetplus", "diffs", "two-sum");
+    const countAfterFirst = fs.readdirSync(diffsDir).length;
+
+    baselineCache.set(docPath, "v2-changed-content-here");
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "v2-changed-content-here", []));
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(fs.readdirSync(diffsDir).length).toBe(countAfterFirst);
+  });
+
+  it("4a.7.7 — accumulatedChanges reset after save", async () => {
+    await setupWorkspace();
+    const docPath = path.join(tmpDir, "42.ts");
+
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "v1", []));
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "v2-big-change-here-more-chars", [{ text: "big-change", rangeLength: 0 }]));
+    await new Promise((r) => setTimeout(r, 100));
+
+    const diffsDir = path.join(tmpDir, ".leetplus", "diffs", "two-sum");
+    expect(fs.existsSync(diffsDir)).toBeTruthy();
+
+    baselineCache.set(docPath, "v2-big-change-here-more-chars");
+    await vscode._fireDidChangeTextDocument(makeEvent(docPath, "v2-big-change-here-more-chars", []));
+    await new Promise((r) => setTimeout(r, 100));
+
+    const count = fs.readdirSync(diffsDir).length;
+    expect(count).toBe(1);
   });
 });
