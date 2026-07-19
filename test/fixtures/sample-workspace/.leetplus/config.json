@@ -1,0 +1,8 @@
+{
+  "language": "typescript",
+  "srs": {
+    "enabled": true,
+    "problemsPerDay": 5,
+    "defaultMode": "interleaved"
+  }
+}

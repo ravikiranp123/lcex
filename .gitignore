@@ -1,6 +1,8 @@
 node_modules/
 out/
+out-e2e/
 test-output/
+.vscode-test/
 *.vsix
 
 # Local/editor metadata

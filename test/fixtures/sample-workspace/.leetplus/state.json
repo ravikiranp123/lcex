@@ -1,0 +1,94 @@
+{
+  "version": "1.0",
+  "planName": "Test Practice Plan",
+  "planSlug": "top-interview-150",
+  "startDate": "2026-01-01T00:00:00.000Z",
+  "problems": [
+    {
+      "id": 1,
+      "title": "Two Sum",
+      "slug": "two-sum",
+      "difficulty": "Easy",
+      "category": "Arrays & Hashing",
+      "status": "completed",
+      "scheduledDate": "2026-01-01T00:00:00.000Z",
+      "nextRepetitionDate": "2026-07-10T00:00:00.000Z",
+      "repetitionLevel": 2,
+      "completionHistory": [
+        {
+          "date": "2026-06-20T10:00:00.000Z",
+          "rating": 3,
+          "notes": "Solved with hash map",
+          "timeSpentSeconds": 300,
+          "hintsUsed": 0,
+          "patternsDetected": ["hash-map"],
+          "aiRating": 3,
+          "aiJustification": "Good solution"
+        }
+      ],
+      "patterns": ["hash-map"],
+      "leetcodeUrl": "https://leetcode.com/problems/two-sum/",
+      "youtubeId": null,
+      "solutionLink": null,
+      "hints": null,
+      "solution": null
+    },
+    {
+      "id": 2,
+      "title": "Add Two Numbers",
+      "slug": "add-two-numbers",
+      "difficulty": "Medium",
+      "category": "Linked Lists",
+      "status": "completed",
+      "scheduledDate": "2026-01-02T00:00:00.000Z",
+      "nextRepetitionDate": "2026-07-10T00:00:00.000Z",
+      "repetitionLevel": 1,
+      "completionHistory": [
+        {
+          "date": "2026-06-25T10:00:00.000Z",
+          "rating": 2,
+          "notes": "Struggled with carry logic",
+          "timeSpentSeconds": 900,
+          "hintsUsed": 1,
+          "patternsDetected": ["linked-list"],
+          "aiRating": 2,
+          "aiJustification": "Needed hints"
+        }
+      ],
+      "patterns": ["linked-list"],
+      "leetcodeUrl": "https://leetcode.com/problems/add-two-numbers/",
+      "youtubeId": null,
+      "solutionLink": null,
+      "hints": null,
+      "solution": null
+    },
+    {
+      "id": 3,
+      "title": "Longest Substring Without Repeating Characters",
+      "slug": "longest-substring-without-repeating-characters",
+      "difficulty": "Medium",
+      "category": "Sliding Window",
+      "status": "pending",
+      "scheduledDate": "2026-07-10T00:00:00.000Z",
+      "nextRepetitionDate": null,
+      "repetitionLevel": 0,
+      "completionHistory": [],
+      "patterns": [],
+      "leetcodeUrl": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
+      "youtubeId": null,
+      "solutionLink": null,
+      "hints": null,
+      "solution": null
+    }
+  ],
+  "currentStreak": 5,
+  "bestStreak": 12,
+  "lastActivityDate": "2026-07-19T00:00:00.000Z",
+  "patternMastery": {
+    "hash-map": 0.7,
+    "linked-list": 0.4,
+    "sliding-window": 0.0
+  },
+  "designProblems": [],
+  "behavioralStories": []
+}

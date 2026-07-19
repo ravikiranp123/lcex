@@ -11,8 +11,8 @@ For every task in the todo list, follow this sequence:
 
 ## Rules
 
+- **STOP before committing.** Never run `git commit` without the user explicitly saying "commit" or "go ahead and commit". Present the summary first, wait for approval, then commit. This is the #1 rule — violating it breaks trust.
 - Never skip the user confirmation step.
-- Never commit without explicit permission.
 - If a todo has subtasks, complete ALL subtasks before moving to step 2.
 - Run the full test suite after completing a section (e.g., after all 4a.0.x subtasks are done).
 - Reference `plans/task.md` for detailed task specifications.
