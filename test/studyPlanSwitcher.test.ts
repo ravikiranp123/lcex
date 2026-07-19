@@ -221,4 +221,77 @@ describe("StudyPlanSwitcher", () => {
     expect(updatedState.archivedProblems?.length).toBe(1);
     expect(updatedState.archivedProblems[0].slug).toBe("add-two-numbers");
   });
+
+  it("user cancels confirmation dialog → returns cancelled", async () => {
+    const problems = [{
+      id: 1, title: "Two Sum", slug: "two-sum", difficulty: "Easy",
+      category: "Arrays", status: "pending" as const, scheduledDate: "2026-07-10",
+      nextRepetitionDate: null, repetitionLevel: 0, completionHistory: [],
+      patterns: [], leetcodeUrl: null, youtubeId: null, solutionLink: null,
+      hints: null, solution: null,
+    }];
+    await initState(tmpDir, "Plan A", problems, "plan-a");
+
+    vi.spyOn(vscode.window, "showInformationMessage").mockResolvedValue(undefined as any);
+
+    const seeds = [
+      { id: "2", title: "New Problem", titleSlug: "new-problem", difficulty: "Easy", topicTags: [] }
+    ];
+    const result = await switchStudyPlan(tmpDir, "plan-b", "Plan B", async () => seeds);
+    expect(result).toBe("cancelled");
+  });
+
+  it("user cancels QuickPick disposition → old problems kept", async () => {
+    const problems = [{
+      id: 1, title: "Two Sum", slug: "two-sum", difficulty: "Easy",
+      category: "Arrays", status: "pending" as const, scheduledDate: "2026-07-10",
+      nextRepetitionDate: null, repetitionLevel: 0, completionHistory: [],
+      patterns: [], leetcodeUrl: null, youtubeId: null, solutionLink: null,
+      hints: null, solution: null,
+    }];
+    await initState(tmpDir, "Plan A", problems, "plan-a");
+
+    vi.spyOn(vscode.window, "showInformationMessage").mockImplementation(
+      (msg: string, opts: any, confirmBtn: string) => Promise.resolve(confirmBtn)
+    );
+    vi.spyOn(vscode.window, "showQuickPick").mockResolvedValue(undefined as any);
+
+    const seeds = [
+      { id: "2", title: "New Problem", titleSlug: "new-problem", difficulty: "Easy", topicTags: [] }
+    ];
+    const result = await switchStudyPlan(tmpDir, "plan-b", "Plan B", async () => seeds);
+    expect(result).toBe("cancelled");
+  });
+
+  it("switch with zero old-only problems → no QuickPick shown, switches directly", async () => {
+    const problems = [{
+      id: 1, title: "Two Sum", slug: "two-sum", difficulty: "Easy",
+      category: "Arrays", status: "pending" as const, scheduledDate: "2026-07-10",
+      nextRepetitionDate: null, repetitionLevel: 0, completionHistory: [],
+      patterns: [], leetcodeUrl: null, youtubeId: null, solutionLink: null,
+      hints: null, solution: null,
+    }];
+    await initState(tmpDir, "Plan A", problems, "plan-a");
+
+    vi.spyOn(vscode.window, "showInformationMessage").mockImplementation(
+      (msg: string, opts: any, confirmBtn: string) => Promise.resolve(confirmBtn)
+    );
+    const quickPickSpy = vi.spyOn(vscode.window, "showQuickPick");
+
+    const seeds = [
+      { id: "1", title: "Two Sum", titleSlug: "two-sum", difficulty: "Easy", topicTags: ["Arrays"] }
+    ];
+    const result = await switchStudyPlan(tmpDir, "plan-b", "Plan B", async () => seeds);
+    expect(result).toBe("switched");
+    expect(quickPickSpy).not.toHaveBeenCalled();
+  });
+
+  it("seed fetch returns empty array → state has 0 problems, returns switched", async () => {
+    const result = await switchStudyPlan(tmpDir, "empty-plan", "Empty Plan", async () => []);
+    expect(result).toBe("switched");
+    const state = await readState(tmpDir);
+    expect(state).toBeTruthy();
+    expect(state.planSlug).toBe("empty-plan");
+    expect(state.problems.length).toBe(0);
+  });
 });

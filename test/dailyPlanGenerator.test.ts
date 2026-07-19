@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { describe, it, beforeEach, afterEach, expect, vi } from "vitest";
 import * as vscode from "vscode";
-import { generateDailyPlan } from "../src/modules/DailyPlanGenerator";
+import { generateDailyPlan, bootstrapStateFromStudyPlan, loadSeedsFromLocalDataFile } from "../src/modules/DailyPlanGenerator";
 import { initState, readState } from "../src/modules/StateManager";
 import { updateSRSModeInConfig } from "../src/modules/LeetPlusConfig";
 
@@ -149,6 +149,100 @@ describe("DailyPlanGenerator", () => {
     expect(plan.problems[1]).toEqual({ id: 1, type: "rep" });
   });
 
+  it("should return empty plan when state is null without throwing", async () => {
+    fs.mkdirSync(path.join(tmpDir, ".leetplus"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, ".leetplus", "config.json"), JSON.stringify({
+      srs: { enabled: true, problemsPerDay: 4, defaultMode: "interleaved" }
+    }), "utf-8");
+
+    vscode.workspace.workspaceFolders = [
+      { uri: { fsPath: tmpDir } as any, name: "TestWorkspace", index: 0 }
+    ];
+
+    const plan = await generateDailyPlan(tmpDir, null as any);
+
+    expect(plan).toBeDefined();
+    expect(plan.problems).toEqual([]);
+    expect(plan.date).toBe(new Date().toISOString().slice(0, 10));
+  });
+
+  it("should include all pending problems when SRS is disabled", async () => {
+    await setupMockState(tmpDir);
+
+    fs.writeFileSync(path.join(tmpDir, ".leetplus", "config.json"), JSON.stringify({
+      srs: { enabled: false, problemsPerDay: 4, defaultMode: "interleaved" }
+    }), "utf-8");
+
+    vscode.workspace.workspaceFolders = [
+      { uri: { fsPath: tmpDir } as any, name: "TestWorkspace", index: 0 }
+    ];
+
+    const state = await readState(tmpDir);
+    expect(state).toBeTruthy();
+
+    const plan = await generateDailyPlan(tmpDir, state);
+
+    expect(plan.problems.length).toBe(4);
+    const pendingProblems = plan.problems.filter((p) => p.type === "new");
+    expect(pendingProblems.length).toBe(2);
+  });
+
+  it("should write plan file to .leetplus/plans/<today>.json", async () => {
+    await setupMockState(tmpDir);
+
+    fs.writeFileSync(path.join(tmpDir, ".leetplus", "config.json"), JSON.stringify({
+      srs: { enabled: true, problemsPerDay: 4, defaultMode: "interleaved" }
+    }), "utf-8");
+
+    vscode.workspace.workspaceFolders = [
+      { uri: { fsPath: tmpDir } as any, name: "TestWorkspace", index: 0 }
+    ];
+
+    const state = await readState(tmpDir);
+    expect(state).toBeTruthy();
+
+    const plan = await generateDailyPlan(tmpDir, state);
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const planFile = path.join(tmpDir, ".leetplus", "plans", `${todayStr}.json`);
+    expect(fs.existsSync(planFile)).toBe(true);
+
+    const planContent = JSON.parse(fs.readFileSync(planFile, "utf-8"));
+    expect(planContent.date).toBe(todayStr);
+    expect(planContent.mode).toBe("interleaved");
+    expect(planContent.problems).toEqual(plan.problems);
+  });
+
+  it("should return empty plan in recap mode with no completed problems", async () => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    const problems = [
+      {
+        id: 1, title: "Pending Problem", slug: "pending-problem", difficulty: "Easy",
+        category: "Arrays", status: "pending" as const, scheduledDate: todayStr,
+        nextRepetitionDate: null, repetitionLevel: 0, completionHistory: []
+      }
+    ];
+
+    await initState(tmpDir, "Test Roadmap", problems);
+    const configDir = path.join(tmpDir, ".leetplus");
+    fs.mkdirSync(configDir, { recursive: true });
+    fs.writeFileSync(path.join(configDir, "config.json"), JSON.stringify({
+      srs: { enabled: true, problemsPerDay: 3, defaultMode: "recap" }
+    }), "utf-8");
+
+    vscode.workspace.workspaceFolders = [
+      { uri: { fsPath: tmpDir } as any, name: "TestWorkspace", index: 0 }
+    ];
+
+    const state = await readState(tmpDir);
+    expect(state).toBeTruthy();
+
+    const plan = await generateDailyPlan(tmpDir, state);
+
+    expect(plan.problems).toEqual([]);
+  });
+
   it("should persist selected Daily Plan mode to config.json", async () => {
     const configPath = path.join(tmpDir, ".leetplus", "config.json");
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
@@ -163,5 +257,31 @@ describe("DailyPlanGenerator", () => {
     const content = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     expect(content.srs?.defaultMode).toBe("review-first");
     expect(content.theme).toBe("leetcode-dark");
+  });
+
+  it("bootstrapStateFromStudyPlan should return 0 when fetch throws", async () => {
+    const state = { problems: [], version: "1.0" as const, planName: "Test", planSlug: "test", patternMastery: {} };
+    const failingFetch = async () => { throw new Error("Network error"); };
+
+    const count = await bootstrapStateFromStudyPlan(tmpDir, state, failingFetch);
+
+    expect(count).toBe(0);
+    expect(state.problems.length).toBe(0);
+  });
+
+  it("loadSeedsFromLocalDataFile should return null when file does not exist", () => {
+    const result = loadSeedsFromLocalDataFile(tmpDir, "nonexistent-plan");
+
+    expect(result).toBeNull();
+  });
+
+  it("loadSeedsFromLocalDataFile should return null when file has invalid JSON", () => {
+    const dataDir = path.join(tmpDir, ".leetplus", "data");
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(path.join(dataDir, "bad-plan.json"), "{ invalid json content", "utf-8");
+
+    const result = loadSeedsFromLocalDataFile(tmpDir, "bad-plan");
+
+    expect(result).toBeNull();
   });
 });

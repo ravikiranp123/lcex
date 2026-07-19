@@ -145,6 +145,10 @@ export async function generateDailyPlan(
   const mode = config.srs?.defaultMode ?? "interleaved";
   const limit = config.srs?.problemsPerDay ?? 5;
 
+  if (!state?.problems) {
+    return { date: todayStr, mode, problems: [] };
+  }
+
   let targetProblems = state.problems;
   if (focusCategory) {
     targetProblems = targetProblems.filter((p) => p.category === focusCategory);

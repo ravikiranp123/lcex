@@ -52,6 +52,28 @@ describe("SRSEngine", () => {
       expect(r.nextLevel).toBe(0);
       expect(r.intervalDays).toBe(1);
     });
+
+    it("rating 1 at level 99 → level stays at 99 (cap enforced)", () => {
+      const r = calculateNextInterval(1, 99);
+      expect(r.nextLevel).toBe(99);
+      expect(r.intervalDays).toBe(20);
+    });
+
+    it("negative currentLevel (e.g. -5) → clamped to 0", () => {
+      const rHard = calculateNextInterval(3, -5);
+      expect(rHard.nextLevel).toBe(0);
+      expect(rHard.intervalDays).toBe(2);
+
+      const rEasy = calculateNextInterval(1, -5);
+      expect(rEasy.nextLevel).toBe(1);
+      expect(rEasy.intervalDays).toBe(20);
+    });
+
+    it("out-of-range rating (e.g. 99) → default case: interval=1, level=0", () => {
+      const r = calculateNextInterval(99, 10);
+      expect(r.nextLevel).toBe(0);
+      expect(r.intervalDays).toBe(1);
+    });
   });
 
   describe("calculateStreaks", () => {
@@ -180,6 +202,104 @@ describe("SRSEngine", () => {
       expect(res.currentStreak).toBe(0);
       expect(res.bestStreak).toBe(3);
     });
+
+    it("single date in history → currentStreak=1, bestStreak=1", () => {
+      const state: LPState = {
+        version: "1.0",
+        planName: "Test",
+        startDate: "",
+        problems: [
+          {
+            id: 1,
+            title: "P1",
+            slug: "p1",
+            difficulty: "Easy",
+            category: "Arrays",
+            status: "completed",
+            scheduledDate: "",
+            nextRepetitionDate: null,
+            repetitionLevel: 0,
+            completionHistory: [
+              { date: "2026-07-10T08:00:00.000Z", rating: 2, notes: "", timeSpentSeconds: 0, hintsUsed: 0, patternsDetected: [], aiRating: 0, aiJustification: "" },
+            ],
+            patterns: [],
+            leetcodeUrl: null,
+            youtubeId: null,
+            solutionLink: null,
+            hints: null,
+            solution: null,
+          },
+        ],
+        currentStreak: 0,
+        bestStreak: 0,
+        lastActivityDate: null,
+        patternMastery: {},
+        designProblems: [],
+        behavioralStories: [],
+      };
+      const res = calculateStreaks(state, today);
+      expect(res.currentStreak).toBe(1);
+      expect(res.bestStreak).toBe(1);
+    });
+
+    it("two problems solved on same day → date deduplicated, still streak=1", () => {
+      const state: LPState = {
+        version: "1.0",
+        planName: "Test",
+        startDate: "",
+        problems: [
+          {
+            id: 1,
+            title: "P1",
+            slug: "p1",
+            difficulty: "Easy",
+            category: "Arrays",
+            status: "completed",
+            scheduledDate: "",
+            nextRepetitionDate: null,
+            repetitionLevel: 0,
+            completionHistory: [
+              { date: "2026-07-10T08:00:00.000Z", rating: 2, notes: "", timeSpentSeconds: 0, hintsUsed: 0, patternsDetected: [], aiRating: 0, aiJustification: "" },
+            ],
+            patterns: [],
+            leetcodeUrl: null,
+            youtubeId: null,
+            solutionLink: null,
+            hints: null,
+            solution: null,
+          },
+          {
+            id: 2,
+            title: "P2",
+            slug: "p2",
+            difficulty: "Easy",
+            category: "Arrays",
+            status: "completed",
+            scheduledDate: "",
+            nextRepetitionDate: null,
+            repetitionLevel: 0,
+            completionHistory: [
+              { date: "2026-07-10T14:00:00.000Z", rating: 2, notes: "", timeSpentSeconds: 0, hintsUsed: 0, patternsDetected: [], aiRating: 0, aiJustification: "" },
+            ],
+            patterns: [],
+            leetcodeUrl: null,
+            youtubeId: null,
+            solutionLink: null,
+            hints: null,
+            solution: null,
+          },
+        ],
+        currentStreak: 0,
+        bestStreak: 0,
+        lastActivityDate: null,
+        patternMastery: {},
+        designProblems: [],
+        behavioralStories: [],
+      };
+      const res = calculateStreaks(state, today);
+      expect(res.currentStreak).toBe(1);
+      expect(res.bestStreak).toBe(1);
+    });
   });
 
   describe("calculatePatternMastery", () => {
@@ -202,6 +322,14 @@ describe("SRSEngine", () => {
       expect(calculatePatternMastery(0.95, "success")).toBe(0.955);
       expect(calculatePatternMastery(0.05, "failure")).toBe(0);
       expect(calculatePatternMastery(1.0, "success")).toBe(1.0);
+    });
+
+    it("currentScore=1.0 + success → still clamped to 1.0", () => {
+      expect(calculatePatternMastery(1.0, "success")).toBe(1.0);
+    });
+
+    it("currentScore=0.0 + failure → still clamped to 0.0", () => {
+      expect(calculatePatternMastery(0.0, "failure")).toBe(0);
     });
   });
 
@@ -299,6 +427,60 @@ describe("SRSEngine", () => {
       expect(due.length).toBe(2);
       expect(due[0].id).toBe(1);
       expect(due[1].id).toBe(3);
+    });
+
+    it("skipped status + nextRepetitionDate in past → included as due", () => {
+      const state: LPState = {
+        version: "1.0",
+        planName: "Test",
+        startDate: "",
+        problems: [
+          {
+            id: 1,
+            title: "P1",
+            slug: "p1",
+            difficulty: "Easy",
+            category: "Arrays",
+            status: "skipped",
+            scheduledDate: "",
+            nextRepetitionDate: "2026-07-05T00:00:00.000Z",
+            repetitionLevel: 0,
+            completionHistory: [],
+            patterns: [],
+            leetcodeUrl: null,
+            youtubeId: null,
+            solutionLink: null,
+            hints: null,
+            solution: null,
+          },
+        ],
+        currentStreak: 0,
+        bestStreak: 0,
+        lastActivityDate: null,
+        patternMastery: {},
+        designProblems: [],
+        behavioralStories: [],
+      };
+      const due = getDueProblems(state, checkDate);
+      expect(due.length).toBe(1);
+      expect(due[0].id).toBe(1);
+    });
+
+    it("empty problems array → returns []", () => {
+      const state: LPState = {
+        version: "1.0",
+        planName: "Test",
+        startDate: "",
+        problems: [],
+        currentStreak: 0,
+        bestStreak: 0,
+        lastActivityDate: null,
+        patternMastery: {},
+        designProblems: [],
+        behavioralStories: [],
+      };
+      const due = getDueProblems(state, checkDate);
+      expect(due).toEqual([]);
     });
   });
 });

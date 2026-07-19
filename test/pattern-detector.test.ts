@@ -220,3 +220,174 @@ test("PATTERNS catalogue covers 20 patterns", () => {
   const ids = new Set(PATTERNS.map((p) => p.id));
   expect(ids.size).toBe(20);
 });
+
+test("empty source string → returns [], no throw", () => {
+  const out = detectPatterns("", "typescript");
+  expect(out.matched).toEqual([]);
+});
+
+test("source shorter than 20 chars → returns []", () => {
+  const out = detectPatterns("let x = 1;", "typescript");
+  expect(out.matched).toEqual([]);
+});
+
+test("sliding window pattern detected", () => {
+  const src = `
+    function minSubArrayLen(target: number, nums: number[]): number {
+      let windowSum = 0;
+      let left = 0;
+      let minLen = Infinity;
+      for (let right = 0; right < nums.length; right++) {
+        windowSum += nums[right];
+        while (windowSum >= target) {
+          minLen = Math.min(minLen, right - left + 1);
+          windowSum -= nums[left];
+          left++;
+        }
+      }
+      return minLen === Infinity ? 0 : minLen;
+    }
+  `;
+  const out = detectPatterns(src, "typescript");
+  expect(out.matched.includes("slidingWindow")).toBeTruthy();
+});
+
+test("dfsRecursive pattern detected (standalone, no DP)", () => {
+  const src = `
+    function countPaths(grid: number[][], i: number, j: number): number {
+      if (i < 0 || j < 0 || i >= grid.length || j >= grid[0].length) return 0;
+      if (i === grid.length - 1 && j === grid[0].length - 1) return 1;
+      return countPaths(grid, i + 1, j) + countPaths(grid, i, j + 1);
+    }
+  `;
+  const out = detectPatterns(src, "typescript");
+  expect(out.matched.includes("dfsRecursive")).toBeTruthy();
+  expect(out.matched.includes("dpTopDown")).toBeFalsy();
+});
+
+test("backtracking pattern detected", () => {
+  const src = `
+    function subsets(nums: number[]): number[][] {
+      const result: number[][] = [];
+      function backtrack(start: number, path: number[]) {
+        result.push(path.slice());
+        for (let i = start; i < nums.length; i++) {
+          path.push(nums[i]);
+          backtrack(i + 1, path);
+          path.pop();
+        }
+      }
+      backtrack(0, []);
+      return result;
+    }
+  `;
+  const out = detectPatterns(src, "typescript");
+  expect(out.matched.includes("backtracking")).toBeTruthy();
+});
+
+test("topoSort pattern detected", () => {
+  const src = `
+    function findOrder(numCourses: number, prerequisites: number[][]): number[] {
+      const inDegree = new Array(numCourses).fill(0);
+      const graph: number[][] = Array.from({ length: numCourses }, () => []);
+      for (const [to, from] of prerequisites) {
+        graph[from].push(to);
+        inDegree[to]++;
+      }
+      const queue: number[] = [];
+      for (let i = 0; i < numCourses; i++) {
+        if (inDegree[i] === 0) queue.push(i);
+      }
+      const order: number[] = [];
+      while (queue.length) {
+        const node = queue.shift()!;
+        order.push(node);
+        for (const next of graph[node]) {
+          inDegree[next]--;
+          if (inDegree[next] === 0) queue.push(next);
+        }
+      }
+      return order.length === numCourses ? order : [];
+    }
+  `;
+  const out = detectPatterns(src, "typescript");
+  expect(out.matched.includes("topoSort")).toBeTruthy();
+});
+
+test("bitManipulation pattern detected", () => {
+  const src = `
+    function singleNumber(nums: number[]): number {
+      let result = 0 ^ nums[0];
+      const mask = (1 << 5);
+      return result & mask;
+    }
+  `;
+  const out = detectPatterns(src, "typescript");
+  expect(out.matched.includes("bitManipulation")).toBeTruthy();
+});
+
+test("hashMapSet pattern detected", () => {
+  const src = `
+    function countWords(words: string[]): Map {
+      const defaultdict = {};
+      const result = new Map();
+      for (const w of words) {
+        defaultdict[w] = (defaultdict[w] || 0) + 1;
+        result.set(w, defaultdict[w]);
+      }
+      return result;
+    }
+  `;
+  const out = detectPatterns(src, "typescript");
+  expect(out.matched.includes("hashMapSet")).toBeTruthy();
+});
+
+test("treeTraversal pattern detected", () => {
+  const src = `
+    function maxDepth(root: TreeNode | null): number {
+      if (!root) return 0;
+      return 1 + Math.max(maxDepth(root.left), maxDepth(root.right));
+    }
+  `;
+  const out = detectPatterns(src, "typescript");
+  expect(out.matched.includes("treeTraversal")).toBeTruthy();
+});
+
+test("dpTopDown present → dfsRecursive suppressed (shadow rule)", () => {
+  const src = `
+    function fib(n: number): number {
+      const memo = new Map<number, number>();
+      function go(k: number): number {
+        if (k < 2) return k;
+        if (memo.has(k)) return memo.get(k)!;
+        const r = go(k - 1) + go(k - 2);
+        memo.set(k, r);
+        return r;
+      }
+      return go(n);
+    }
+  `;
+  const out = detectPatterns(src, "typescript");
+  expect(out.matched.includes("dpTopDown")).toBeTruthy();
+  expect(out.matched.includes("dfsRecursive")).toBeFalsy();
+});
+
+test("multiple patterns in one file → all detected", () => {
+  const src = `
+    function solve(graph: number[][], target: number): number {
+      const queue: number[] = [0];
+      const seen = new Set<number>([0]);
+      const memo = new Map<number, number>();
+      while (queue.length) {
+        const node = queue.shift()!;
+        if (node === target) return node;
+        for (const next of graph[node]) {
+          if (!seen.has(next)) { seen.add(next); queue.push(next); }
+        }
+      }
+      return -1;
+    }
+  `;
+  const out = detectPatterns(src, "typescript");
+  expect(out.matched.includes("bfs")).toBeTruthy();
+});

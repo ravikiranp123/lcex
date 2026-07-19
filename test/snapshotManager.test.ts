@@ -85,6 +85,81 @@ describe("SnapshotManager", () => {
     expect(latest.notes).toBe("Used a map approach");
   });
 
+  it("captureSnapshot when readState returns null → throws", async () => {
+    const nonExistentDir = path.join(tmpDir, "no-workspace");
+    const solutionFile = path.join(tmpDir, "sol.ts");
+    fs.writeFileSync(solutionFile, "function foo() {}", "utf-8");
+
+    await expect(
+      captureSnapshot(nonExistentDir, 1, "two-sum", solutionFile, 2, "notes")
+    ).rejects.toThrow("Could not load LeetPlus state file");
+  });
+
+  it("captureSnapshot when problem not found by slug → throws", async () => {
+    await initState(tmpDir, "Plan", []);
+    const solutionFile = path.join(tmpDir, "sol.ts");
+    fs.writeFileSync(solutionFile, "function foo() {}", "utf-8");
+
+    await expect(
+      captureSnapshot(tmpDir, 999, "nonexistent", solutionFile, 2, "notes")
+    ).rejects.toThrow("not found in state");
+  });
+
+  it("captureSnapshot when solution file does not exist → throws", async () => {
+    const problems = [{
+      id: 1, title: "Two Sum", slug: "two-sum", difficulty: "Easy",
+      category: "Arrays", status: "pending" as const,
+      scheduledDate: new Date().toISOString(), nextRepetitionDate: null,
+      repetitionLevel: 0, completionHistory: [], patterns: [],
+    }];
+    await initState(tmpDir, "Plan", problems);
+
+    await expect(
+      captureSnapshot(tmpDir, 1, "two-sum", path.join(tmpDir, "missing.ts"), 2, "notes")
+    ).rejects.toThrow("Solution file not found");
+  });
+
+  it("captureSnapshot with rating=0 (Mastered) → repetitionLevel=99, status=completed", async () => {
+    const problems = [{
+      id: 1, title: "Two Sum", slug: "two-sum", difficulty: "Easy",
+      category: "Arrays", status: "pending" as const,
+      scheduledDate: new Date().toISOString(), nextRepetitionDate: null,
+      repetitionLevel: 0, completionHistory: [], patterns: [],
+    }];
+    await initState(tmpDir, "Plan", problems);
+    const solutionFile = path.join(tmpDir, "1.two-sum.ts");
+    fs.writeFileSync(solutionFile, "function twoSum() {}", "utf-8");
+
+    await captureSnapshot(tmpDir, 1, "two-sum", solutionFile, 0, "mastered");
+
+    const state = await readState(tmpDir);
+    expect(state?.problems[0].status).toBe("completed");
+    expect(state?.problems[0].repetitionLevel).toBe(99);
+  });
+
+  it("captureSnapshot with rating=4 (Again) → repetitionLevel=0, pattern mastery outcome is failure", async () => {
+    const problems = [{
+      id: 1, title: "Two Sum", slug: "two-sum", difficulty: "Easy",
+      category: "Arrays", status: "pending" as const,
+      scheduledDate: new Date().toISOString(), nextRepetitionDate: null,
+      repetitionLevel: 3, completionHistory: [], patterns: ["hashMap"],
+    }];
+    await initState(tmpDir, "Plan", problems);
+    // Pre-seed pattern mastery so failure outcome actually reduces it
+    const stateBefore = await readState(tmpDir);
+    stateBefore!.patternMastery["hashMap"] = 0.5;
+    await writeState(tmpDir, stateBefore!);
+
+    const solutionFile = path.join(tmpDir, "1.two-sum.ts");
+    fs.writeFileSync(solutionFile, "function twoSum() {}", "utf-8");
+
+    await captureSnapshot(tmpDir, 1, "two-sum", solutionFile, 4, "failed");
+
+    const state = await readState(tmpDir);
+    expect(state?.problems[0].repetitionLevel).toBe(0);
+    expect(state?.patternMastery["hashMap"]).toBeLessThan(0.5);
+  });
+
   describe("diffRetention strategies", () => {
     const setupProblemWorkspace = async (dir: string) => {
       const problems = [
@@ -188,5 +263,57 @@ describe("SnapshotManager", () => {
       expect(snap.aiRating).toBe(3);
       expect(snap.aiJustification).toBe("Used a lot of space and double pointer loops.");
     });
+
+    it("finalizeProblemRating when state is null → throws", async () => {
+      const nonExistentDir = path.join(tmpDir, "no-workspace");
+      await expect(
+        finalizeProblemRating(nonExistentDir, "two-sum", 2, "notes", 2, "justification")
+      ).rejects.toThrow("Could not load state");
+    });
+
+    it("finalizeProblemRating when problem not found → throws", async () => {
+      await initState(tmpDir, "Plan", []);
+      await expect(
+        finalizeProblemRating(tmpDir, "nonexistent", 2, "notes", 2, "justification")
+      ).rejects.toThrow("not found in state");
+    });
+
+    it("finalizeProblemRating when completionHistory is empty → throws", async () => {
+      const problems = [{
+        id: 1, title: "Two Sum", slug: "two-sum", difficulty: "Easy",
+        category: "Arrays", status: "pending" as const,
+        scheduledDate: new Date().toISOString(), nextRepetitionDate: null,
+        repetitionLevel: 0, completionHistory: [], patterns: [],
+      }];
+      await initState(tmpDir, "Plan", problems);
+
+      await expect(
+        finalizeProblemRating(tmpDir, "two-sum", 2, "notes", 2, "justification")
+      ).rejects.toThrow("no completion history");
+    });
+  });
+
+  it("multiple snapshots on same problem → getLatestSnapshot returns most recent", async () => {
+    const problems = [{
+      id: 1, title: "Two Sum", slug: "two-sum", difficulty: "Easy",
+      category: "Arrays", status: "pending" as const,
+      scheduledDate: new Date().toISOString(), nextRepetitionDate: null,
+      repetitionLevel: 0, completionHistory: [], patterns: [],
+    }];
+    await initState(tmpDir, "Plan", problems);
+    const solutionFile = path.join(tmpDir, "1.two-sum.ts");
+    fs.writeFileSync(solutionFile, "function twoSum() {}", "utf-8");
+
+    await captureSnapshot(tmpDir, 1, "two-sum", solutionFile, 3, "first attempt");
+    await captureSnapshot(tmpDir, 1, "two-sum", solutionFile, 1, "second attempt - better");
+
+    const snaps = await getSnapshots(tmpDir, 1, "two-sum");
+    expect(snaps.length).toBe(2);
+    expect(snaps[0].notes).toBe("first attempt");
+    expect(snaps[1].notes).toBe("second attempt - better");
+
+    const latest = await getLatestSnapshot(tmpDir, 1, "two-sum");
+    expect(latest?.notes).toBe("second attempt - better");
+    expect(latest?.rating).toBe(1);
   });
 });
