@@ -652,48 +652,48 @@
 
 ### 4b.2 — New test file: `test/lcInterviewFile.test.ts`
 > Tests `src/modules/LcInterviewFile.ts` — pure JSON parsing/validation, no vscode import.
-- [ ] **4b.2.1 — `parseLcInterviewFile`: valid v1 JSON → `{ ok: true, data: ... }`**
+- [x] **4b.2.1 — `parseLcInterviewFile`: valid v1 JSON → `{ ok: true, data: ... }`**
   - Pass a JSON string with `version:1`, `name`, `durationMinutes:45`, one problem.
   - Assert returned object has all fields typed correctly.
-- [ ] **4b.2.2 — `parseLcInterviewFile`: unknown `version` field → `{ ok: false, message }`**
+- [x] **4b.2.2 — `parseLcInterviewFile`: unknown `version` field → `{ ok: false, message }`**
   - Pass `{ version: 99, ... }`. Assert `ok === false` and message contains "version".
-- [ ] **4b.2.3 — `parseLcInterviewFile`: `durationMinutes` not in allowlist (45/60/180) → `ok: false`**
+- [x] **4b.2.3 — `parseLcInterviewFile`: `durationMinutes` not in allowlist (45/60/180) → `ok: false`**
   - Pass `durationMinutes: 30`. Assert validation rejects it.
-- [ ] **4b.2.4 — `parseLcInterviewFile`: problems as array of strings → normalized to `PlannedInterviewProblem[]`**
+- [x] **4b.2.4 — `parseLcInterviewFile`: problems as array of strings → normalized to `PlannedInterviewProblem[]`**
   - Pass `problems: ["two-sum", "three-sum"]`. Assert each normalized to `{ titleSlug, difficulty: "MEDIUM" }`.
-- [ ] **4b.2.5 — `parseLcInterviewFile`: problems as array of objects → passed through**
+- [x] **4b.2.5 — `parseLcInterviewFile`: problems as array of objects → passed through**
   - Pass `problems: [{ titleSlug: "two-sum", difficulty: "Medium" }]`. Assert `difficulty` preserved.
-- [ ] **4b.2.6 — `parseLcInterviewFile`: `tags` with entries > 64 chars or > 16 items → filtered/capped**
+- [x] **4b.2.6 — `parseLcInterviewFile`: `tags` with entries > 64 chars or > 16 items → filtered/capped**
   - Pass mix of valid tags and one too long (> 64 chars). Assert only valid kept, total capped at 16.
-- [ ] **4b.2.7 — `parseLcInterviewFile`: `attempts[].id` not matching `ATTEMPT_ID_RE` → stripped**
+- [x] **4b.2.7 — `parseLcInterviewFile`: `attempts[].id` not matching `ATTEMPT_ID_RE` → stripped**
   - Pass attempt with `id: "gg9"` (valid) and `id: "zzzz"` (invalid). Assert invalid not in result.
-- [ ] **4b.2.8 — `defaultInterviewNameFromDate` returns `YYYY-MM-DD` format**
+- [x] **4b.2.8 — `defaultInterviewNameFromDate` returns `YYYY-MM-DD` format**
   - Assert output matches `/^\d{4}-\d{2}-\d{2}$/`.
 
 ---
 
 ### 4b.3 — New test file: `test/lcInterviewReportStore.test.ts`
 > Tests `src/modules/LeetPlusInterviewReportStore.ts` — atomic file I/O, no vscode import.
-- [ ] **4b.3.1 — `writeInterviewReportAtPath` then `readInterviewReportFile` → round-trip data integrity**
+- [x] **4b.3.1 — `writeInterviewReportAtPath` then `readInterviewReportFile` → round-trip data integrity**
   - Use `mkdtempSync` for isolation. Write report with all fields, read back, assert deep equality.
-- [ ] **4b.3.2 — `readInterviewReportFile` on non-existent path → `undefined`, no throw**
-- [ ] **4b.3.3 — `readInterviewReportFile` on corrupted JSON → `undefined`, no throw**
-- [ ] **4b.3.4 — `atomicWriteJsonSync`: no `.tmp` file left on disk after a successful write**
+- [x] **4b.3.2 — `readInterviewReportFile` on non-existent path → `undefined`, no throw**
+- [x] **4b.3.3 — `readInterviewReportFile` on corrupted JSON → `undefined`, no throw**
+- [x] **4b.3.4 — `atomicWriteJsonSync`: no `.tmp` file left on disk after a successful write**
   - Verify sibling `.tmp` is cleaned up after rename completes.
 
 ---
 
 ### 4b.4 — New test file: `test/bugReviewStore.test.ts`
 > Tests `src/modules/BugReviewStore.ts` — SRS-scheduled bug review queue with interval ladder [3,7,30,90].
-- [ ] **4b.4.1 — `addBugReview`: writes a review entry; appears in `listDueReviews` when `nextDueAt` is past**
+- [x] **4b.4.1 — `addBugReview`: writes a review entry; appears in `listDueReviews` when `nextDueAt` is past**
   - Use `mkdtempSync` for isolation (override `BUG_REVIEWS_FILE` path).
   - Assert entry present when `nextDueAt` is yesterday's date.
-- [ ] **4b.4.2 — `listDueReviews`: entry with future `nextDueAt` not returned**
+- [x] **4b.4.2 — `listDueReviews`: entry with future `nextDueAt` not returned**
   - Create two entries: one due yesterday, one due tomorrow. Assert only the past-due one returned.
-- [ ] **4b.4.3 — `markReviewed`: advances `nextDueAt` by the next SRS interval step**
+- [x] **4b.4.3 — `markReviewed`: advances `nextDueAt` by the next SRS interval step**
   - Mark fresh entry (intervalDays=3) as reviewed. Assert `nextDueAt` is 7 days in the future.
-- [ ] **4b.4.4 — `markReviewed` on unknown id → no throw, store unchanged**
-- [ ] **4b.4.5 — `readBugReviews` on corrupted file → returns empty store, no throw**
+- [x] **4b.4.4 — `markReviewed` on unknown id → no throw, store unchanged**
+- [x] **4b.4.5 — `readBugReviews` on corrupted file → returns empty store, no throw**
 
 ---
 
