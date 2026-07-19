@@ -14,7 +14,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      vscode: path.resolve("./node_modules/vscode"),
+      vscode: path.resolve("./test/__mocks__/vscode"),
     },
   },
 });

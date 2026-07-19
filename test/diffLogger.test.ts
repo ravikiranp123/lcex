@@ -1,14 +1,13 @@
 import * as fs from "fs";
 import * as path from "path";
 import { describe, it, beforeEach, afterEach, expect } from "vitest";
+import * as vscode from "vscode";
 import { initDiffLogger, saveDiff, baselineCache } from "../src/modules/DiffLogger";
 import { initState } from "../src/modules/StateManager";
 
 function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(require("os").tmpdir(), "lcex-diff-"));
 }
-
-const vscode = require("vscode");
 
 function makeProblem(id: number, slug: string) {
   return {

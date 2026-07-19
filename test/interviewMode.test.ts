@@ -18,9 +18,10 @@ function createMemento(store: Record<string, unknown> = {}) {
   } as any;
 }
 
+import * as vscode from "vscode";
+
 describe("InterviewMode", () => {
   let memento: ReturnType<typeof createMemento>;
-  const vscode = require("vscode");
 
   beforeEach(() => {
     memento = createMemento();

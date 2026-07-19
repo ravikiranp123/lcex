@@ -9,8 +9,9 @@ function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(require("os").tmpdir(), "lcex-switcher-"));
 }
 
+import * as vscode from "vscode";
+
 describe("StudyPlanSwitcher", () => {
-  const vscode = require("vscode");
   let tmpDir: string;
 
   beforeEach(() => {

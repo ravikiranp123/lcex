@@ -1,11 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
 import { describe, it, beforeEach, afterEach, expect, vi } from "vitest";
+import * as vscode from "vscode";
 import { initStatusBar, updateStatusBar } from "../src/modules/StatusBarManager";
 import { initState } from "../src/modules/StateManager";
 
 describe("StatusBarManager", () => {
-  const vscode = require("vscode");
   let tmpDir: string;
   let originalFolders: any;
   let capturedItem: any;

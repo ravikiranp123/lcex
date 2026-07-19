@@ -775,6 +775,31 @@
 
 ---
 
+### 4c.6 — Command Execution E2E Tests (Interactive Flows)
+- [x] **4c.6.1 — Setup Mocking Utilities for E2E Host**
+  - Installed `sinon` + `@types/sinon` for stubbing VS Code API prompts inside the extension host.
+  - Created `test/e2e/testUtils.ts` with `stubQuickPick`, `stubInputBox`, `stubInformationMessage`, `stubWarningMessage`, `stubErrorMessage`, and `restoreAllStubs` (called in `afterEach` for test isolation).
+- [x] **4c.6.2 — Test `leetplus.openProblem` (Problem Solving Flow)**
+  - Stubbed `showInputBox` to return `"two-sum"`.
+  - Spied on `vscode.window.createWebviewPanel` — verified it was called with viewType `"problem"`.
+  - Tested cancel path: stubbed `showInputBox` → `undefined`, verified no webview created.
+- [x] **4c.6.3 — Test `leetplus.switchStudyPlan` (UI Flow)**
+  - Stubbed `showQuickPick` to capture plan list items and return `undefined` (cancel).
+  - Verified quickPick is called when no `targetPlanSlug` argument is provided.
+  - Verified quickPick is SKIPPED when a valid `targetPlanSlug` matches a configured plan.
+  - Verified quickPick is shown when `targetPlanSlug` doesn't match any plan.
+- [x] **4c.6.4 — Test `leetplus.interviewModeStart` (Focus Flow)**
+  - Stubbed `showQuickPick` with cancel → verified command exits cleanly.
+  - Stubbed `showQuickPick` → `{ id: "ai" }` → spied on `executeCommand`, verified `leetplus.interviewGenerateWithAi` is called.
+  - Stubbed `showQuickPick` → `{ id: "panel" }` → verified `createWebviewPanel` is called (interview setup panel opens).
+- [x] **4c.6.5 — Test `leetplus.completeProblem` (Action Flow)**
+  - Tested warn path: no slug → warning shown.
+  - Tested warn path: slug not in state → warning shown.
+  - Created a real solution file (`1.ts`) in the fixture workspace, executed command with slug `"two-sum"`.
+  - Verified `.leetplus/snapshots/two-sum/` directory is created and `state.json` is updated (`status: "completed"`, `completionHistory` entries).
+
+---
+
 ## Phase 4d: Codebase Health — extension.ts Refactoring 🔴
 > Depends on: Phase 4a, Phase 4b, Phase 4c
 > ⚠️ Tasks 4d.1–4d.6 are in stash@{0} ("refactor"). NOT yet committed.
