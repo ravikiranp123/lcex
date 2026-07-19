@@ -1,80 +1,117 @@
 import * as fs from "fs";
 import * as path from "path";
-import { describe, it, beforeAll, afterAll, expect } from "vitest";
+import { describe, it, beforeEach, afterEach, expect, vi } from "vitest";
 import { initStatusBar, updateStatusBar } from "../src/modules/StatusBarManager";
 import { initState } from "../src/modules/StateManager";
 
-const TEST_DIR = path.join(__dirname, "..", "test-statusbar-output");
+function makeTmpDir(): string {
+  return fs.mkdtempSync(path.join(require("os").tmpdir(), "lcex-statusbar-"));
+}
+
+function getLastStatusBarItem() {
+  const vscode = require("vscode");
+  return vscode._statusBarItems[vscode._statusBarItems.length - 1];
+}
 
 describe("StatusBarManager", () => {
-  beforeAll(() => {
-    if (!fs.existsSync(TEST_DIR)) {
-      fs.mkdirSync(TEST_DIR, { recursive: true });
-    }
+  const vscode = require("vscode");
+  let tmpDir: string;
+  let originalFolders: any;
+
+  beforeEach(() => {
+    tmpDir = makeTmpDir();
+    originalFolders = vscode.workspace.workspaceFolders;
   });
 
-  afterAll(() => {
-    if (fs.existsSync(TEST_DIR)) {
-      fs.rmSync(TEST_DIR, { recursive: true, force: true });
-    }
+  afterEach(() => {
+    vscode.workspace.workspaceFolders = originalFolders;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("should update status bar item text based on state", async () => {
-    const workspaceRoot = path.join(TEST_DIR, "workspace1");
-    fs.mkdirSync(workspaceRoot, { recursive: true });
+  it("updateStatusBar when statusBarItem not initialized → no throw", async () => {
+    vscode.workspace.workspaceFolders = undefined;
+    await expect(updateStatusBar()).resolves.not.toThrow();
+  });
 
-    // Mock VS Code workspace folder API to return our test workspace
-    const vscode = require("vscode");
-    const originalWorkspaceFolders = vscode.workspace.workspaceFolders;
-    vscode.workspace.workspaceFolders = [{ uri: { fsPath: workspaceRoot } }];
+  it("updateStatusBar with no workspace folders → hide() called", async () => {
+    initStatusBar({ subscriptions: [] } as any);
+    vscode.workspace.workspaceFolders = undefined;
+    const item = getLastStatusBarItem();
+    const hideSpy = vi.spyOn(item, "hide");
 
-    try {
-      // 1. Initialize State
-      const problems = [
-        {
-          id: 1,
-          title: "Two Sum",
-          slug: "two-sum",
-          difficulty: "Easy",
-          category: "Arrays",
-          status: "pending" as const,
-          scheduledDate: new Date(Date.now() - 3600 * 1000).toISOString(), // Overdue
-          nextRepetitionDate: null,
-          repetitionLevel: 0,
-          completionHistory: [],
-          patterns: [],
-          leetcodeUrl: null,
-          youtubeId: null,
-          solutionLink: null,
-          hints: null,
-          solution: null,
-        },
-      ];
-      await initState(workspaceRoot, "NeetCode 150", problems);
+    await updateStatusBar();
+    expect(hideSpy).toHaveBeenCalled();
+  });
 
-      // Create .leetplus folder to make it recognized as a LeetPlus workspace
-      const leetplusDir = path.join(workspaceRoot, ".leetplus");
-      if (!fs.existsSync(leetplusDir)) {
-        fs.mkdirSync(leetplusDir, { recursive: true });
-      }
+  it("updateStatusBar with workspace folder but no .leetplus dir → hide() called", async () => {
+    initStatusBar({ subscriptions: [] } as any);
+    vscode.workspace.workspaceFolders = [{ uri: { fsPath: tmpDir } }];
+    const item = getLastStatusBarItem();
+    const hideSpy = vi.spyOn(item, "hide");
 
-      // 2. Initialize Status Bar
-      const subscriptions: any[] = [];
-      const context = { subscriptions } as any;
-      initStatusBar(context);
+    await updateStatusBar();
+    expect(hideSpy).toHaveBeenCalled();
+  });
 
-      // Verify command registration
-      expect(subscriptions.length).toBe(4); // 1 item + 1 command + 1 watcher + 1 workspace change listener
+  it("updateStatusBar when readState returns null → hide() called", async () => {
+    initStatusBar({ subscriptions: [] } as any);
+    fs.mkdirSync(path.join(tmpDir, ".leetplus"), { recursive: true });
+    vscode.workspace.workspaceFolders = [{ uri: { fsPath: tmpDir } }];
+    const item = getLastStatusBarItem();
+    const hideSpy = vi.spyOn(item, "hide");
 
-      // 3. Update Status Bar
-      await updateStatusBar();
+    await updateStatusBar();
+    expect(hideSpy).toHaveBeenCalled();
+  });
 
-      // Retrieve the status bar item created during initStatusBar (stored in mock's _statusBarItems array)
-      const mockItem = (vscode as any)._statusBarItems[0];
-      expect(mockItem.text).toBe("🔥 0 | 📋 1 due");
-    } finally {
-      // Restore original workspace folders
-      vscode.workspace.workspaceFolders = originalWorkspaceFolders;
-    }
+  it("streak=0, dueCount=0 → text is '🔥 0 | 📋 0 due', show() called", async () => {
+    initStatusBar({ subscriptions: [] } as any);
+    await initState(tmpDir, "Plan", []);
+    vscode.workspace.workspaceFolders = [{ uri: { fsPath: tmpDir } }];
+    const item = getLastStatusBarItem();
+    const showSpy = vi.spyOn(item, "show");
+
+    await updateStatusBar();
+    expect(item.text).toBe("🔥 0 | 📋 0 due");
+    expect(showSpy).toHaveBeenCalled();
+  });
+
+  it("non-zero streak → displayed correctly", async () => {
+    initStatusBar({ subscriptions: [] } as any);
+    const state = await initState(tmpDir, "Plan", []);
+    state.currentStreak = 7;
+    const { writeState } = await import("../src/modules/StateManager");
+    await writeState(tmpDir, state);
+
+    vscode.workspace.workspaceFolders = [{ uri: { fsPath: tmpDir } }];
+    await updateStatusBar();
+    expect(getLastStatusBarItem().text).toContain("🔥 7");
+  });
+
+  it("multiple due problems → count shown correctly", async () => {
+    initStatusBar({ subscriptions: [] } as any);
+    const problems = Array.from({ length: 3 }, (_, i) => ({
+      id: i + 1,
+      title: `Problem ${i}`,
+      slug: `p-${i}`,
+      difficulty: "Easy",
+      category: "Test",
+      status: "pending" as const,
+      scheduledDate: new Date(Date.now() - 3600 * 1000).toISOString(),
+      nextRepetitionDate: null,
+      repetitionLevel: 0,
+      completionHistory: [],
+      patterns: [],
+      leetcodeUrl: null,
+      youtubeId: null,
+      solutionLink: null,
+      hints: null,
+      solution: null,
+    }));
+    await initState(tmpDir, "Plan", problems);
+
+    vscode.workspace.workspaceFolders = [{ uri: { fsPath: tmpDir } }];
+    await updateStatusBar();
+    expect(getLastStatusBarItem().text).toBe("🔥 0 | 📋 3 due");
   });
 });
