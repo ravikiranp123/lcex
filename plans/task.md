@@ -245,7 +245,7 @@
 > Depends on: Phase 4
 
 ### 4a.0 — Migrate test runner from node:test/tsx to Vitest
-- [ ] **4a.0.1 — Install and configure Vitest**
+- [x] **4a.0.1 — Install and configure Vitest**
   - `npm install --save-dev vitest @vitest/coverage-v8`
   - Create `vitest.config.ts` at repo root with:
     - `environment: 'node'`
@@ -253,7 +253,7 @@
     - `coverage: { reporter: ['text', 'html'], include: ['src/**/*.ts'], exclude: ['src/extension.ts', 'src/**/interface/**'] }`
   - Add `"test": "vitest run"` and `"test:watch": "vitest"` and `"test:coverage": "vitest run --coverage"` to `package.json` scripts
   - Remove old `tsx --import` runner from `package.json` test script
-- [ ] **4a.0.2 — Migrate all existing test files to Vitest API**
+- [x] **4a.0.2 — Migrate all existing test files to Vitest API**
   - Replace `import { describe, it, before, after } from "node:test"` → `import { describe, it, beforeEach, afterEach, beforeAll, afterAll, expect, vi } from "vitest"`
   - Replace `import assert from "node:assert"` → use `expect()` assertions throughout
   - Replace `assert.strictEqual(a, b)` → `expect(a).toBe(b)`
@@ -261,7 +261,7 @@
   - Replace `assert.ok(v)` → `expect(v).toBeTruthy()`
   - Update `before()`/`after()` → `beforeAll()`/`afterAll()`
   - Run `npm test` to confirm all existing tests still pass
-- [ ] **4a.0.3 — Update vscode mock for Vitest**
+- [x] **4a.0.3 — Update vscode mock for Vitest**
   - Verify the existing `node_modules/vscode/index.js` mock works with Vitest's module resolution
   - Add `alias: { vscode: path.resolve('./node_modules/vscode') }` to vitest config if needed
   - Confirm mocked tests (statusBarManager, diffLogger) still pass
@@ -271,43 +271,43 @@
 ### 4a.1 — New test file: `test/workspaceInit.test.ts`
 > Tests `leetplus.initializeWorkspace` logic by calling the underlying `fs` operations in a temp directory.
 
-- [ ] **4a.1.1 — Fresh workspace: directory and subdir creation**
+- [x] **4a.1.1 — Fresh workspace: directory and subdir creation**
   - Create a temp dir with no `.leetplus/`
   - Call the init logic
   - Assert `.leetplus/` directory exists
   - Assert all 7 subdirs exist: `snapshots/`, `diffs/`, `guides/`, `designs/`, `behavioral/`, `plans/`, `whiteboard/`
 
-- [ ] **4a.1.2 — Fresh workspace: config.json created with default content**
+- [x] **4a.1.2 — Fresh workspace: config.json created with default content**
   - Assert `.leetplus/config.json` exists
   - Assert content contains `"language": "typescript"`
   - Assert content is valid JSON
 
-- [ ] **4a.1.3 — Fresh workspace: state.json initialized**
+- [x] **4a.1.3 — Fresh workspace: state.json initialized**
   - Assert `.leetplus/state.json` exists after init
   - Assert `readState()` returns a valid state with `version: "1.0"` and empty `problems: []`
   - Assert `planName` is `"My Practice Plan"`
 
-- [ ] **4a.1.4 — Idempotent re-init: existing files not overwritten**
+- [x] **4a.1.4 — Idempotent re-init: existing files not overwritten**
   - Pre-create `.leetplus/config.json` with custom content `{"language": "python"}`
   - Pre-create `.leetplus/state.json` with valid state
   - Run init again
   - Assert `config.json` still contains `python` (not overwritten)
   - Assert `state.json` is unchanged
 
-- [ ] **4a.1.5 — Idempotent re-init: missing subdirs created, existing ones untouched**
+- [x] **4a.1.5 — Idempotent re-init: missing subdirs created, existing ones untouched**
   - Pre-create `.leetplus/` with only `snapshots/` present
   - Run init
   - Assert all 7 subdirs now exist
   - Assert `snapshots/` was not deleted and recreated (stat mtime unchanged)
 
-- [ ] **4a.1.6 — `.leetplus` exists as a file, not a directory**
+- [x] **4a.1.6 — `.leetplus` exists as a file, not a directory**
   - Write a file at the path where `.leetplus/` should be
   - Run init
   - Assert the file was deleted
   - Assert `.leetplus/` is now a directory with all subdirs
   - Assert `config.json` and `state.json` are created
 
-- [ ] **4a.1.7 — No workspace folder open**
+- [x] **4a.1.7 — No workspace folder open**
   - Mock `vscode.workspace.workspaceFolders` to return `undefined`
   - Assert `showErrorMessage("Please open a workspace folder first.")` is called
   - Assert no files or directories are created
@@ -317,44 +317,44 @@
 ### 4a.2 — New test file: `test/agentSkillsInstall.test.ts`
 > Tests `ensureCursorLeetPlusPluginInstalled` from `src/modules/CursorLeetPlusPluginInstall.ts`.
 
-- [ ] **4a.2.1 — First-time Cursor install: all files created**
+- [x] **4a.2.1 — First-time Cursor install: all files created**
   - Point `CURSOR_PLUGINS_DIR` to a temp directory
   - Assert 4 SKILL.md files created: `lp-interview-generator/SKILL.md`, `lp-dsa-hint/SKILL.md`, `lp-dsa-analyze/SKILL.md`, `lp-recap-planner/SKILL.md`
   - Assert `.cursor-plugin/plugin.json` created
   - Assert `writeIfDifferent` returns `"created"` for each
 
-- [ ] **4a.2.2 — Cursor skills unchanged on second run**
+- [x] **4a.2.2 — Cursor skills unchanged on second run**
   - Run install twice
   - Assert no files were written on the second call (all return `"unchanged"`)
   - Assert no error or notification on second run
 
-- [ ] **4a.2.3 — Cursor skill content updated when changed**
+- [x] **4a.2.3 — Cursor skill content updated when changed**
   - Manually write a modified version of one SKILL.md
   - Run install
   - Assert file was overwritten with canonical content
   - Assert `writeIfDifferent` returns `"updated"` for that file
 
-- [ ] **4a.2.4 — First-time Antigravity workspace install: skill files created**
+- [x] **4a.2.4 — First-time Antigravity workspace install: skill files created**
   - Mock workspace folder pointing to a temp dir
   - Assert `.agents/skills/lp-dsa-hint/SKILL.md` created
   - Assert `.agents/skills/lp-dsa-analyze/SKILL.md` created
   - Assert `.agents/skills/lp-interview-generator/SKILL.md` created
   - Assert `.agents/skills/lp-recap-planner/SKILL.md` created
 
-- [ ] **4a.2.5 — Antigravity skill unchanged: no notification shown**
+- [x] **4a.2.5 — Antigravity skill unchanged: no notification shown**
   - Pre-write all 4 skill files with canonical content
   - Run install
   - Assert `vscode.window.showInformationMessage` was NOT called
   - Assert no files were overwritten
 
-- [ ] **4a.2.6 — Antigravity skill diverged + user clicks "Overwrite"**
+- [x] **4a.2.6 — Antigravity skill diverged + user clicks "Overwrite"**
   - Pre-write one skill file with custom content
   - Mock `showInformationMessage` to return `"Overwrite"`
   - Run install
   - Assert the modified file is now overwritten with canonical content
   - Assert no `.bak` file created
 
-- [ ] **4a.2.7 — Antigravity skill diverged + user clicks "Backup & Overwrite"**
+- [x] **4a.2.7 — Antigravity skill diverged + user clicks "Backup & Overwrite"**
   - Pre-write one skill file with custom content `"MY CUSTOM CONTENT"`
   - Mock `showInformationMessage` to return `"Backup & Overwrite"`
   - Run install
@@ -362,36 +362,36 @@
   - Assert original file now has canonical content
   - Assert success notification was shown
 
-- [ ] **4a.2.8 — Antigravity skill diverged + user clicks "Skip"**
+- [x] **4a.2.8 — Antigravity skill diverged + user clicks "Skip"**
   - Pre-write one skill file with custom content
   - Mock `showInformationMessage` to return `"Skip"`
   - Run install
   - Assert skill file is NOT overwritten (still has custom content)
 
-- [ ] **4a.2.9 — Antigravity skill diverged + user dismisses dialog**
+- [x] **4a.2.9 — Antigravity skill diverged + user dismisses dialog**
   - Mock `showInformationMessage` to return `undefined`
   - Run install
   - Assert skill file is NOT overwritten
 
-- [ ] **4a.2.10 — Notification suppressed via config**
+- [x] **4a.2.10 — Notification suppressed via config**
   - Pre-write one skill file with custom content
   - Set `leetplus.suppressSkillUpdateNotification: true` in VS Code settings mock
   - Run install
   - Assert `showInformationMessage` was NOT called
   - Assert skill file is silently overwritten
 
-- [ ] **4a.2.11 — Copilot instructions file created**
+- [x] **4a.2.11 — Copilot instructions file created**
   - Mock workspace folder to a temp dir with no `.github/`
   - Run install
   - Assert `.github/copilot-instructions.md` created
   - Assert content contains merged skill content from all 4 skills
 
-- [ ] **4a.2.12 — Copilot instructions not overwritten when unchanged**
+- [x] **4a.2.12 — Copilot instructions not overwritten when unchanged**
   - Pre-write `.github/copilot-instructions.md` with canonical content
   - Run install
   - Assert file was NOT rewritten (mtime unchanged)
 
-- [ ] **4a.2.13 — No workspace folder: workspace-level portion skipped**
+- [x] **4a.2.13 — No workspace folder: workspace-level portion skipped**
   - Mock `vscode.workspace.workspaceFolders` to return `undefined`
   - Run install
   - Assert no `.agents/` or `.github/` files are created
@@ -402,38 +402,38 @@
 ### 4a.3 — New test file: `test/heuristicRater.test.ts`
 > Tests `estimateRating` from `src/modules/HeuristicRater.ts`.
 
-- [ ] **4a.3.1 — Returns correct shape `{ rating, justification, source, patternsDetected }`**
+- [x] **4a.3.1 — Returns correct shape `{ rating, justification, source, patternsDetected }`**
   - Pass any valid code + description
   - Assert result has all 4 fields
   - Assert `source === "heuristic"`
   - Assert `rating` is a number in [0, 4]
 
-- [ ] **4a.3.2 — Empty / placeholder code → rating 4**
+- [x] **4a.3.2 — Empty / placeholder code → rating 4**
   - Pass code shorter than 40 chars (e.g., `"pass"` or `"return [];"`)
   - Assert `rating === 4`
   - Assert justification mentions "placeholder" or "incomplete"
 
-- [ ] **4a.3.3 — Solution within complexity budget → rating 1 or 2**
+- [x] **4a.3.3 — Solution within complexity budget → rating 1 or 2**
   - Provide a problem description with `n ≤ 10^5` constraint
   - Provide a TypeScript solution with a single `for` loop (O(n))
   - Assert `rating <= 2`
 
-- [ ] **4a.3.4 — Solution exceeds complexity budget → rating 3**
+- [x] **4a.3.4 — Solution exceeds complexity budget → rating 3**
   - Provide a problem description with `n ≤ 10^5` constraint
   - Provide a TypeScript solution with nested `for` loops (O(n²))
   - Assert `rating === 3`
 
-- [ ] **4a.3.5 — 0 hints: no penalty applied**
+- [x] **4a.3.5 — 0 hints: no penalty applied**
   - Call with `hintsUsed = 0`
   - Record base rating
   - Assert rating matches the complexity-only rating (no bump)
 
-- [ ] **4a.3.6 — 1-2 hints: mild penalty — rating 0 bumped to 1, rating 1 bumped to 2**
+- [x] **4a.3.6 — 1-2 hints: mild penalty — rating 0 bumped to 1, rating 1 bumped to 2**
   - Provide a clean O(n) solution that would otherwise rate 0 or 1
   - Call with `hintsUsed = 2`
   - Assert rating is at least 1 (or 2 respectively)
 
-- [ ] **4a.3.7 — 3+ hints: cap — rating 0 or 1 forced to 2**
+- [x] **4a.3.7 — 3+ hints: cap — rating 0 or 1 forced to 2**
   - Call with `hintsUsed = 5` on a clean O(n) solution
   - Assert `rating >= 2`
 
@@ -442,192 +442,192 @@
 ### 4a.4 — New test file: `test/leetPlusConfig.test.ts`
 > Tests pure helper functions in `src/modules/LeetPlusConfig.ts`.
 
-- [ ] **4a.4.1 — `inferListSourceForSlug`: slug in studyPlans only → `"studyPlan"`**
-- [ ] **4a.4.2 — `inferListSourceForSlug`: slug in problemLists only → `"problemList"`**
-- [ ] **4a.4.3 — `inferListSourceForSlug`: slug in both → `"studyPlan"` (prefers studyPlan)**
-- [ ] **4a.4.4 — `inferListSourceForSlug`: slug in neither → `"studyPlan"` (default)**
-- [ ] **4a.4.5 — `reconcileListSource`: stale `"studyPlan"` when slug only in problemLists → corrected to `"problemList"`**
-- [ ] **4a.4.6 — `reconcileListSource`: stale `"problemList"` when slug only in studyPlans → corrected to `"studyPlan"`**
-- [ ] **4a.4.7 — `reconcileListSource`: source matches actual location → returned unchanged**
-- [ ] **4a.4.8 — `resolveDefaultStudyPlanSlug`: valid `activeStudyPlan` present in list → returned as-is**
-- [ ] **4a.4.9 — `resolveDefaultStudyPlanSlug`: invalid slug not in list → first plan's slug returned**
-- [ ] **4a.4.10 — `resolveDefaultStudyPlanSlug`: empty studyPlans array → hardcoded `"top-interview-150"` returned**
-- [ ] **4a.4.11 — `resolveDefaultProblemListSlug`: valid `activeProblemList` → returned**
-- [ ] **4a.4.12 — `resolveDefaultProblemListSlug`: legacy migration path (`activeListSource:"problemList"` + `activeStudyPlan`) → migrated slug returned**
-- [ ] **4a.4.13 — `parseStudyPlans` (via `parseConfig`): entries missing `slug` or `name` → filtered out, valid ones kept**
-- [ ] **4a.4.14 — `parseStudyPlans` (via `parseConfig`): empty array `[]` → falls back to DEFAULTS.studyPlans**
+- [x] **4a.4.1 — `inferListSourceForSlug`: slug in studyPlans only → `"studyPlan"`**
+- [x] **4a.4.2 — `inferListSourceForSlug`: slug in problemLists only → `"problemList"`**
+- [x] **4a.4.3 — `inferListSourceForSlug`: slug in both → `"studyPlan"` (prefers studyPlan)**
+- [x] **4a.4.4 — `inferListSourceForSlug`: slug in neither → `"studyPlan"` (default)**
+- [x] **4a.4.5 — `reconcileListSource`: stale `"studyPlan"` when slug only in problemLists → corrected to `"problemList"`**
+- [x] **4a.4.6 — `reconcileListSource`: stale `"problemList"` when slug only in studyPlans → corrected to `"studyPlan"`**
+- [x] **4a.4.7 — `reconcileListSource`: source matches actual location → returned unchanged**
+- [x] **4a.4.8 — `resolveDefaultStudyPlanSlug`: valid `activeStudyPlan` present in list → returned as-is**
+- [x] **4a.4.9 — `resolveDefaultStudyPlanSlug`: invalid slug not in list → first plan's slug returned**
+- [x] **4a.4.10 — `resolveDefaultStudyPlanSlug`: empty studyPlans array → hardcoded `"top-interview-150"` returned**
+- [x] **4a.4.11 — `resolveDefaultProblemListSlug`: valid `activeProblemList` → returned**
+- [x] **4a.4.12 — `resolveDefaultProblemListSlug`: legacy migration path (`activeListSource:"problemList"` + `activeStudyPlan`) → migrated slug returned**
+- [x] **4a.4.13 — `parseStudyPlans` (via `parseConfig`): entries missing `slug` or `name` → filtered out, valid ones kept**
+- [x] **4a.4.14 — `parseStudyPlans` (via `parseConfig`): empty array `[]` → falls back to DEFAULTS.studyPlans**
 
 ---
 
 ### 4a.5 — Expand `test/stateManager.test.ts`
 
-- [ ] **4a.5.1 — `readState` returns `null` when state.json does not exist**
-- [ ] **4a.5.2 — `readState` returns `null` for invalid JSON content (corrupted file)**
-- [ ] **4a.5.3 — `readState` returns `null` for valid JSON but missing `version` field**
-- [ ] **4a.5.4 — `readState` returns `null` for valid JSON but `problems` is not an array**
-- [ ] **4a.5.5 — `writeState` creates `.leetplus/` dir if it does not exist**
-- [ ] **4a.5.6 — After `writeState`, no `.tmp` file is left on disk (atomic rename verified)**
-- [ ] **4a.5.7 — `initState` with `planSlug` parameter → `state.planSlug` field is set correctly**
-- [ ] **4a.5.8 — `initState` with non-empty `problems` array → all problems present in written state**
-- [ ] **4a.5.9 — Written state file uses 2-space indentation (file format verification)**
+- [x] **4a.5.1 — `readState` returns `null` when state.json does not exist**
+- [x] **4a.5.2 — `readState` returns `null` for invalid JSON content (corrupted file)**
+- [x] **4a.5.3 — `readState` returns `null` for valid JSON but missing `version` field**
+- [x] **4a.5.4 — `readState` returns `null` for valid JSON but `problems` is not an array**
+- [x] **4a.5.5 — `writeState` creates `.leetplus/` dir if it does not exist**
+- [x] **4a.5.6 — After `writeState`, no `.tmp` file is left on disk (atomic rename verified)**
+- [x] **4a.5.7 — `initState` with `planSlug` parameter → `state.planSlug` field is set correctly**
+- [x] **4a.5.8 — `initState` with non-empty `problems` array → all problems present in written state**
+- [x] **4a.5.9 — Written state file uses 2-space indentation (file format verification)**
 
 ---
 
 ### 4a.6 — Expand `test/statusBarManager.test.ts`
 
-- [ ] **4a.6.1 — `updateStatusBar` when `statusBarItem` not yet initialized → no throw, returns early**
-- [ ] **4a.6.2 — `updateStatusBar` with no workspace folders → `hide()` called**
-- [ ] **4a.6.3 — `updateStatusBar` with workspace folder but no `.leetplus/` dir → `hide()` called**
-- [ ] **4a.6.4 — `updateStatusBar` when `readState` returns `null` → `hide()` called**
-- [ ] **4a.6.5 — `updateStatusBar` with `currentStreak = 0` and `dueCount = 0` → text is `"🔥 0 | 📋 0 due"`, `show()` called**
-- [ ] **4a.6.6 — `updateStatusBar` with non-zero streak → streak number displayed correctly**
-- [ ] **4a.6.7 — `updateStatusBar` with multiple due problems → count shown correctly**
+- [x] **4a.6.1 — `updateStatusBar` when `statusBarItem` not yet initialized → no throw, returns early**
+- [x] **4a.6.2 — `updateStatusBar` with no workspace folders → `hide()` called**
+- [x] **4a.6.3 — `updateStatusBar` with workspace folder but no `.leetplus/` dir → `hide()` called**
+- [x] **4a.6.4 — `updateStatusBar` when `readState` returns `null` → `hide()` called**
+- [x] **4a.6.5 — `updateStatusBar` with `currentStreak = 0` and `dueCount = 0` → text is `"🔥 0 | 📋 0 due"`, `show()` called**
+- [x] **4a.6.6 — `updateStatusBar` with non-zero streak → streak number displayed correctly**
+- [x] **4a.6.7 — `updateStatusBar` with multiple due problems → count shown correctly**
 
 ---
 
 ### 4a.7 — Expand `test/diffLogger.test.ts`
 
-- [ ] **4a.7.1 — `config.enabled = false` → `initDiffLogger` registered but no patch files ever created on any change**
-- [ ] **4a.7.2 — Untracked file extension (`.rb`) → no patch file created even on large change**
-- [ ] **4a.7.3 — `triggerMode = "time"` → large change (> charThreshold) does NOT immediately trigger; patch only appears after debounce wait**
-- [ ] **4a.7.4 — `triggerMode = "change"` → small change (< charThreshold) does NOT trigger; large change fires immediately without waiting for debounce**
-- [ ] **4a.7.5 — `saveDiff` when `baselineText === currentText` → no patch file written**
-- [ ] **4a.7.6 — Baseline updated after `saveDiff`: identical second edit does not write another patch**
-- [ ] **4a.7.7 — `accumulatedChanges` reset to 0 after a save (verified via next threshold boundary)**
+- [x] **4a.7.1 — `config.enabled = false` → `initDiffLogger` registered but no patch files ever created on any change**
+- [x] **4a.7.2 — Untracked file extension (`.rb`) → no patch file created even on large change**
+- [x] **4a.7.3 — `triggerMode = "time"` → large change (> charThreshold) does NOT immediately trigger; patch only appears after debounce wait**
+- [x] **4a.7.4 — `triggerMode = "change"` → small change (< charThreshold) does NOT trigger; large change fires immediately without waiting for debounce**
+- [x] **4a.7.5 — `saveDiff` when `baselineText === currentText` → no patch file written**
+- [x] **4a.7.6 — Baseline updated after `saveDiff`: identical second edit does not write another patch**
+- [x] **4a.7.7 — `accumulatedChanges` reset to 0 after a save (verified via next threshold boundary)**
 
 ---
 
 ### 4a.8 — Expand `test/srsEngine.test.ts`
 
-- [ ] **4a.8.1 — `calculateNextInterval`: rating 1 at level 99 → level stays at 99 (cap enforced)**
-- [ ] **4a.8.2 — `calculateNextInterval`: negative `currentLevel` (e.g., -5) → clamped to 0**
-- [ ] **4a.8.3 — `calculateNextInterval`: rating 99 (out-of-range) → default case: interval=1, level=0**
-- [ ] **4a.8.4 — `calculateStreaks`: single date in history → currentStreak=1, bestStreak=1**
-- [ ] **4a.8.5 — `calculateStreaks`: two problems solved on same day → date deduplicated, still streak=1**
-- [ ] **4a.8.6 — `calculatePatternMastery`: `currentScore = 1.0` + success → still clamped to 1.0**
-- [ ] **4a.8.7 — `calculatePatternMastery`: `currentScore = 0.0` + failure → still clamped to 0.0**
-- [ ] **4a.8.8 — `getDueProblems`: status `"skipped"` + `nextRepetitionDate` in past → included**
-- [ ] **4a.8.9 — `getDueProblems`: empty `problems` array → returns `[]`**
+- [x] **4a.8.1 — `calculateNextInterval`: rating 1 at level 99 → level stays at 99 (cap enforced)**
+- [x] **4a.8.2 — `calculateNextInterval`: negative `currentLevel` (e.g., -5) → clamped to 0**
+- [x] **4a.8.3 — `calculateNextInterval`: rating 99 (out-of-range) → default case: interval=1, level=0**
+- [x] **4a.8.4 — `calculateStreaks`: single date in history → currentStreak=1, bestStreak=1**
+- [x] **4a.8.5 — `calculateStreaks`: two problems solved on same day → date deduplicated, still streak=1**
+- [x] **4a.8.6 — `calculatePatternMastery`: `currentScore = 1.0` + success → still clamped to 1.0**
+- [x] **4a.8.7 — `calculatePatternMastery`: `currentScore = 0.0` + failure → still clamped to 0.0**
+- [x] **4a.8.8 — `getDueProblems`: status `"skipped"` + `nextRepetitionDate` in past → included**
+- [x] **4a.8.9 — `getDueProblems`: empty `problems` array → returns `[]`**
 
 ---
 
 ### 4a.9 — Expand `test/snapshotManager.test.ts`
 
-- [ ] **4a.9.1 — `captureSnapshot` when `readState` returns null → throws**
-- [ ] **4a.9.2 — `captureSnapshot` when problem not found by slug → throws**
-- [ ] **4a.9.3 — `captureSnapshot` when solution file does not exist → throws**
-- [ ] **4a.9.4 — `captureSnapshot` with rating=0 (Mastered) → `repetitionLevel=99`, `status="completed"`**
-- [ ] **4a.9.5 — `captureSnapshot` with rating=4 (Again) → `repetitionLevel=0`, pattern mastery outcome is `"failure"`**
-- [ ] **4a.9.6 — `finalizeProblemRating` when state is null → throws**
-- [ ] **4a.9.7 — `finalizeProblemRating` when problem not found → throws**
-- [ ] **4a.9.8 — `finalizeProblemRating` when `completionHistory` is empty → throws**
-- [ ] **4a.9.9 — Multiple snapshots on same problem: `getLatestSnapshot` returns most recent (sort order verified)**
+- [x] **4a.9.1 — `captureSnapshot` when `readState` returns null → throws**
+- [x] **4a.9.2 — `captureSnapshot` when problem not found by slug → throws**
+- [x] **4a.9.3 — `captureSnapshot` when solution file does not exist → throws**
+- [x] **4a.9.4 — `captureSnapshot` with rating=0 (Mastered) → `repetitionLevel=99`, `status="completed"`**
+- [x] **4a.9.5 — `captureSnapshot` with rating=4 (Again) → `repetitionLevel=0`, pattern mastery outcome is `"failure"`**
+- [x] **4a.9.6 — `finalizeProblemRating` when state is null → throws**
+- [x] **4a.9.7 — `finalizeProblemRating` when problem not found → throws**
+- [x] **4a.9.8 — `finalizeProblemRating` when `completionHistory` is empty → throws**
+- [x] **4a.9.9 — Multiple snapshots on same problem: `getLatestSnapshot` returns most recent (sort order verified)**
 
 ---
 
 ### 4a.10 — Expand `test/leetPlusConfigEditor.test.ts`
 
-- [ ] **4a.10.1 — `parseConfig` with invalid JSON → returns DEFAULTS without throwing**
-- [ ] **4a.10.2 — `parseConfig` with whitespace-only input → returns DEFAULTS**
-- [ ] **4a.10.3 — `parseConfig` with `studyPlans: []` (empty array) → falls back to DEFAULTS.studyPlans**
-- [ ] **4a.10.4 — `parseConfig` with `studyPlans` containing entries missing `slug` field → invalid entries filtered out**
-- [ ] **4a.10.5 — `parseConfig` with unsupported `language` value (e.g., `"rust"`) → falls back to default language**
-- [ ] **4a.10.6 — `parseConfig` with invalid `srs.defaultMode` string → falls back to `"interleaved"`**
-- [ ] **4a.10.7 — `parseConfig` with invalid `diffRetention` string → falls back to `"session"`**
-- [ ] **4a.10.8 — `configToJson` round-trip: parse → serialize → content is valid JSON with 2-space indent**
+- [x] **4a.10.1 — `parseConfig` with invalid JSON → returns DEFAULTS without throwing**
+- [x] **4a.10.2 — `parseConfig` with whitespace-only input → returns DEFAULTS**
+- [x] **4a.10.3 — `parseConfig` with `studyPlans: []` (empty array) → falls back to DEFAULTS.studyPlans**
+- [x] **4a.10.4 — `parseConfig` with `studyPlans` containing entries missing `slug` field → invalid entries filtered out**
+- [x] **4a.10.5 — `parseConfig` with unsupported `language` value (e.g., `"rust"`) → falls back to default language**
+- [x] **4a.10.6 — `parseConfig` with invalid `srs.defaultMode` string → falls back to `"interleaved"`**
+- [x] **4a.10.7 — `parseConfig` with invalid `diffRetention` string → falls back to `"session"`**
+- [x] **4a.10.8 — `configToJson` round-trip: parse → serialize → content is valid JSON with 2-space indent**
 
 ---
 
 ### 4a.11 — Expand `test/studyPlanSwitcher.test.ts`
 
-- [ ] **4a.11.1 — User cancels the confirmation dialog (`showInformationMessage` returns `undefined`) → returns `"cancelled"`**
-- [ ] **4a.11.2 — User cancels the QuickPick for old-problem disposition → all old problems treated as "keep"**
-- [ ] **4a.11.3 — Switch when plan has zero old-only problems → no QuickPick shown, switches directly**
-- [ ] **4a.11.4 — Seed fetch returns empty array → state has 0 problems, returns `"switched"`**
+- [x] **4a.11.1 — User cancels the confirmation dialog (`showInformationMessage` returns `undefined`) → returns `"cancelled"`**
+- [x] **4a.11.2 — User cancels the QuickPick for old-problem disposition → all old problems treated as "keep"**
+- [x] **4a.11.3 — Switch when plan has zero old-only problems → no QuickPick shown, switches directly**
+- [x] **4a.11.4 — Seed fetch returns empty array → state has 0 problems, returns `"switched"`**
 
 ---
 
 ### 4a.12 — Expand `test/pattern-detector.test.ts`
 
-- [ ] **4a.12.1 — Empty source string → returns `[]`, no throw**
-- [ ] **4a.12.2 — Source shorter than 20 chars → returns `[]` (short-circuit)**
-- [ ] **4a.12.3 — `slidingWindow` pattern detected**
-- [ ] **4a.12.4 — `dfsRecursive` pattern detected (standalone, no DP)**
-- [ ] **4a.12.5 — `backtracking` pattern detected**
-- [ ] **4a.12.6 — `greedy` pattern detected**
-- [ ] **4a.12.7 — `topoSort` pattern detected**
-- [ ] **4a.12.8 — `bitManipulation` pattern detected**
-- [ ] **4a.12.9 — `hashMapSet` pattern detected**
-- [ ] **4a.12.10 — `treeTraversal` pattern detected**
-- [ ] **4a.12.11 — `dpTopDown` present → `dfsRecursive` suppressed (shadow rule)**
-- [ ] **4a.12.12 — Multiple patterns in one file → all detected**
-- [ ] **4a.12.13 — Source with only comments → returns `[]` (comments stripped)**
+- [x] **4a.12.1 — Empty source string → returns `[]`, no throw**
+- [x] **4a.12.2 — Source shorter than 20 chars → returns `[]` (short-circuit)**
+- [x] **4a.12.3 — `slidingWindow` pattern detected**
+- [x] **4a.12.4 — `dfsRecursive` pattern detected (standalone, no DP)**
+- [x] **4a.12.5 — `backtracking` pattern detected**
+- [x] **4a.12.6 — `greedy` pattern detected**
+- [x] **4a.12.7 — `topoSort` pattern detected**
+- [x] **4a.12.8 — `bitManipulation` pattern detected**
+- [x] **4a.12.9 — `hashMapSet` pattern detected**
+- [x] **4a.12.10 — `treeTraversal` pattern detected**
+- [x] **4a.12.11 — `dpTopDown` present → `dfsRecursive` suppressed (shadow rule)**
+- [x] **4a.12.12 — Multiple patterns in one file → all detected**
+- [x] **4a.12.13 — Source with only comments → returns `[]` (comments stripped)**
 
 ---
 
 ### 4a.13 — New test file: `test/interviewMode.test.ts`
 
-- [ ] **4a.13.1 — `startInterviewSession` with valid args → session written to memento, `setInterviewContext(true)` called**
-- [ ] **4a.13.2 — `startInterviewSession` with duplicate planned slugs → deduplicated**
-- [ ] **4a.13.3 — `recordInterviewSolve` idempotency: same slug solved twice → only recorded once**
-- [ ] **4a.13.4 — `endInterviewSession` with no active session → returns null**
-- [ ] **4a.13.5 — `endInterviewSession` awards correct XP per difficulty (EASY=10, MEDIUM=20, HARD=40)**
-- [ ] **4a.13.6 — `endInterviewSession` perfect-set bonus when all planned slugs solved**
-- [ ] **4a.13.7 — `endInterviewSession` clears session from memento, calls `setInterviewContext(false)`**
-- [ ] **4a.13.8 — `migrateRawSession`: old `plannedSlugs` array format → migrated to `plannedProblems`**
-- [ ] **4a.13.9 — `migrateRawSession`: invalid `attemptHex` (wrong format) → field set to undefined**
-- [ ] **4a.13.10 — `pickPlannedInterviewProblems`: returns `count` problems, prefers unsolved over solved**
-- [ ] **4a.13.11 — `pickPlannedInterviewProblems`: count=0 → returns `[]`**
-- [ ] **4a.13.12 — `remainingMs` with expired session → returns 0 (not negative)**
+- [x] **4a.13.1 — `startInterviewSession` with valid args → session written to memento, `setInterviewContext(true)` called**
+- [x] **4a.13.2 — `startInterviewSession` with duplicate planned slugs → deduplicated**
+- [x] **4a.13.3 — `recordInterviewSolve` idempotency: same slug solved twice → only recorded once**
+- [x] **4a.13.4 — `endInterviewSession` with no active session → returns null**
+- [x] **4a.13.5 — `endInterviewSession` awards correct XP per difficulty (EASY=10, MEDIUM=20, HARD=40)**
+- [x] **4a.13.6 — `endInterviewSession` perfect-set bonus when all planned slugs solved**
+- [x] **4a.13.7 — `endInterviewSession` clears session from memento, calls `setInterviewContext(false)`**
+- [x] **4a.13.8 — `migrateRawSession`: old `plannedSlugs` array format → migrated to `plannedProblems`**
+- [x] **4a.13.9 — `migrateRawSession`: invalid `attemptHex` (wrong format) → field set to undefined**
+- [x] **4a.13.10 — `pickPlannedInterviewProblems`: returns `count` problems, prefers unsolved over solved**
+- [x] **4a.13.11 — `pickPlannedInterviewProblems`: count=0 → returns `[]`**
+- [x] **4a.13.12 — `remainingMs` with expired session → returns 0 (not negative)**
 
 ---
 
 ### 4a.14 — New test file: `test/patternMastery.test.ts`
 
-- [ ] **4a.14.1 — `recordSolveForPatterns`: first solve for a pattern → credits pattern, count=1**
-- [ ] **4a.14.2 — `recordSolveForPatterns`: same slug solved again → count NOT incremented (idempotent per-slug)**
-- [ ] **4a.14.3 — `recordSolveForPatterns`: different slug same pattern → count incremented**
-- [ ] **4a.14.4 — `recordSolveForPatterns`: empty patterns array → early return, no state written**
-- [ ] **4a.14.5 — `computeMastery`: solvedCount=0 → returns 0**
-- [ ] **4a.14.6 — `computeMastery`: recent solve (day=0) → no decay, value close to `(1-1/(1+count))*0.5^0`**
-- [ ] **4a.14.7 — `computeMastery`: old solve (day=21) → value halved (half-life=21 days)**
-- [ ] **4a.14.8 — `summarizePatternMastery`: pattern with 0 solves → rank `"untouched"`**
-- [ ] **4a.14.9 — `summarizePatternMastery`: pattern with mastery < 0.2 → rank `"rusty"`**
-- [ ] **4a.14.10 — `pickWeakestPattern`: returns untouched pattern first when one exists**
-- [ ] **4a.14.11 — `pickWeakestPattern`: empty state → returns undefined**
+- [x] **4a.14.1 — `recordSolveForPatterns`: first solve for a pattern → credits pattern, count=1**
+- [x] **4a.14.2 — `recordSolveForPatterns`: same slug solved again → count NOT incremented (idempotent per-slug)**
+- [x] **4a.14.3 — `recordSolveForPatterns`: different slug same pattern → count incremented**
+- [x] **4a.14.4 — `recordSolveForPatterns`: empty patterns array → early return, no state written**
+- [x] **4a.14.5 — `computeMastery`: solvedCount=0 → returns 0**
+- [x] **4a.14.6 — `computeMastery`: recent solve (day=0) → no decay, value close to `(1-1/(1+count))*0.5^0`**
+- [x] **4a.14.7 — `computeMastery`: old solve (day=21) → value halved (half-life=21 days)**
+- [x] **4a.14.8 — `summarizePatternMastery`: pattern with 0 solves → rank `"untouched"`**
+- [x] **4a.14.9 — `summarizePatternMastery`: pattern with mastery < 0.2 → rank `"rusty"`**
+- [x] **4a.14.10 — `pickWeakestPattern`: returns untouched pattern first when one exists**
+- [x] **4a.14.11 — `pickWeakestPattern`: empty state → returns undefined**
 
 ---
 
 ### 4a.15 — New test file: `test/gamification.test.ts`
 
-- [ ] **4a.15.1 — `xpForDifficultyLabel("Easy")` → 10**
-- [ ] **4a.15.2 — `xpForDifficultyLabel("Medium")` → 20**
-- [ ] **4a.15.3 — `xpForDifficultyLabel("Hard")` → 40**
-- [ ] **4a.15.4 — `xpForDifficultyLabel("unknown")` → 15 (default)**
-- [ ] **4a.15.5 — `xpLevelProgress`: 0 XP → level 1, xpInLevel=0**
-- [ ] **4a.15.6 — `xpLevelProgress`: XP at exact level boundary → correct level and xpInLevel=0**
-- [ ] **4a.15.7 — `awardXpForFirstSolve`: first solve awards XP, returns XP amount > 0**
-- [ ] **4a.15.8 — `awardXpForFirstSolve`: same slug twice → returns 0 (idempotent)**
-- [ ] **4a.15.9 — `awardXpForFirstSolve`: XP amount matches `xpForDifficultyLabel` for that difficulty**
-- [ ] **4a.15.10 — `grantDailyLoginXpIfNeeded`: first call today → grants 1 XP, returns 1**
-- [ ] **4a.15.11 — `grantDailyLoginXpIfNeeded`: second call same day → returns 0 (already granted)**
-- [ ] **4a.15.12 — `addBonusXp`: amount > 0 → total XP increased**
-- [ ] **4a.15.13 — `addBonusXp`: amount = 0 or negative → no-op, total XP unchanged**
-- [ ] **4a.15.14 — `setDailyGoal`: invalid mode → throws**
-- [ ] **4a.15.15 — `setDailyGoal`: target > 1000 → throws**
-- [ ] **4a.15.16 — `dailyGoalProgressPercent`: over 100% → clamped to 100**
+- [x] **4a.15.1 — `xpForDifficultyLabel("Easy")` → 10**
+- [x] **4a.15.2 — `xpForDifficultyLabel("Medium")` → 20**
+- [x] **4a.15.3 — `xpForDifficultyLabel("Hard")` → 40**
+- [x] **4a.15.4 — `xpForDifficultyLabel("unknown")` → 15 (default)**
+- [x] **4a.15.5 — `xpLevelProgress`: 0 XP → level 1, xpInLevel=0**
+- [x] **4a.15.6 — `xpLevelProgress`: XP at exact level boundary → correct level and xpInLevel=0**
+- [x] **4a.15.7 — `awardXpForFirstSolve`: first solve awards XP, returns XP amount > 0**
+- [x] **4a.15.8 — `awardXpForFirstSolve`: same slug twice → returns 0 (idempotent)**
+- [x] **4a.15.9 — `awardXpForFirstSolve`: XP amount matches `xpForDifficultyLabel` for that difficulty**
+- [x] **4a.15.10 — `grantDailyLoginXpIfNeeded`: first call today → grants 1 XP, returns 1**
+- [x] **4a.15.11 — `grantDailyLoginXpIfNeeded`: second call same day → returns 0 (already granted)**
+- [x] **4a.15.12 — `addBonusXp`: amount > 0 → total XP increased**
+- [x] **4a.15.13 — `addBonusXp`: amount = 0 or negative → no-op, total XP unchanged**
+- [x] **4a.15.14 — `setDailyGoal`: invalid mode → throws**
+- [x] **4a.15.15 — `setDailyGoal`: target > 1000 → throws**
+- [x] **4a.15.16 — `dailyGoalProgressPercent`: over 100% → clamped to 100**
 
 ---
 
 ### 4a.16 — Expand `test/dailyPlanGenerator.test.ts`
 
-- [ ] **4a.16.1 — `generateDailyPlan` when state is null → does not throw; returns empty plan**
-- [ ] **4a.16.2 — `generateDailyPlan` with `srs.enabled = false` → all pending problems included regardless of SRS scheduling**
-- [ ] **4a.16.3 — Plan file written to `.leetplus/plans/<today>.json` → file exists and is valid JSON after `generateDailyPlan`**
-- [ ] **4a.16.4 — Recap mode with no completed problems → falls back to random completed or empty**
-- [ ] **4a.16.5 — `bootstrapStateFromStudyPlan`: fetch throws → returns 0, no state written**
-- [ ] **4a.16.6 — `loadSeedsFromLocalDataFile`: file doesn't exist → returns null**
-- [ ] **4a.16.7 — `loadSeedsFromLocalDataFile`: file has invalid JSON → returns null**
+- [x] **4a.16.1 — `generateDailyPlan` when state is null → does not throw; returns empty plan**
+- [x] **4a.16.2 — `generateDailyPlan` with `srs.enabled = false` → all pending problems included regardless of SRS scheduling**
+- [x] **4a.16.3 — Plan file written to `.leetplus/plans/<today>.json` → file exists and is valid JSON after `generateDailyPlan`**
+- [x] **4a.16.4 — Recap mode with no completed problems → falls back to random completed or empty**
+- [x] **4a.16.5 — `bootstrapStateFromStudyPlan`: fetch throws → returns 0, no state written**
+- [x] **4a.16.6 — `loadSeedsFromLocalDataFile`: file doesn't exist → returns null**
+- [x] **4a.16.7 — `loadSeedsFromLocalDataFile`: file has invalid JSON → returns null**
 
 ---
 
