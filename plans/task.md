@@ -631,62 +631,190 @@
 
 ---
 
-## Phase 4b: Codebase Health — extension.ts Refactoring 🔴
-> Depends on: Phase 4
+## Phase 4b: Test Quality Fixes 🔴
+> Depends on: Phase 4a
+> Source: Audit findings from session 60913b16. All 253 existing tests pass, but two tests are
+> provably wrong (exercise no actual assertion), and three logic-rich modules have no tests.
 
-- [x] **4.5.1 — Extract custom editors registration**
+### 4b.1 — Fix `test/heuristicRater.test.ts` vacuous hint-penalty test
+- [x] **4b.1.1 — Fix "1-2 hints: mild penalty" test (task 4a.3.6)**
+  - Current bug: uses `NESTED_SOLUTION` (O(n²), produces `rating=3`) as the base. The hint
+    penalty code only adjusts `rating` 0 or 1, so the `if (resultNoHints.rating <= 1)` guard
+    is always false and the `expect` is skipped vacuously.
+  - Fix: switch base solution to `LINEAR_SOLUTION` (O(n) hashmap) so base `rating=1`.
+    Call with `hintsUsed=2` and assert `resultTwoHints.rating > resultNoHints.rating` unconditionally.
+  - After fix, run `npm test` — this test must now exercise the branch and pass.
+- [x] **4b.1.2 — Fix "3+ hints: cap" test (task 4a.3.7)**
+  - Verify the same input change makes 4b.1.1 and 4a.3.7 both exercise the actual penalty code.
+  - Assert `rating >= 2` unconditionally (no conditional guard).
+
+---
+
+### 4b.2 — New test file: `test/lcInterviewFile.test.ts`
+> Tests `src/modules/LcInterviewFile.ts` — pure JSON parsing/validation, no vscode import.
+- [ ] **4b.2.1 — `parseLcInterviewFile`: valid v1 JSON → `{ ok: true, data: ... }`**
+  - Pass a JSON string with `version:1`, `name`, `durationMinutes:45`, one problem.
+  - Assert returned object has all fields typed correctly.
+- [ ] **4b.2.2 — `parseLcInterviewFile`: unknown `version` field → `{ ok: false, message }`**
+  - Pass `{ version: 99, ... }`. Assert `ok === false` and message contains "version".
+- [ ] **4b.2.3 — `parseLcInterviewFile`: `durationMinutes` not in allowlist (45/60/180) → `ok: false`**
+  - Pass `durationMinutes: 30`. Assert validation rejects it.
+- [ ] **4b.2.4 — `parseLcInterviewFile`: problems as array of strings → normalized to `PlannedInterviewProblem[]`**
+  - Pass `problems: ["two-sum", "three-sum"]`. Assert each normalized to `{ titleSlug, difficulty: "MEDIUM" }`.
+- [ ] **4b.2.5 — `parseLcInterviewFile`: problems as array of objects → passed through**
+  - Pass `problems: [{ titleSlug: "two-sum", difficulty: "Medium" }]`. Assert `difficulty` preserved.
+- [ ] **4b.2.6 — `parseLcInterviewFile`: `tags` with entries > 64 chars or > 16 items → filtered/capped**
+  - Pass mix of valid tags and one too long (> 64 chars). Assert only valid kept, total capped at 16.
+- [ ] **4b.2.7 — `parseLcInterviewFile`: `attempts[].id` not matching `ATTEMPT_ID_RE` → stripped**
+  - Pass attempt with `id: "gg9"` (valid) and `id: "zzzz"` (invalid). Assert invalid not in result.
+- [ ] **4b.2.8 — `defaultInterviewNameFromDate` returns `YYYY-MM-DD` format**
+  - Assert output matches `/^\d{4}-\d{2}-\d{2}$/`.
+
+---
+
+### 4b.3 — New test file: `test/lcInterviewReportStore.test.ts`
+> Tests `src/modules/LeetPlusInterviewReportStore.ts` — atomic file I/O, no vscode import.
+- [ ] **4b.3.1 — `writeInterviewReportAtPath` then `readInterviewReportFile` → round-trip data integrity**
+  - Use `mkdtempSync` for isolation. Write report with all fields, read back, assert deep equality.
+- [ ] **4b.3.2 — `readInterviewReportFile` on non-existent path → `undefined`, no throw**
+- [ ] **4b.3.3 — `readInterviewReportFile` on corrupted JSON → `undefined`, no throw**
+- [ ] **4b.3.4 — `atomicWriteJsonSync`: no `.tmp` file left on disk after a successful write**
+  - Verify sibling `.tmp` is cleaned up after rename completes.
+
+---
+
+### 4b.4 — New test file: `test/bugReviewStore.test.ts`
+> Tests `src/modules/BugReviewStore.ts` — SRS-scheduled bug review queue with interval ladder [3,7,30,90].
+- [ ] **4b.4.1 — `addBugReview`: writes a review entry; appears in `listDueReviews` when `nextDueAt` is past**
+  - Use `mkdtempSync` for isolation (override `BUG_REVIEWS_FILE` path).
+  - Assert entry present when `nextDueAt` is yesterday's date.
+- [ ] **4b.4.2 — `listDueReviews`: entry with future `nextDueAt` not returned**
+  - Create two entries: one due yesterday, one due tomorrow. Assert only the past-due one returned.
+- [ ] **4b.4.3 — `markReviewed`: advances `nextDueAt` by the next SRS interval step**
+  - Mark fresh entry (intervalDays=3) as reviewed. Assert `nextDueAt` is 7 days in the future.
+- [ ] **4b.4.4 — `markReviewed` on unknown id → no throw, store unchanged**
+- [ ] **4b.4.5 — `readBugReviews` on corrupted file → returns empty store, no throw**
+
+---
+
+## Phase 4c: Extension Host Integration Tests 🔴
+> Depends on: Phase 4a, Phase 4b
+> Uses `@vscode/test-cli` to run tests inside a real VS Code extension host process.
+> These catch wiring bugs (command IDs, tree providers, custom editors) that Vitest cannot.
+
+### 4c.1 — Setup `@vscode/test-cli`
+- [ ] **4c.1.1 — Install dependencies**
+  - `npm install --save-dev @vscode/test-cli @vscode/test-electron`
+  - Verify versions appear in `package.json` devDependencies.
+- [ ] **4c.1.2 — Create `.vscode-test.mjs` config**
+  - Set `extensionDevelopmentPath` to workspace root.
+  - Set `files` to `test/e2e/**/*.test.ts`.
+  - Configure `workspaceFolder` to point at a fixture workspace with `.leetplus/config.json`.
+- [ ] **4c.1.3 — Add scripts to `package.json`**
+  - `"test:e2e": "vscode-test"` — runs the extension host suite.
+  - `"test:all": "npm test && npm run test:e2e"` — runs both suites in sequence.
+- [ ] **4c.1.4 — Create `test/e2e/` directory and `tsconfig.e2e.json`**
+  - Separate tsconfig that includes `test/e2e/**` and uses `@types/vscode`.
+  - Add a fixture workspace at `test/fixtures/sample-workspace/.leetplus/config.json`.
+- [ ] **4c.1.5 — Verify CI-friendliness**
+  - Confirm `vscode-test` with `--headless` flag works on macOS without a display server.
+  - Document in CONTRIBUTING.md how to run the suite locally and in CI.
+
+---
+
+### 4c.2 — Extension activation tests
+- [ ] **4c.2.1 — Extension activates without error on a LeetPlus workspace**
+  - Open the fixture workspace (has `.leetplus/config.json`).
+  - Assert the extension activates (no unhandled exception in `activate()`).
+  - Assert `vscode.extensions.getExtension("ravikiranp123.leet-plus")?.isActive === true`.
+- [ ] **4c.2.2 — All commands in `package.json` are registered**
+  - Read `contributes.commands` from `package.json` programmatically.
+  - For each command ID, call `vscode.commands.getCommands()` and assert the ID is present.
+  - This catches any typo between the manifest and `registerCommand` calls in `activate()`.
+
+---
+
+### 4c.3 — Tree provider wiring tests
+- [ ] **4c.3.1 — Daily plan tree view is registered and returns items**
+  - In the fixture workspace, initialize a state with 2 pending problems.
+  - Assert `vscode.window.createTreeView("leetplus-daily-plan", ...)` resolves.
+  - Call `getChildren(undefined)` on the provider and assert at least one item is returned.
+- [ ] **4c.3.2 — Tree items have correct `contextValue`**
+  - Assert each problem item has `contextValue` matching what the menu `when` clauses expect
+    (e.g., the string used in `"when": "viewItem == leetplus.problemItem"`).
+  - This catches the silent "right-click menu disappears" class of bugs.
+
+---
+
+### 4c.4 — Status bar update tests
+- [ ] **4c.4.1 — Status bar shows correct text after workspace initialization**
+  - Initialize a LeetPlus workspace with 3 due problems and streak=5.
+  - Wait for the status bar to update (poll with a short timeout).
+  - Assert the status bar text contains `🔥 5` and `📋 3 due`.
+- [ ] **4c.4.2 — Status bar hides when workspace folder removed**
+  - Trigger a workspace folders change to remove the folder.
+  - Assert the item is no longer visible (text cleared or `hide()` called).
+
+---
+
+### 4c.5 — Custom editor resolution tests
+- [ ] **4c.5.1 — `.leetplus/config.json` opens in the custom editor (not plain text)**
+  - Open the fixture workspace's `.leetplus/config.json`.
+  - Assert the active editor's `viewType` is `"leetplus.configEditor"`.
+- [ ] **4c.5.2 — `*.lcInterview` file opens in the LC Interview custom editor**
+  - Create a temporary `.lcInterview` file in the fixture workspace.
+  - Open it and assert `viewType === "leetplus.lcInterviewEditor"`.
+
+---
+
+## Phase 4d: Codebase Health — extension.ts Refactoring 🔴
+> Depends on: Phase 4a, Phase 4b, Phase 4c
+> ⚠️ Tasks 4d.1–4d.6 are in stash@{0} ("refactor"). NOT yet committed.
+> extension.ts is still 4,611 lines; src/commands/ does not exist on the current branch.
+
+- [ ] **4d.1 — Extract custom editors registration**
   - Create `src/modules/CustomEditors.ts`
   - Move registrations for `leetplus.configEditor`, `leetplus.lcInterviewEditor`, `leetplus.lcInterviewReportEditor`, and `HintEditorProvider.viewType`
   - Export a single function `registerCustomEditors(context: vscode.ExtensionContext, getProvider: () => IProblemProvider)` to be called in `activate()`
-
-- [x] **4.5.2 — Extract UI navigation and layout commands**
+- [ ] **4d.2 — Extract UI navigation and layout commands**
   - Create `src/commands/layout.ts`
   - Move layout/navigation command registrations: `leetplus.focusModeEnter`, `leetplus.focusModeExit`, `leetplus.toggleSidebar`, `leetplus.nextProblem`, `leetplus.prevProblem`, etc.
   - Export `registerLayoutCommands(context: vscode.ExtensionContext)`
-
-- [x] **4.5.3 — Extract AI & Solution Rating commands**
+- [ ] **4d.3 — Extract AI & Solution Rating commands**
   - Create `src/commands/agent.ts`
   - Move commands: `leetplus.agentHint`, `leetplus.agentAnalyze`, `leetplus.completeProblem`
   - Extract helper functions `applyHintPenaltyToRating` and evaluation flow logic
   - Export `registerAgentCommands(context: vscode.ExtensionContext, getProvider: () => IProblemProvider, ...)`
-
-- [x] **4.5.4 — Extract Workspace & Session initialization commands**
+- [ ] **4d.4 — Extract Workspace & Session initialization commands**
   - Create `src/commands/workspace.ts`
   - Move commands: `leetplus.initializeWorkspace`, `leetplus.switchStudyPlan`, etc.
   - Export `registerWorkspaceCommands(context: vscode.ExtensionContext, getProvider: () => IProblemProvider, ...)`
-
-- [x] **4.5.5 — Simplify extension.ts (Initial)**
-  - [x] Re-export `activate` and `deactivate` functions
-  - [x] Thin activation logic: import and call the registry helpers
-  - [x] Run compiler typecheck to verify zero regression
-
-- [x] **4.5.6 — Extract Interview commands**
+- [ ] **4d.5 — Simplify extension.ts (Initial)**
+  - [ ] Re-export `activate` and `deactivate` functions
+  - [ ] Thin activation logic: import and call the registry helpers
+  - [ ] Run compiler typecheck to verify zero regression
+- [ ] **4d.6 — Extract Interview commands**
   - Create `src/commands/interview.ts`
   - Move commands: `leetplus.interviewModeStart`, `leetplus.interviewModeStop`, `leetplus.openLcInterviewReportForPath`, `leetplus.openLcInterviewReportFile`, `leetplus.interviewGenerateWithAi`
   - Move helpers: `showInterviewSessionEnded`, `plannedProblemsFromSetup`, `runInterviewSessionAfterPlan`, `startInterviewTick`, `stopInterviewTick`, `refreshInterviewStatusBarNow`, `restoreInterviewOnActivate`, `handleProblemSolved`, `detectAndRecordPatternMastery`, `sanitizeInterviewDirectoryName`, `generateUniqueAttemptHex`
   - Export `registerInterviewCommands(context: vscode.ExtensionContext, getProvider: () => IProblemProvider)`
-
-- [ ] **4.5.7 — Extract Runner/Test/Visualize commands**
+- [ ] **4d.7 — Extract Runner/Test/Visualize commands**
   - Create `src/commands/runner.ts`
   - Move commands: `leetplus.runExamples`, `leetplus.measureComplexity`, `leetplus.visualizeRecursion`, `leetplus.visualizeIterative`, `leetplus.fuzzVsBruteForce`, `leetplus.complexityBudget`, `leetplus.runAdversarialTests`, `leetplus.lint`, `leetplus.toggleInlineDecorations`, `leetplus.clearInlineDecorations`, `leetplus.runInTerminal`, `leetplus.openNextBugReview`
   - Export `registerRunnerCommands(context: vscode.ExtensionContext)`
-
-- [ ] **4.5.8 — Extract Sidebar search/filter/refresh commands**
+- [ ] **4d.8 — Extract Sidebar search/filter/refresh commands**
   - Create `src/commands/sidebar.ts`
   - Move commands: `leetplus.openProblem`, `leetplus.openQotd`, `leetplus.refreshProblems`, `leetplus.refreshContests`, `leetplus.refreshCompanies`, `leetplus.searchCompanies`, `leetplus.filterCompaniesByDifficulty`, `leetplus.openContestOnWeb`, `leetplus.switchProblemList`, `leetplus.refreshQotd`, `leetplus.filterByDifficulty`, `leetplus.searchProblems`, `leetplus.showDailyPlanProblem`, `leetplus.switchDailyPlanMode`, `leetplus.filterDailyPlanByCategory`
   - Export `registerSidebarCommands(context: vscode.ExtensionContext, getProvider: () => IProblemProvider, dailyPlanProvider: DailyPlanProvider, refreshAllProblemViews: () => void)`
-
-- [ ] **4.5.9 — Extract Auth/Cloud/Stats commands**
+- [ ] **4d.9 — Extract Auth/Cloud/Stats commands**
   - Create `src/commands/auth.ts`
   - Move commands: `leetplus.signIn`, `leetplus.signOut`, `leetplus.cloudSignIn`, `leetplus.cloudSignOut`, `leetplus.setCloudUsername`, `leetplus.pushCloudStats`, `leetplus.pullCloudStats`, `leetplus.viewStats`, `leetplus.refreshStatsData`
   - Export `registerAuthCommands(context: vscode.ExtensionContext)`
-
-- [ ] **4.5.10 — Extract Misc commands**
+- [ ] **4d.10 — Extract Misc commands**
   - Create `src/commands/misc.ts`
   - Move commands: `leetplus.toggleDiffLogger`, `leetplus.applyTheme`, `leetplus.setDailyGoal`, `leetplus.openChatWithPrompt`
   - Export `registerMiscCommands(context: vscode.ExtensionContext)`
-
-- [ ] **4.5.11 — Final thinning & compile validation of extension.ts**
+- [ ] **4d.11 — Final thinning & compile validation of extension.ts**
   - Call all new register hooks in `activate()`
   - Clean unused imports in `src/extension.ts`
   - Run typecheck and integration tests validation

@@ -66,7 +66,7 @@ describe("HeuristicRater (4a.3)", () => {
   it("1-2 hints: mild penalty bumps rating up", async () => {
     const resultNoHints = await estimateRating(ROOT, SLUG, LINEAR_SOLUTION, "typescript", SIMPLE_DESC, 0);
     const resultTwoHints = await estimateRating(ROOT, SLUG, LINEAR_SOLUTION, "typescript", SIMPLE_DESC, 2);
-    expect(resultTwoHints.rating).toBeGreaterThanOrEqual(resultNoHints.rating);
+    expect(resultTwoHints.rating).toBeGreaterThan(resultNoHints.rating);
   });
 
   it("3+ hints: rating capped to at least 2", async () => {
