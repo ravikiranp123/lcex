@@ -1,81 +1,120 @@
 import * as fs from "fs";
 import * as path from "path";
-import { describe, it, beforeAll, afterAll, expect } from "vitest";
+import { describe, it, beforeEach, afterEach, expect } from "vitest";
 import { readState, writeState, initState } from "../src/modules/StateManager";
 import type { LPState } from "../src/modules/interface/LPState";
 
-const TEST_DIR = path.join(__dirname, "..", "test-state-output");
+function makeTmpDir(): string {
+  return fs.mkdtempSync(path.join(require("os").tmpdir(), "lcex-state-"));
+}
+
+const MINIMAL_STATE: LPState = {
+  version: "1.0",
+  planName: "Test Plan",
+  startDate: new Date().toISOString(),
+  problems: [],
+  currentStreak: 0,
+  bestStreak: 0,
+  lastActivityDate: null,
+  patternMastery: {},
+  designProblems: [],
+  behavioralStories: [],
+};
 
 describe("StateManager", () => {
-  beforeAll(() => {
-    if (!fs.existsSync(TEST_DIR)) {
-      fs.mkdirSync(TEST_DIR, { recursive: true });
-    }
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeTmpDir();
   });
 
-  afterAll(() => {
-    if (fs.existsSync(TEST_DIR)) {
-      fs.rmSync(TEST_DIR, { recursive: true, force: true });
-    }
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("should write and read state successfully", async () => {
-    const testState: LPState = {
-      version: "1.0",
-      planName: "NeetCode 150",
-      startDate: new Date().toISOString(),
-      problems: [
-        {
-          id: 1,
-          title: "Two Sum",
-          slug: "two-sum",
-          difficulty: "Easy",
-          category: "Arrays & Hashing",
-          status: "pending",
-          scheduledDate: new Date().toISOString(),
-          nextRepetitionDate: null,
-          repetitionLevel: 0,
-          completionHistory: [],
-          patterns: ["Two Pointers"],
-          leetcodeUrl: "https://leetcode.com/problems/two-sum",
-          youtubeId: "abcd",
-          solutionLink: null,
-          hints: null,
-          solution: null,
-        },
-      ],
-      currentStreak: 0,
-      bestStreak: 0,
-      lastActivityDate: null,
-      patternMastery: {},
-      designProblems: [],
-      behavioralStories: [],
-    };
-
-    // Test writing
-    await writeState(TEST_DIR, testState);
-    const stateFile = path.join(TEST_DIR, ".leetplus", "state.json");
-    expect(fs.existsSync(stateFile)).toBeTruthy();
-
-    // Test reading
-    const read = await readState(TEST_DIR);
+  it("write then read round-trips correctly", async () => {
+    await writeState(tmpDir, MINIMAL_STATE);
+    const read = await readState(tmpDir);
     expect(read).toBeTruthy();
     expect(read.version).toBe("1.0");
-    expect(read.planName).toBe("NeetCode 150");
-    expect(read.problems.length).toBe(1);
-    expect(read.problems[0].title).toBe("Two Sum");
   });
 
-  it("should initialize a new state", async () => {
-    const workspaceRoot = path.join(TEST_DIR, "init-workspace");
-    fs.mkdirSync(workspaceRoot, { recursive: true });
-
-    const state = await initState(workspaceRoot, "Custom Study Plan", []);
-    expect(state).toBeTruthy();
+  it("initState creates state with correct planName", async () => {
+    const state = await initState(tmpDir, "Custom Study Plan", []);
     expect(state.planName).toBe("Custom Study Plan");
-    
-    const read = await readState(workspaceRoot);
-    expect(read).toBeTruthy();
+    const read = await readState(tmpDir);
     expect(read.planName).toBe("Custom Study Plan");
+  });
+
+  describe("readState edge cases", () => {
+    it("returns null when state.json does not exist", async () => {
+      const result = await readState(tmpDir);
+      expect(result).toBeNull();
+    });
+
+    it("returns null for invalid JSON content", async () => {
+      const dir = path.join(tmpDir, ".leetplus");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, "state.json"), "{ corrupted!!!", "utf-8");
+      expect(await readState(tmpDir)).toBeNull();
+    });
+
+    it("returns null for valid JSON missing version field", async () => {
+      const dir = path.join(tmpDir, ".leetplus");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, "state.json"), JSON.stringify({ problems: [] }), "utf-8");
+      expect(await readState(tmpDir)).toBeNull();
+    });
+
+    it("returns null for valid JSON where problems is not an array", async () => {
+      const dir = path.join(tmpDir, ".leetplus");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, "state.json"), JSON.stringify({ version: "1.0", problems: "bad" }), "utf-8");
+      expect(await readState(tmpDir)).toBeNull();
+    });
+  });
+
+  describe("writeState", () => {
+    it("creates .leetplus/ dir if it does not exist", async () => {
+      const nested = path.join(tmpDir, "deep", "workspace");
+      fs.mkdirSync(nested, { recursive: true });
+      await writeState(nested, MINIMAL_STATE);
+      expect(fs.existsSync(path.join(nested, ".leetplus", "state.json"))).toBeTruthy();
+    });
+
+    it("leaves no .tmp file on disk after write", async () => {
+      await writeState(tmpDir, MINIMAL_STATE);
+      const dir = path.join(tmpDir, ".leetplus");
+      const files = fs.readdirSync(dir);
+      expect(files.some((f) => f.endsWith(".tmp"))).toBeFalsy();
+    });
+
+    it("uses 2-space indentation in written file", async () => {
+      await writeState(tmpDir, MINIMAL_STATE);
+      const raw = fs.readFileSync(path.join(tmpDir, ".leetplus", "state.json"), "utf-8");
+      const lines = raw.split("\n");
+      const indentedLine = lines.find((l) => l.startsWith("  ") && !l.startsWith("   "));
+      expect(indentedLine).toBeTruthy();
+    });
+  });
+
+  describe("initState", () => {
+    it("sets planSlug when provided", async () => {
+      const state = await initState(tmpDir, "Plan", [], "neetcode-150");
+      expect(state.planSlug).toBe("neetcode-150");
+      const read = await readState(tmpDir);
+      expect(read.planSlug).toBe("neetcode-150");
+    });
+
+    it("writes all problems from the array", async () => {
+      const problems = [
+        { ...MINIMAL_STATE.problems[0], id: 1, title: "A" } as any,
+        { ...MINIMAL_STATE.problems[0], id: 2, title: "B" } as any,
+      ];
+      const state = await initState(tmpDir, "Plan", problems);
+      expect(state.problems).toHaveLength(2);
+      const read = await readState(tmpDir);
+      expect(read.problems).toHaveLength(2);
+    });
   });
 });
