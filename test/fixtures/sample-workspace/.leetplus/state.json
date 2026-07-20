@@ -13,7 +13,7 @@
       "status": "completed",
       "scheduledDate": "2026-01-01T00:00:00.000Z",
       "nextRepetitionDate": "2026-07-10T00:00:00.000Z",
-      "repetitionLevel": 2,
+      "repetitionLevel": 4,
       "completionHistory": [
         {
           "date": "2026-06-20T10:00:00.000Z",
@@ -21,12 +21,16 @@
           "notes": "Solved with hash map",
           "timeSpentSeconds": 300,
           "hintsUsed": 0,
-          "patternsDetected": ["hash-map"],
+          "patternsDetected": [
+            "hash-map"
+          ],
           "aiRating": 3,
           "aiJustification": "Good solution"
         }
       ],
-      "patterns": ["hash-map"],
+      "patterns": [
+        "hash-map"
+      ],
       "leetcodeUrl": "https://leetcode.com/problems/two-sum/",
       "youtubeId": null,
       "solutionLink": null,
@@ -50,12 +54,16 @@
           "notes": "Struggled with carry logic",
           "timeSpentSeconds": 900,
           "hintsUsed": 1,
-          "patternsDetected": ["linked-list"],
+          "patternsDetected": [
+            "linked-list"
+          ],
           "aiRating": 2,
           "aiJustification": "Needed hints"
         }
       ],
-      "patterns": ["linked-list"],
+      "patterns": [
+        "linked-list"
+      ],
       "leetcodeUrl": "https://leetcode.com/problems/add-two-numbers/",
       "youtubeId": null,
       "solutionLink": null,
@@ -83,11 +91,11 @@
   ],
   "currentStreak": 5,
   "bestStreak": 12,
-  "lastActivityDate": "2026-07-19T00:00:00.000Z",
+  "lastActivityDate": "2026-07-10T00:00:00.000Z",
   "patternMastery": {
-    "hash-map": 0.7,
+    "hash-map": 0.757,
     "linked-list": 0.4,
-    "sliding-window": 0.0
+    "sliding-window": 0
   },
   "designProblems": [],
   "behavioralStories": []

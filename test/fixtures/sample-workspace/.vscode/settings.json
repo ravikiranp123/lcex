@@ -1,4 +1,5 @@
 {
     "workbench.colorTheme": "LeetCode Dark",
-    "workbench.preferredDarkColorTheme": "LeetCode Dark"
+    "workbench.preferredDarkColorTheme": "LeetCode Dark",
+    "zenMode.hideStatusBar": false
 }

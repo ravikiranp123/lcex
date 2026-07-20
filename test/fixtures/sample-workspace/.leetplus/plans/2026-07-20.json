@@ -1,0 +1,18 @@
+{
+  "date": "2026-07-20",
+  "mode": "interleaved",
+  "problems": [
+    {
+      "id": 3,
+      "type": "new"
+    },
+    {
+      "id": 1,
+      "type": "rep"
+    },
+    {
+      "id": 2,
+      "type": "rep"
+    }
+  ]
+}

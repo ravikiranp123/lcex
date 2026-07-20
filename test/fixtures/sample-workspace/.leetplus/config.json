@@ -4,5 +4,8 @@
     "enabled": true,
     "problemsPerDay": 5,
     "defaultMode": "interleaved"
+  },
+  "diffLogger": {
+    "enabled": false
   }
 }
