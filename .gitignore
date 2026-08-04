@@ -24,3 +24,7 @@ leetcode-practice-*.vsix.zip
 leetcode-practice-*.png
 leetcode-practice-*.png.zip
 backfill-solved-dates.json
+
+# Python (added by LeetPlus)
+*.pyc
+__pycache__/

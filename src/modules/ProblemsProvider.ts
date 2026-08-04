@@ -3,13 +3,13 @@ import * as path from "path";
 import * as vscode from "vscode";
 import * as Logger from "./Logger";
 import {
-
   LeetCodeProvider,
   slugToTitle,
   type ProblemListItem,
   type StudyPlanGroup,
 } from "./LeetCode";
 import { NO_PROBLEM_LIST_SENTINEL, getEffectiveConfig } from "./LeetPlusConfig";
+import { loadSeedsFromLocalDataFile } from "./DailyPlanGenerator";
 const STATUS_KEY = "leetplus.problemStatus";
 
 export type ProblemStatus = "solved" | "attempting";
@@ -84,7 +84,9 @@ export class ProblemTreeItem extends vscode.TreeItem {
     status: ProblemStatus | undefined,
     collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.None
   ) {
-    super(`${item.id}. ${item.title}`, collapsibleState);
+    const numId = typeof item.id === "number" ? item.id : parseInt(String(item.id), 10);
+    const label = !isNaN(numId) ? `${numId}. ${item.title}` : item.title;
+    super(label, collapsibleState);
     const statusSuffix =
       status === "solved" ? " • ✓" : status === "attempting" ? " • Attempting" : "";
     this.description = `${item.difficulty}${statusSuffix}`;
@@ -252,47 +254,32 @@ export class ProblemsTreeProvider implements vscode.TreeDataProvider<ProblemTree
         } else {
           const lcexCfg = getEffectiveConfig(vscode.workspace.workspaceFolders ?? []);
           const planConfig = lcexCfg.studyPlans?.find((p) => p.slug === planSlug);
-          
-          if (planConfig?.path) {
-            let localPath = "";
-            for (const f of vscode.workspace.workspaceFolders ?? []) {
-              const candidate = path.resolve(f.uri.fsPath, planConfig.path);
-              if (fs.existsSync(candidate)) {
-                localPath = candidate;
-                break;
-              }
-            }
-            if (localPath) {
-              try {
-                const raw = fs.readFileSync(localPath, "utf-8");
-                const customPlan = JSON.parse(raw) as Record<string, string[]>;
-                
-                const fullProvider = new ProblemsTreeProvider("problemset", this.memento, this.storagePath);
-                const allProblems = await fullProvider.getProblemList();
-                const bySlug = new Map(allProblems.map(p => [p.titleSlug, p]));
-                
-                this.groups = Object.entries(customPlan).map(([category, slugs]) => ({
-                  category,
-                  problems: slugs.map(slug => {
-                    const existing = bySlug.get(slug);
-                    if (existing) return existing;
-                    return {
-                      id: slug,
-                      titleSlug: slug,
-                      title: slug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
-                      difficulty: "Medium",
-                      topicTags: [category]
-                    };
-                  })
-                })).filter(g => g.problems.length > 0);
+          const workspaceRoot = (vscode.workspace.workspaceFolders ?? [])[0]?.uri.fsPath;
 
-              } catch (e) {
-                console.error(`Failed to load custom study plan from ${localPath}`, e);
-                this.groups = [];
+          const localSeeds = workspaceRoot
+            ? loadSeedsFromLocalDataFile(workspaceRoot, planSlug, planConfig?.path)
+            : null;
+
+          if (localSeeds && localSeeds.length > 0) {
+            const groupedMap = new Map<string, ProblemListItem[]>();
+            for (const seed of localSeeds) {
+              const category = seed.topicTags?.[0] ?? "General";
+              if (!groupedMap.has(category)) {
+                groupedMap.set(category, []);
               }
-            } else {
-              this.groups = [];
+              const numId = typeof seed.id === "number" ? seed.id : parseInt(String(seed.id), 10);
+              groupedMap.get(category)!.push({
+                id: isNaN(numId) ? seed.titleSlug : numId,
+                title: seed.title,
+                titleSlug: seed.titleSlug,
+                difficulty: seed.difficulty,
+                topicTags: seed.topicTags ?? [category],
+              });
             }
+            this.groups = Array.from(groupedMap.entries()).map(([category, problems]) => ({
+              category,
+              problems,
+            }));
           } else {
             this.groups = await this.leetcode.getStudyPlanProblemListGrouped(planSlug);
           }

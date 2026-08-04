@@ -50,17 +50,110 @@ function getDiffLoggerConfig(workspaceRoot: string): DiffLoggerConfig {
   return DEFAULT_CONFIG;
 }
 
+import * as Logger from "./Logger";
+
 /**
- * Initializes the DiffLogger document change listeners.
+ * Finds a matching problem in LPState for a given solution file path.
+ * Supports filenames in all patterns: "217.py", "contains-duplicate.py",
+ * "217.contains-duplicate.py", "217-contains-duplicate.py", "217_contains_duplicate.py",
+ * and "LeetPlusMain217.java".
+ */
+export function findProblemForDocument(state: LPState, docPath: string): LPProblem | undefined {
+  if (!state || !state.problems || state.problems.length === 0) return undefined;
+
+  const ext = path.extname(docPath);
+  const base = path.basename(docPath, ext);
+  const key = problemKeyFromSolutionFileBase(base);
+
+  // 1. Direct match: numeric ID or exact slug
+  const directNum = Number(key);
+  if (!isNaN(directNum)) {
+    const p = state.problems.find((prob) => prob.id === directNum);
+    if (p) return p;
+  }
+  const directSlug = state.problems.find((prob) => prob.slug === key);
+  if (directSlug) return directSlug;
+
+  // 2. Handle "id.slug" format (e.g. "217.contains-duplicate" or "1.two-sum")
+  if (key.includes(".")) {
+    const parts = key.split(".");
+    const firstNum = Number(parts[0]);
+    const restSlug = parts.slice(1).join(".");
+    const p = state.problems.find(
+      (prob) => (!isNaN(firstNum) && prob.id === firstNum) || (restSlug && prob.slug === restSlug)
+    );
+    if (p) return p;
+  }
+
+  // 3. Handle "id-slug" or "id_slug" formats (e.g. "217-contains-duplicate" or "217_contains_duplicate")
+  const match = key.match(/^(\d+)[-_](.+)$/);
+  if (match) {
+    const idNum = Number(match[1]);
+    const slugStr = match[2].replace(/_/g, "-");
+    const p = state.problems.find(
+      (prob) => prob.id === idNum || prob.slug === slugStr || prob.slug === match[2]
+    );
+    if (p) return p;
+  }
+
+  return undefined;
+}
+
+/**
+ * Initializes the DiffLogger document change and save listeners.
  */
 export function initDiffLogger(context: vscode.ExtensionContext): void {
-  // Register text document change event listener
-  const changeListener = vscode.workspace.onDidChangeTextDocument(async (e) => {
-    await handleDocumentChange(e);
-  });
+  // Seed baseline when a document is opened
+  if (typeof vscode.workspace.onDidOpenTextDocument === "function") {
+    const openListener = vscode.workspace.onDidOpenTextDocument((doc) => {
+      const docPath = doc.uri.fsPath;
+      if (!baselineCache.has(docPath)) {
+        baselineCache.set(docPath, doc.getText());
+        accumulatedChanges.set(docPath, 0);
+      }
+    });
+    context.subscriptions.push(openListener);
+  }
 
-  context.subscriptions.push(changeListener);
-  
+  // Register text document change event listener
+  if (typeof vscode.workspace.onDidChangeTextDocument === "function") {
+    const changeListener = vscode.workspace.onDidChangeTextDocument(async (e) => {
+      await handleDocumentChange(e);
+    });
+    context.subscriptions.push(changeListener);
+  }
+
+  // Immediately save diff on document save
+  if (typeof vscode.workspace.onDidSaveTextDocument === "function") {
+    const saveListener = vscode.workspace.onDidSaveTextDocument(async (doc) => {
+      const docPath = doc.uri.fsPath;
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders || folders.length === 0) return;
+      const folder = folders.find((f) => docPath.startsWith(f.uri.fsPath));
+      if (!folder) return;
+      const workspaceRoot = folder.uri.fsPath;
+
+      const config = getDiffLoggerConfig(workspaceRoot);
+      if (!config.enabled) return;
+
+      const ext = path.extname(docPath).toLowerCase();
+      if (!config.trackedExtensions.map((x) => x.toLowerCase()).includes(ext)) return;
+
+      const state = await readState(workspaceRoot);
+      if (!state) return;
+
+      const problem = findProblemForDocument(state, docPath);
+      if (!problem) return;
+
+      const currentText = doc.getText();
+      const baselineText = baselineCache.get(docPath);
+      if (baselineText !== undefined && currentText !== baselineText) {
+        void saveDiff(workspaceRoot, docPath, problem.slug || String(problem.id), currentText);
+      }
+    });
+    context.subscriptions.push(saveListener);
+  }
+
   // Clean up timers on extension dispose
   context.subscriptions.push({
     dispose: () => {
@@ -70,7 +163,7 @@ export function initDiffLogger(context: vscode.ExtensionContext): void {
       debounceTimers.clear();
       baselineCache.clear();
       accumulatedChanges.clear();
-    }
+    },
   });
 }
 
@@ -87,7 +180,7 @@ async function handleDocumentChange(e: vscode.TextDocumentChangeEvent): Promise<
   if (!folders || folders.length === 0) return;
 
   // Resolve matching workspace folder root
-  const folder = folders.find(f => docPath.startsWith(f.uri.fsPath));
+  const folder = folders.find((f) => docPath.startsWith(f.uri.fsPath));
   if (!folder) return;
   const workspaceRoot = folder.uri.fsPath;
 
@@ -96,7 +189,7 @@ async function handleDocumentChange(e: vscode.TextDocumentChangeEvent): Promise<
   if (!config.enabled) return;
 
   // 3. Verify file extension is tracked
-  if (!config.trackedExtensions.map(x => x.toLowerCase()).includes(ext)) {
+  if (!config.trackedExtensions.map((x) => x.toLowerCase()).includes(ext)) {
     return;
   }
 
@@ -104,10 +197,7 @@ async function handleDocumentChange(e: vscode.TextDocumentChangeEvent): Promise<
   const state = await readState(workspaceRoot);
   if (!state) return;
 
-  const base = path.basename(docPath, ext);
-  const key = problemKeyFromSolutionFileBase(base);
-  const idNum = Number(key);
-  const problem = state.problems.find(p => p.id === idNum || p.slug === key);
+  const problem = findProblemForDocument(state, docPath);
   if (!problem) return;
 
   const currentText = doc.getText();
@@ -116,7 +206,6 @@ async function handleDocumentChange(e: vscode.TextDocumentChangeEvent): Promise<
   if (!baselineCache.has(docPath)) {
     baselineCache.set(docPath, currentText);
     accumulatedChanges.set(docPath, 0);
-    return;
   }
 
   const baselineText = baselineCache.get(docPath) ?? "";
@@ -228,6 +317,7 @@ export async function saveDiff(
       const timestamp = new Date().toISOString().replace(/:/g, "-");
       const diffPath = path.join(diffsDir, `${timestamp}.patch`);
       fs.writeFileSync(diffPath, patch, "utf-8");
+      Logger.log(`Saved diff patch for '${slug}' to ${diffPath}`);
 
       // Update state lastActivityDate to track active typing sessions
       try {

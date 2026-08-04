@@ -386,6 +386,12 @@
         "title": "Filter Daily Plan by Category",
         "category": "LeetPlus",
         "icon": "$(filter)"
+      },
+      {
+        "command": "leetplus.topUpDailyPlan",
+        "title": "Add More Problems to Today's Plan",
+        "category": "LeetPlus",
+        "icon": "$(plus)"
       }
     ],
     "menus": {
@@ -522,6 +528,11 @@
           "command": "leetplus.filterDailyPlanByCategory",
           "when": "view == leetplus-daily-plan",
           "group": "navigation@2"
+        },
+        {
+          "command": "leetplus.topUpDailyPlan",
+          "when": "view == leetplus-daily-plan",
+          "group": "navigation@3"
         }
       ]
     },

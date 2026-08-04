@@ -47,7 +47,9 @@ export class DailyPlanTreeItem extends vscode.TreeItem {
       this.tooltip = `${p.id}. ${p.title} (${p.difficulty})`;
       
       const difficultyEmoji = p.difficulty === "Easy" ? "🟢" : p.difficulty === "Medium" ? "🟡" : "🔴";
-      this.label = `${difficultyEmoji} ${p.id}. ${p.title}`;
+      const numId = typeof p.id === "number" ? p.id : parseInt(String(p.id), 10);
+      const nameLabel = !isNaN(numId) ? `${numId}. ${p.title}` : p.title;
+      this.label = `${difficultyEmoji} ${nameLabel}`;
 
       if (solvedToday) {
         this.description = "Completed";
@@ -107,7 +109,22 @@ export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem>
     }
   }
 
-  refresh(): void {
+  refresh(deleteTodayPlan = false): void {
+    if (deleteTodayPlan) {
+      const folders = vscode.workspace.workspaceFolders;
+      if (folders && folders.length > 0) {
+        const workspaceRoot = folders[0].uri.fsPath;
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const planFile = path.join(workspaceRoot, ".leetplus", "plans", `${todayStr}.json`);
+        try {
+          if (fs.existsSync(planFile)) {
+            fs.unlinkSync(planFile);
+          }
+        } catch {
+          // best-effort
+        }
+      }
+    }
     this._onDidChangeTreeData.fire();
   }
 

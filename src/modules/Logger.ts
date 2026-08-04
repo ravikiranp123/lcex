@@ -20,3 +20,9 @@ export function logError(message: string, err?: unknown): void {
     channel.appendLine(`  → ${detail}`);
   }
 }
+
+export function show(): void {
+  if (channel) {
+    channel.show(true);
+  }
+}

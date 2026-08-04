@@ -17,7 +17,9 @@ function getProvider(): IProblemProvider {
 }
 
 describe("Integration: fetch, scrape, create file, run", () => {
-  it("fetches problem from LeetCode, writes real file, runs examples", async () => {
+  it.skipIf(!process.env.LEETCODE_SESSION && !process.env.LEETCODE_TEST_API_URL)(
+    "fetches problem from LeetCode, writes real file, runs examples",
+    async () => {
     const provider = getProvider();
     const problem = await provider.getProblem(PROBLEM_SLUG);
 
@@ -41,5 +43,5 @@ describe("Integration: fetch, scrape, create file, run", () => {
 
     const results = compareOutput(content, stdout);
     expect(results.length > 0, "should have at least one example result").toBeTruthy();
-  });
+  }, 15000);
 });

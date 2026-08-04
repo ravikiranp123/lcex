@@ -12,16 +12,21 @@ export interface DailyPlanJson {
 }
 
 export interface StudyPlanProblemSeed {
-  id: string;
+  id: number | string;
   title: string;
   titleSlug: string;
   difficulty: string;
   topicTags?: string[];
+  leetcodeUrl?: string;
+  youtubeId?: string | null;
+  solutionLink?: { text: string; url: string } | null;
+  hints?: string[] | null;
+  solution?: { explanation?: string; code?: Record<string, string> } | null;
 }
 
 /**
  * Bootstraps `state.json` by seeding it with problems from the active study plan.
- * Only adds problems that don't already exist in state (by id).
+ * Only adds problems that don't already exist in state (by slug or id).
  * No-op if `fetchProblems` is not provided.
  *
  * @param workspaceRoot - Absolute path to the workspace root.
@@ -35,7 +40,6 @@ export async function bootstrapStateFromStudyPlan(
   fetchProblems: () => Promise<StudyPlanProblemSeed[]>
 ): Promise<number> {
   const todayStr = new Date().toISOString().slice(0, 10);
-  const existingIds = new Set(state.problems.map((p) => String(p.id)));
 
   let problems: StudyPlanProblemSeed[];
   try {
@@ -44,13 +48,16 @@ export async function bootstrapStateFromStudyPlan(
     return 0;
   }
 
+  const existingSlugs = new Set(state.problems.map((p) => p.slug).filter(Boolean));
+  const existingIds = new Set(state.problems.map((p) => String(p.id)));
+
   const newProblems: LPProblem[] = [];
-  let nextId = state.problems.reduce((max, p) => Math.max(max, p.id), 0);
+  let nextId = state.problems.reduce((max, p) => Math.max(max, typeof p.id === "number" ? p.id : 0), 0);
 
   for (const item of problems) {
-    const numId = parseInt(item.id, 10);
-    const key = isNaN(numId) ? item.id : String(numId);
-    if (existingIds.has(key)) continue;
+    const numId = typeof item.id === "number" ? item.id : parseInt(String(item.id), 10);
+    const key = isNaN(numId) ? String(item.id) : String(numId);
+    if (existingSlugs.has(item.titleSlug) || existingIds.has(key)) continue;
 
     nextId++;
     const lp: LPProblem = {
@@ -65,14 +72,15 @@ export async function bootstrapStateFromStudyPlan(
       repetitionLevel: 0,
       completionHistory: [],
       patterns: item.topicTags ?? [],
-      leetcodeUrl: `https://leetcode.com/problems/${item.titleSlug}/`,
-      youtubeId: null,
-      solutionLink: null,
-      hints: null,
-      solution: null,
+      leetcodeUrl: item.leetcodeUrl ?? `https://leetcode.com/problems/${item.titleSlug}/`,
+      youtubeId: item.youtubeId ?? null,
+      solutionLink: item.solutionLink ?? null,
+      hints: item.hints ?? null,
+      solution: item.solution ?? null,
     };
     newProblems.push(lp);
     existingIds.add(key);
+    existingSlugs.add(item.titleSlug);
   }
 
   if (newProblems.length === 0) return 0;
@@ -83,10 +91,8 @@ export async function bootstrapStateFromStudyPlan(
 }
 
 /**
- * Reads a local data file at `.leetplus/data/<planSlug>.json`.
- * Expects the schema: `{ "Category Name": ["slug1", "slug2", ...], ... }`
- * Returns an array of `StudyPlanProblemSeed` with stub title/difficulty fields
- * (the category name is used as the first topicTag).
+ * Reads a local data file at `.leetplus/data/<planSlug>.json` or `.leetplus/plans/<planSlug>.json`.
+ * Expects either `{ "Category": ["slug1", ...] }` or `{ "Category": [{ "id": 1, "slug": "two-sum", ... }] }`.
  *
  * Returns null if the file doesn't exist or can't be parsed.
  */
@@ -95,32 +101,97 @@ export function loadSeedsFromLocalDataFile(
   planSlug: string,
   localPath?: string
 ): StudyPlanProblemSeed[] | null {
-  const dataFile = localPath
-    ? (path.isAbsolute(localPath) ? localPath : path.join(workspaceRoot, localPath))
-    : path.join(workspaceRoot, ".leetplus", "data", `${planSlug}.json`);
-  if (!fs.existsSync(dataFile)) return null;
+  // Determine candidate file path(s) to check, in priority order:
+  // 1. Explicit localPath from config (relative or absolute)
+  // 2. Default data dir: .leetplus/data/<planSlug>.json
+  // 3. Plans dir fallback: .leetplus/plans/<planSlug>.json
+  // 4. Extension root data dir fallback: data/<planSlug>.json
+  let dataFile: string | null = null;
+  if (localPath) {
+    const candidate = path.isAbsolute(localPath)
+      ? localPath
+      : path.join(workspaceRoot, localPath);
+    if (fs.existsSync(candidate)) dataFile = candidate;
+  }
+
+  if (!dataFile) {
+    const candidates = [
+      path.join(workspaceRoot, ".leetplus", "data", `${planSlug}.json`),
+      path.join(workspaceRoot, ".leetplus", "plans", `${planSlug}.json`),
+      path.join(__dirname, "..", "data", `${planSlug}.json`),
+      path.join(__dirname, "..", "..", "data", `${planSlug}.json`),
+    ];
+    for (const c of candidates) {
+      if (fs.existsSync(c)) {
+        dataFile = c;
+        break;
+      }
+    }
+  }
+
+  if (!dataFile || !fs.existsSync(dataFile)) return null;
 
   try {
     const raw = fs.readFileSync(dataFile, "utf-8");
-    const parsed = JSON.parse(raw) as Record<string, string[]>;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+
+    const categoriesMap: Record<string, any[]> =
+      parsed.categories && typeof parsed.categories === "object"
+        ? parsed.categories
+        : parsed;
+
     const seeds: StudyPlanProblemSeed[] = [];
 
-    for (const [category, slugs] of Object.entries(parsed)) {
-      if (!Array.isArray(slugs)) continue;
-      for (const slug of slugs) {
-        if (typeof slug !== "string") continue;
-        seeds.push({
-          // Use slug as id — numeric id will be assigned during bootstrap
-          id: slug,
-          // Stub title: convert "two-sum" → "Two Sum"; will display until API enriches it
-          title: slug
+    for (const [category, items] of Object.entries(categoriesMap)) {
+      if (!Array.isArray(items)) continue;
+      for (const item of items) {
+        if (!item) continue;
+
+        if (typeof item === "string") {
+          const slug = item.trim();
+          if (!slug) continue;
+          seeds.push({
+            id: slug,
+            title: slug
+              .split("-")
+              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+              .join(" "),
+            titleSlug: slug,
+            difficulty: "Medium",
+            topicTags: [category],
+          });
+        } else if (typeof item === "object") {
+          let slug = item.titleSlug || item.slug;
+          if (!slug && item.leetcode_url) {
+            const match = String(item.leetcode_url).match(/\/problems\/([^/]+)/);
+            if (match) slug = match[1];
+          }
+          if (!slug && item.id !== undefined) {
+            slug = String(item.id);
+          }
+          if (!slug) continue;
+
+          const title = item.title || slug
             .split("-")
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-            .join(" "),
-          titleSlug: slug,
-          difficulty: "Medium", // Conservative default; enriched by API later
-          topicTags: [category],
-        });
+            .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(" ");
+
+          const id = item.id !== undefined ? item.id : slug;
+
+          seeds.push({
+            id,
+            title,
+            titleSlug: slug,
+            difficulty: item.difficulty ?? "Medium",
+            topicTags: item.topicTags ?? [category],
+            leetcodeUrl: item.leetcode_url ?? item.leetcodeUrl ?? `https://leetcode.com/problems/${slug}/`,
+            youtubeId: item.youtube_id ?? item.youtubeId ?? null,
+            solutionLink: item.solution_link ?? item.solutionLink ?? null,
+            hints: item.hints ?? null,
+            solution: item.solution ?? null,
+          });
+        }
       }
     }
 
@@ -308,4 +379,107 @@ export async function generateDailyPlan(
   fs.writeFileSync(planFile, JSON.stringify(planJson, null, 2), "utf-8");
 
   return planJson;
+}
+
+/**
+ * Appends more problems to today's existing daily plan.
+ *
+ * Picks `count` additional problems from pending and overdue-repetition pools
+ * that are NOT already scheduled in today's plan, using the same SRS priority
+ * ordering as `generateDailyPlan`.
+ *
+ * @param workspaceRoot  Absolute path to the workspace root.
+ * @param state          The current LPState.
+ * @param count          How many extra problems to add (default 5).
+ * @param focusCategory  Optional category filter.
+ * @returns The updated DailyPlanJson (with appended problems).
+ */
+export async function topUpDailyPlan(
+  workspaceRoot: string,
+  state: LPState,
+  count: number = 5,
+  focusCategory?: string
+): Promise<DailyPlanJson> {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const planFile = path.join(workspaceRoot, ".leetplus", "plans", `${todayStr}.json`);
+
+  // Load the existing plan for today, or start with an empty one
+  let existing: DailyPlanJson;
+  if (fs.existsSync(planFile)) {
+    try {
+      existing = JSON.parse(fs.readFileSync(planFile, "utf-8")) as DailyPlanJson;
+    } catch {
+      existing = { date: todayStr, mode: "interleaved", problems: [] };
+    }
+  } else {
+    existing = { date: todayStr, mode: "interleaved", problems: [] };
+  }
+
+  // Build a set of problem IDs already in today's plan so we don't duplicate
+  const alreadyScheduled = new Set(existing.problems.map((p) => p.id));
+
+  let targetProblems = state.problems ?? [];
+  if (focusCategory) {
+    targetProblems = targetProblems.filter((p) => p.category === focusCategory);
+  }
+
+  // Pending problems — sorted by weak-pattern priority (same ordering as generateDailyPlan)
+  const patternMastery = state.patternMastery || {};
+  const pending = targetProblems
+    .filter((p) => p.status === "pending" && !alreadyScheduled.has(p.id))
+    .sort((a, b) => {
+      const scoreA =
+        a.patterns?.length
+          ? Math.min(...a.patterns.map((t) => patternMastery[t] ?? 1.0).filter((s) => s !== undefined))
+          : 1.0;
+      const scoreB =
+        b.patterns?.length
+          ? Math.min(...b.patterns.map((t) => patternMastery[t] ?? 1.0).filter((s) => s !== undefined))
+          : 1.0;
+      if (scoreA !== scoreB) return scoreA - scoreB;
+      return (a.scheduledDate ?? "").localeCompare(b.scheduledDate ?? "");
+    });
+
+  // Overdue repetitions not yet scheduled
+  const overdue = targetProblems.filter((p) => {
+    if (p.status !== "completed" || !p.nextRepetitionDate) return false;
+    if (alreadyScheduled.has(p.id)) return false;
+    return p.nextRepetitionDate.slice(0, 10) <= todayStr;
+  });
+
+  // Interleave: overdue rep → new pending (same pattern as interleaved mode)
+  const extras: Array<{ id: number; type: "rep" | "new" }> = [];
+  let oIdx = 0;
+  let pIdx = 0;
+  while (extras.length < count) {
+    let added = false;
+    if (oIdx < overdue.length) {
+      extras.push({ id: overdue[oIdx++].id, type: "rep" });
+      added = true;
+      if (extras.length >= count) break;
+    }
+    if (pIdx < pending.length) {
+      extras.push({ id: pending[pIdx++].id, type: "new" });
+      added = true;
+    }
+    if (!added) break;
+  }
+
+  if (extras.length === 0) {
+    return existing; // Nothing to add — caller shows a message
+  }
+
+  const updated: DailyPlanJson = {
+    date: todayStr,
+    mode: existing.mode,
+    problems: [...existing.problems, ...extras],
+  };
+
+  const plansDir = path.join(workspaceRoot, ".leetplus", "plans");
+  if (!fs.existsSync(plansDir)) {
+    fs.mkdirSync(plansDir, { recursive: true });
+  }
+  fs.writeFileSync(planFile, JSON.stringify(updated, null, 2), "utf-8");
+
+  return updated;
 }

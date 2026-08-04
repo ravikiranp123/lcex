@@ -20,5 +20,5 @@ export function isSupportedLanguage(value: string): value is SupportedLanguage {
 }
 
 export interface IProblemProvider {
-  getProblem(idOrSlug: string): Promise<Problem | null>;
+  getProblem(idOrSlug: string, cookie?: string): Promise<Problem | null>;
 }

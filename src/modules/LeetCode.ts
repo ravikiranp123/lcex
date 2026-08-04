@@ -276,6 +276,11 @@ async function authHeaders(cookie: string): Promise<Record<string, string>> {
 export class LeetCodeProvider implements IProblemProvider {
   private slugCache: Map<string, string> = new Map();
   private slugToProblemItem: Map<string, ProblemListItem> | null = null;
+  private getCookie?: () => string | undefined;
+
+  constructor(getCookie?: () => string | undefined) {
+    this.getCookie = getCookie;
+  }
 
   /** Fetches all problems from the problemset via pagination (API caps at ~100 per request). */
   async getFullProblemsetList(): Promise<ProblemListItem[]> {
@@ -944,18 +949,27 @@ export class LeetCodeProvider implements IProblemProvider {
     return d && typeof d === "string" ? d : null;
   }
 
-  async getProblem(idOrSlug: string): Promise<Problem | null> {
-    const slug = await this.toTitleSlug(idOrSlug);
+  async getProblem(idOrSlug: string, cookie?: string): Promise<Problem | null> {
+    const activeCookie = cookie?.trim() || this.getCookie?.()?.trim();
+    const slug = await this.toTitleSlug(idOrSlug, activeCookie);
     if (!slug) return null;
-    const res = await fetchWithTimeout(GRAPHQL_URL, {
-      method: "POST",
-      headers: FETCH_HEADERS,
-      body: JSON.stringify({
-        operationName: "questionData",
-        variables: { titleSlug: slug },
-        query: QUESTION_QUERY,
-      }),
-    });
+    const headers = activeCookie ? await authHeaders(activeCookie) : FETCH_HEADERS;
+
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(GRAPHQL_URL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          operationName: "questionData",
+          variables: { titleSlug: slug },
+          query: QUESTION_QUERY,
+        }),
+      });
+    } catch {
+      return null;
+    }
+
     if (!res.ok) return null;
     const contentType = res.headers.get("content-type") ?? "";
     if (!contentType.includes("application/json")) return null;
@@ -988,29 +1002,31 @@ export class LeetCodeProvider implements IProblemProvider {
     };
   }
 
-  private async toTitleSlug(idOrSlug: string): Promise<string | null> {
+  private async toTitleSlug(idOrSlug: string, cookie?: string): Promise<string | null> {
     const trimmed = idOrSlug.trim();
     if (!trimmed) return null;
     if (!/^\d+$/.test(trimmed)) return trimmed;
     const cached = this.slugCache.get(trimmed);
     if (cached) return cached;
-    const slug = await this.fetchSlugById(trimmed);
+    const slug = await this.fetchSlugById(trimmed, cookie);
     if (slug) this.slugCache.set(trimmed, slug);
     return slug;
   }
 
-  private async fetchSlugById(id: string): Promise<string | null> {
+  private async fetchSlugById(id: string, cookie?: string): Promise<string | null> {
     const limit = 100;
     const maxSkip = 3000;
     let backoffMs = 750;
     let consecutiveRetries = 0;
     const maxConsecutiveRetries = 3;
+    const activeCookie = cookie?.trim() || this.getCookie?.()?.trim();
+    const headers = activeCookie ? await authHeaders(activeCookie) : FETCH_HEADERS;
     for (let skip = 0; skip < maxSkip; ) {
       let listRes: Response;
       try {
         listRes = await fetchWithTimeout(GRAPHQL_URL, {
           method: "POST",
-          headers: FETCH_HEADERS,
+          headers,
           body: JSON.stringify({
             operationName: "problemsetQuestionListV2",
             variables: { categorySlug: "", skip, limit },

@@ -33,13 +33,13 @@ describe("StudyPlanSwitcher", () => {
       { id: "1", title: "Two Sum", titleSlug: "two-sum", difficulty: "Easy", topicTags: ["Arrays"] }
     ];
 
-    const result = await switchStudyPlan(tmpDir, "neetcode-150", "NeetCode 150", async () => seeds);
+    const result = await switchStudyPlan(tmpDir, "my-test-plan", "My Test Plan", async () => seeds);
 
     expect(result).toBe("switched");
     const state = await readState(tmpDir);
     expect(state).toBeTruthy();
-    expect(state.planSlug).toBe("neetcode-150");
-    expect(state.planName).toBe("NeetCode 150");
+    expect(state.planSlug).toBe("my-test-plan");
+    expect(state.planName).toBe("My Test Plan");
     expect(state.problems.length).toBe(1);
     expect(state.problems[0].slug).toBe("two-sum");
   });

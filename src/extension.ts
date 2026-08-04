@@ -129,6 +129,7 @@ import { initStatusBar } from "./modules/StatusBarManager";
 import { initDiffLogger } from "./modules/DiffLogger";
 import { DailyPlanProvider } from "./modules/DailyPlanProvider";
 import { switchStudyPlan } from "./modules/StudyPlanSwitcher";
+import { topUpDailyPlan } from "./modules/DailyPlanGenerator";
 import { initProblemTimer, disposeProblemTimer, TIMER_BY_DAY_KEY } from "./modules/ProblemTimer";
 import { captureSnapshot, finalizeProblemRating } from "./modules/SnapshotManager";
 import { estimateRating } from "./modules/HeuristicRater";
@@ -194,13 +195,21 @@ import { handleAuthCallback, signInToCloud, signOutFromCloud } from "./modules/c
 import { isCurrentUserOnWellnessListSync, refreshAndCheckWellnessList } from "./modules/cloud/wellness";
 import { recordInstallActivity } from "./modules/cloud/installRegistry";
 
+let extensionContextRef: vscode.ExtensionContext | undefined;
+
 function getProvider(): IProblemProvider {
   const folders = vscode.workspace.workspaceFolders ?? [];
   const config = getEffectiveConfig(folders);
   if (config.internalApiUrl?.trim()) {
     return new InternalApiProvider(config.internalApiUrl.trim());
   }
-  return new LeetCodeProvider();
+  const getCookie = () => {
+    if (extensionContextRef) {
+      return Database.getSession(extensionContextRef)?.cookie?.trim() || undefined;
+    }
+    return undefined;
+  };
+  return new LeetCodeProvider(getCookie);
 }
 
 const LEETCODE_MARKER = ".leetplus";
@@ -1260,6 +1269,7 @@ async function migrateWorkspaces() {
 export async function activate(context: vscode.ExtensionContext) {
   let dailyPlanProvider: DailyPlanProvider;
   extensionContextForBars = context;
+  extensionContextRef = context;
   const outputChannel = vscode.window.createOutputChannel("LeetPlus");
   context.subscriptions.push(outputChannel);
   Logger.init(outputChannel);
@@ -3371,6 +3381,83 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
     })
   );
 
+  // Register command to add more problems to today's daily plan
+  context.subscriptions.push(
+    vscode.commands.registerCommand("leetplus.topUpDailyPlan", async () => {
+      const folders = vscode.workspace.workspaceFolders ?? [];
+      if (folders.length === 0) return;
+      const workspaceRoot = folders[0].uri.fsPath;
+
+      const state = await dailyPlanProvider.getCurrentState();
+      if (!state || state.problems.length === 0) {
+        void vscode.window.showWarningMessage(
+          "No study plan active. Switch to a study plan first."
+        );
+        return;
+      }
+
+      // Count how many problems could still be added
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const planFile = path.join(workspaceRoot, ".leetplus", "plans", `${todayStr}.json`);
+      const alreadyIn = (() => {
+        try {
+          if (!fs.existsSync(planFile)) return new Set<number>();
+          const raw = fs.readFileSync(planFile, "utf-8");
+          const p = JSON.parse(raw) as { problems: { id: number }[] };
+          return new Set((p.problems ?? []).map((x) => x.id));
+        } catch {
+          return new Set<number>();
+        }
+      })();
+
+      const available =
+        state.problems.filter((p) => p.status === "pending" && !alreadyIn.has(p.id)).length +
+        state.problems.filter(
+          (p) =>
+            p.status === "completed" &&
+            !!p.nextRepetitionDate &&
+            p.nextRepetitionDate.slice(0, 10) <= todayStr &&
+            !alreadyIn.has(p.id)
+        ).length;
+
+      if (available === 0) {
+        void vscode.window.showInformationMessage(
+          "🎉 All done! No pending or overdue problems left to add for today."
+        );
+        return;
+      }
+
+      // Ask how many to add (default = min(5, available))
+      const defaultCount = Math.min(5, available);
+      const input = await vscode.window.showInputBox({
+        title: "Add More Problems",
+        prompt: `${available} problem${available === 1 ? "" : "s"} available. How many would you like to add to today's plan?`,
+        value: String(defaultCount),
+        validateInput: (v) => {
+          const n = parseInt(v, 10);
+          if (isNaN(n) || n < 1) return "Enter a number ≥ 1";
+          if (n > available) return `Only ${available} problem${available === 1 ? "" : "s"} available`;
+          return null;
+        },
+      });
+
+      if (!input) return; // User cancelled
+
+      const count = Math.min(parseInt(input, 10), available);
+
+      try {
+        const updated = await topUpDailyPlan(workspaceRoot, state, count);
+        const added = updated.problems.length - alreadyIn.size;
+        dailyPlanProvider.refresh();
+        void vscode.window.showInformationMessage(
+          `Added ${added} problem${added === 1 ? "" : "s"} to today's plan (total: ${updated.problems.length}).`
+        );
+      } catch (e) {
+        void vscode.window.showErrorMessage(`Failed to top up daily plan: ${String(e)}`);
+      }
+    })
+  );
+
   // Command to open chat panel with a prompt
   context.subscriptions.push(
     vscode.commands.registerCommand("leetplus.openChatWithPrompt", async (prompt: string) => {
@@ -3830,10 +3917,11 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
       );
 
       if (result === "switched") {
-        // Update the saved slug and refresh both sidebar providers
+        // Update the saved slug and refresh both sidebar providers.
+        // Pass deleteTodayPlan=true so the daily plan is regenerated from the new state.
         await context.workspaceState.update(STUDY_PLANS_KEY, choice.slug);
         studyPlanProvider.setPlanSlug(choice.slug);
-        dailyPlanProvider.refresh();
+        dailyPlanProvider.refresh(true);
       }
     })
 

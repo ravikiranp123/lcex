@@ -172,6 +172,7 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
         </div>
         <div class="plan-row-path">
           <input type="text" class="plan-path" value="${escapeHtml(p.path ?? "")}" placeholder="Optional: .leetplus/data/neetcode-150.json (relative to workspace)" title="Local data file path" />
+          <button type="button" class="btn-browse" data-index="${i}" title="Browse local JSON file">Browse...</button>
           ${badge}
         </div>
       </div>`;
@@ -273,6 +274,19 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
       flex: 1;
       font-size: 12px;
       padding: 6px 10px;
+    }
+    .btn-browse {
+      background: var(--vscode-button-secondaryBackground, #3a3d41);
+      color: var(--vscode-button-secondaryForeground, #ffffff);
+      border: 1px solid var(--vscode-widget-border);
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .btn-browse:hover {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
     }
     .source-badge {
       flex-shrink: 0;
@@ -540,8 +554,8 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
     function collectConfig() {
       const plans = [];
       document.querySelectorAll('.plan-row').forEach(row => {
-        const slug = row.querySelector('.plan-slug').value.trim();
-        const name = row.querySelector('.plan-name').value.trim();
+        const slug = row.querySelector('.plan-slug')?.value?.trim() || '';
+        const name = row.querySelector('.plan-name')?.value?.trim() || '';
         const pathVal = row.querySelector('.plan-path')?.value?.trim() || '';
         if (slug && name) {
           const entry = { slug, name };
@@ -549,11 +563,11 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
           plans.push(entry);
         }
       });
-      if (plans.length === 0) plans.push({ slug: 'neetcode-150', name: 'NeetCode 150' });
+      if (plans.length === 0) plans.push({ slug: 'top-interview-150', name: 'Top Interview 150' });
       const problemLists = [];
       document.querySelectorAll('.list-row').forEach(row => {
-        const slug = row.querySelector('.list-slug').value.trim();
-        const name = row.querySelector('.list-name').value.trim();
+        const slug = row.querySelector('.list-slug')?.value?.trim() || '';
+        const name = row.querySelector('.list-name')?.value?.trim() || '';
         if (slug && name) problemLists.push({ slug, name });
       });
       return {
@@ -597,12 +611,11 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
       };
     }
     function notifyChange() { vscode.postMessage({ type: 'update', config: collectConfig() }); }
+
     document.getElementById('add-plan').onclick = () => {
       const container = document.getElementById('plans-container');
-      const idx = container.querySelectorAll('.plan-row').length;
       const div = document.createElement('div');
       div.className = 'plan-row';
-      div.dataset.index = String(idx);
       div.innerHTML = \`
         <div class="plan-row-top">
           <input type="text" class="plan-slug" placeholder="e.g. neetcode-150" />
@@ -611,62 +624,77 @@ function getWebviewContent(config: LeetPlusConfig, webview: vscode.Webview): str
         </div>
         <div class="plan-row-path">
           <input type="text" class="plan-path" placeholder="Optional: .leetplus/data/neetcode-150.json" />
+          <button type="button" class="btn-browse" title="Browse local JSON file">Browse...</button>
           <span class="source-badge api" title="Problems fetched from LeetCode API">🌐 LeetCode API</span>
         </div>\`;
-
-      const pathInput = div.querySelector('.plan-path');
-      const badge = div.querySelector('.source-badge');
-      pathInput.oninput = () => {
-        const hasPath = pathInput.value.trim().length > 0;
-        badge.className = 'source-badge ' + (hasPath ? 'local' : 'api');
-        badge.title = hasPath ? 'Problems loaded from local file' : 'Problems fetched from LeetCode API';
-        badge.textContent = hasPath ? '📁 Local file' : '🌐 LeetCode API';
-        notifyChange();
-      };
-      div.querySelector('.btn-remove').onclick = () => { div.remove(); notifyChange(); };
-      div.querySelectorAll('input[type="text"]:not(.plan-path)').forEach(i => i.oninput = notifyChange);
       container.appendChild(div);
       notifyChange();
     };
+
     document.getElementById('add-problem-list').onclick = () => {
       const container = document.getElementById('problem-lists-container');
       const div = document.createElement('div');
       div.className = 'list-row';
       div.innerHTML = '<input type="text" class="list-slug" placeholder="e.g. graph" /><input type="text" class="list-name" placeholder="Display name" /><button class="btn-remove" title="Remove">×</button>';
-      div.querySelector('.btn-remove').onclick = () => { div.remove(); notifyChange(); };
-      div.querySelectorAll('input').forEach(i => i.oninput = notifyChange);
       container.appendChild(div);
       notifyChange();
     };
-    document.querySelectorAll('.list-row').forEach(row => {
-      row.querySelector('.btn-remove').onclick = () => { row.remove(); notifyChange(); };
-      row.querySelectorAll('input').forEach(i => i.oninput = notifyChange);
-    });
-    document.querySelectorAll('.plan-row').forEach(row => {
-      row.querySelector('.btn-remove').onclick = () => { row.remove(); notifyChange(); };
-      row.querySelectorAll('input[type="text"]:not(.plan-path)').forEach(i => i.oninput = notifyChange);
-      const pathInput = row.querySelector('.plan-path');
-      const badge = row.querySelector('.source-badge');
-      if (pathInput && badge) {
-        pathInput.oninput = () => {
-          const hasPath = pathInput.value.trim().length > 0;
-          badge.className = 'source-badge ' + (hasPath ? 'local' : 'api');
-          badge.title = hasPath ? 'Problems loaded from local file' : 'Problems fetched from LeetCode API';
-          badge.textContent = hasPath ? '📁 Local file' : '🌐 LeetCode API';
+
+    document.addEventListener('click', (e) => {
+      const removeBtn = e.target.closest('.btn-remove');
+      if (removeBtn) {
+        const row = removeBtn.closest('.plan-row, .list-row');
+        if (row) {
+          row.remove();
           notifyChange();
-        };
+          return;
+        }
+      }
+      const browseBtn = e.target.closest('.btn-browse');
+      if (browseBtn) {
+        // Find the plan-row this button belongs to and get its index from the DOM order
+        const planRow = browseBtn.closest('.plan-row');
+        const planRows = Array.from(document.querySelectorAll('.plan-row'));
+        const planIndex = planRow ? planRows.indexOf(planRow) : -1;
+        vscode.postMessage({ type: 'browseFile', planIndex });
       }
     });
-    document.querySelectorAll('select, input[type="number"]').forEach(el => el.onchange = notifyChange);
-    document.querySelectorAll('input[type="checkbox"]').forEach(el => el.onchange = notifyChange);
-    document.getElementById('defaultDirectory').oninput = notifyChange;
-    document.getElementById('internalApiUrl').oninput = notifyChange;
-    document.getElementById('agentPromptMakeRunnable').oninput = notifyChange;
-    document.getElementById('agentPromptHint').oninput = notifyChange;
-    document.getElementById('agentPromptAnalyze').oninput = notifyChange;
-    document.getElementById('agentPromptExplain').oninput = notifyChange;
-    document.getElementById('srsIntervals').oninput = notifyChange;
-    document.getElementById('diffLoggerTrackedExtensions').oninput = notifyChange;
+
+    document.addEventListener('input', (e) => {
+      if (e.target.classList.contains('plan-path')) {
+        const rowPath = e.target.closest('.plan-row-path');
+        if (rowPath) {
+          const badge = rowPath.querySelector('.source-badge');
+          if (badge) {
+            const hasPath = e.target.value.trim().length > 0;
+            badge.className = 'source-badge ' + (hasPath ? 'local' : 'api');
+            badge.title = hasPath ? 'Problems loaded from local file' : 'Problems fetched from LeetCode API';
+            badge.textContent = hasPath ? '📁 Local file' : '🌐 LeetCode API';
+          }
+        }
+      }
+      notifyChange();
+    });
+
+    document.addEventListener('change', (e) => {
+      if (e.target.tagName === 'SELECT' || e.target.type === 'checkbox' || e.target.type === 'number') {
+        notifyChange();
+      }
+    });
+
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (msg.type === 'fileSelected' && msg.path) {
+        // Locate the input by its plan row index — safe even if DOM was re-rendered
+        const planRows = Array.from(document.querySelectorAll('.plan-row'));
+        const row = typeof msg.planIndex === 'number' ? planRows[msg.planIndex] : null;
+        const input = row ? row.querySelector('.plan-path') : null;
+        if (input) {
+          input.value = msg.path;
+          input.dispatchEvent(new Event('input'));
+        }
+      }
+    });
   </script>
 </body>
 </html>`;
@@ -692,6 +720,8 @@ export class LeetPlusConfigEditorProvider implements vscode.CustomTextEditorProv
       localResourceRoots: [],
     };
 
+    let isSelfUpdating = false;
+
     const updateWebview = () => {
       const config = parseConfig(document.getText());
       webviewPanel.webview.html = getWebviewContent(config, webviewPanel.webview);
@@ -700,6 +730,7 @@ export class LeetPlusConfigEditorProvider implements vscode.CustomTextEditorProv
     updateWebview();
 
     const changeDocSubscription = vscode.workspace.onDidChangeTextDocument((e) => {
+      if (isSelfUpdating) return;
       if (e.document.uri.toString() === document.uri.toString()) {
         updateWebview();
       }
@@ -709,12 +740,45 @@ export class LeetPlusConfigEditorProvider implements vscode.CustomTextEditorProv
       changeDocSubscription.dispose();
     });
 
-    webviewPanel.webview.onDidReceiveMessage((msg) => {
+    webviewPanel.webview.onDidReceiveMessage(async (msg) => {
       if (msg.type === "update" && msg.config) {
-        const json = configToJson(msg.config as LeetPlusConfig);
-        const edit = new vscode.WorkspaceEdit();
-        edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), json);
-        vscode.workspace.applyEdit(edit);
+        isSelfUpdating = true;
+        try {
+          const json = configToJson(msg.config as LeetPlusConfig);
+          const fullRange = new vscode.Range(
+            document.positionAt(0),
+            document.positionAt(document.getText().length)
+          );
+          const edit = new vscode.WorkspaceEdit();
+          edit.replace(document.uri, fullRange, json);
+          const applied = await vscode.workspace.applyEdit(edit);
+          if (applied) {
+            await document.save();
+          }
+        } catch (e) {
+          console.error("Failed to save config editor update:", e);
+        } finally {
+          isSelfUpdating = false;
+        }
+      } else if (msg.type === "browseFile") {
+        const planIndex: number = typeof msg.planIndex === "number" ? msg.planIndex : -1;
+        const uris = await vscode.window.showOpenDialog({
+          canSelectFiles: true,
+          canSelectFolders: false,
+          canSelectMany: false,
+          filters: { "JSON Files": ["json"] },
+          title: "Select Study Plan JSON File",
+        });
+        if (uris && uris[0]) {
+          const selectedPath = uris[0].fsPath;
+          const workspaceFolder = vscode.workspace.getWorkspaceFolder(uris[0]);
+          let relPath = selectedPath;
+          if (workspaceFolder) {
+            relPath = path.relative(workspaceFolder.uri.fsPath, selectedPath);
+          }
+          relPath = relPath.replace(/\\/g, "/");
+          webviewPanel.webview.postMessage({ type: "fileSelected", path: relPath, planIndex });
+        }
       }
     });
   }

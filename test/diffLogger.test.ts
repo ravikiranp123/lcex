@@ -177,4 +177,28 @@ describe("DiffLogger", () => {
     const count = fs.readdirSync(diffsDir).length;
     expect(count).toBe(1);
   });
+
+  it("findProblemForDocument resolves id.slug filenames (e.g. 42.two-sum.ts)", async () => {
+    await setupWorkspace();
+    const { findProblemForDocument } = await import("../src/modules/DiffLogger");
+    const state = {
+      problems: [makeProblem(42, "two-sum"), makeProblem(217, "contains-duplicate")]
+    } as any;
+
+    const p1 = findProblemForDocument(state, path.join(tmpDir, "42.two-sum.ts"));
+    expect(p1).toBeTruthy();
+    expect(p1?.id).toBe(42);
+    expect(p1?.slug).toBe("two-sum");
+
+    const p2 = findProblemForDocument(state, path.join(tmpDir, "217.contains-duplicate.py"));
+    expect(p2).toBeTruthy();
+    expect(p2?.id).toBe(217);
+    expect(p2?.slug).toBe("contains-duplicate");
+
+    const p3 = findProblemForDocument(state, path.join(tmpDir, "217.py"));
+    expect(p3?.id).toBe(217);
+
+    const p4 = findProblemForDocument(state, path.join(tmpDir, "contains-duplicate.py"));
+    expect(p4?.id).toBe(217);
+  });
 });

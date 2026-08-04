@@ -195,8 +195,54 @@ describe("DailyPlanProvider", () => {
     const provider = new DailyPlanProvider(mockContext);
     await provider.getChildren();
 
-    expect(executedCommand).toBe("leetplus.openChatWithPrompt");
+      expect(executedCommand).toBe("leetplus.openChatWithPrompt");
     expect(executedPrompt.includes("lp-recap-planner")).toBeTruthy();
     expect(executedPrompt.includes("10 days")).toBeTruthy();
+  });
+
+  it("refresh(deleteTodayPlan=true) should delete today's plan file", () => {
+    vscode.workspace.workspaceFolders = [
+      { uri: { fsPath: tmpDir } as any, name: "TestWorkspace", index: 0 }
+    ];
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const plansDir = path.join(tmpDir, ".leetplus", "plans");
+    fs.mkdirSync(plansDir, { recursive: true });
+    const planFile = path.join(plansDir, `${todayStr}.json`);
+    fs.writeFileSync(planFile, JSON.stringify({ date: todayStr, problems: [] }), "utf-8");
+
+    expect(fs.existsSync(planFile)).toBe(true);
+
+    const mockContext = {
+      subscriptions: [],
+      workspaceState: { get: () => undefined, update: () => Promise.resolve() }
+    } as any;
+    const provider = new DailyPlanProvider(mockContext);
+
+    provider.refresh(true);
+
+    expect(fs.existsSync(planFile)).toBe(false);
+  });
+
+  it("refresh(deleteTodayPlan=false) should NOT delete today's plan file", () => {
+    vscode.workspace.workspaceFolders = [
+      { uri: { fsPath: tmpDir } as any, name: "TestWorkspace", index: 0 }
+    ];
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const plansDir = path.join(tmpDir, ".leetplus", "plans");
+    fs.mkdirSync(plansDir, { recursive: true });
+    const planFile = path.join(plansDir, `${todayStr}.json`);
+    fs.writeFileSync(planFile, JSON.stringify({ date: todayStr, problems: [] }), "utf-8");
+
+    const mockContext = {
+      subscriptions: [],
+      workspaceState: { get: () => undefined, update: () => Promise.resolve() }
+    } as any;
+    const provider = new DailyPlanProvider(mockContext);
+
+    provider.refresh(); // default: deleteTodayPlan=false
+
+    expect(fs.existsSync(planFile)).toBe(true);
   });
 });

@@ -16,6 +16,7 @@ import {
   languageFromFileExtension,
   languageStrategyFromExtension,
   leetcodeApiLangFor,
+  problemKeyFromSolutionFileBase,
   SOLUTION_FILE_EXTENSIONS,
 } from "./language/LanguageStrategy";
 import type { ProblemListItem } from "./LeetCode";
@@ -72,7 +73,7 @@ export interface ProblemViewState {
   testcasesPanel?: vscode.WebviewPanel;
 }
 
-const problemViews = new Map<string, ProblemViewState>();
+export const problemViews = new Map<string, ProblemViewState>();
 
 export const PROBLEM_PLAIN_DOC_SCHEME = "leetcode-problem-plain";
 
@@ -448,7 +449,7 @@ export function getTitleSlugForActiveSolutionFile(context: vscode.ExtensionConte
   const solutionBase = interviewSolutionBaseDir(context.globalState);
   const lang = languageFromFileExtension(ext);
   for (const [, state] of problemViews) {
-    const { idPath, slugPath } = Database.getSolutionPathSet(
+    const { idPath, slugPath, idSlugPath, preferredNewPath } = Database.getSolutionPathSet(
       editor.document.uri,
       state.problem.id,
       state.problem.titleSlug,
@@ -456,8 +457,38 @@ export function getTitleSlugForActiveSolutionFile(context: vscode.ExtensionConte
       interviewSolutionAttemptHex(context.globalState),
       lang
     );
-    if (editorPath === path.resolve(idPath) || editorPath === path.resolve(slugPath)) {
+    if (
+      editorPath === path.resolve(idPath) ||
+      editorPath === path.resolve(slugPath) ||
+      editorPath === path.resolve(idSlugPath) ||
+      editorPath === path.resolve(preferredNewPath)
+    ) {
       return state.problem.titleSlug;
+    }
+    const base = path.basename(editorPath, ext);
+    const key = problemKeyFromSolutionFileBase(base);
+    const directNum = Number(key);
+    if ((!isNaN(directNum) && state.problem.id === directNum) || state.problem.titleSlug === key) {
+      return state.problem.titleSlug;
+    }
+    if (key.includes(".")) {
+      const parts = key.split(".");
+      const firstNum = Number(parts[0]);
+      const restSlug = parts.slice(1).join(".");
+      if (
+        (!isNaN(firstNum) && state.problem.id === firstNum) ||
+        (restSlug && state.problem.titleSlug === restSlug)
+      ) {
+        return state.problem.titleSlug;
+      }
+    }
+    const match = key.match(/^(\d+)[-_](.+)$/);
+    if (match) {
+      const idNum = Number(match[1]);
+      const slugStr = match[2].replace(/_/g, "-");
+      if (state.problem.id === idNum || state.problem.titleSlug === slugStr) {
+        return state.problem.titleSlug;
+      }
     }
   }
   return null;
@@ -2100,7 +2131,7 @@ export async function openProblemWebview(
     problemViews.delete(item.titleSlug);
   });
 
-  const problem = await getProvider().getProblem(item.titleSlug);
+  const problem = await getProvider().getProblem(item.titleSlug).catch(() => null);
   if (disposed) return;
   if (!problem) {
     panel.webview.html = `<!DOCTYPE html><html><body style="font-family:var(--vscode-font-family);color:var(--vscode-foreground);padding:16px;"><p>Could not load this problem. Check your network or session, then close this tab and reopen the problem from the sidebar.</p></body></html>`;

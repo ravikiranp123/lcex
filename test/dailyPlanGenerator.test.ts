@@ -269,10 +269,48 @@ describe("DailyPlanGenerator", () => {
     expect(state.problems.length).toBe(0);
   });
 
-  it("loadSeedsFromLocalDataFile should return null when file does not exist", () => {
+  it("loadSeedsFromLocalDataFile should return null when file does not exist in either location", () => {
     const result = loadSeedsFromLocalDataFile(tmpDir, "nonexistent-plan");
-
     expect(result).toBeNull();
+  });
+
+  it("loadSeedsFromLocalDataFile should find plan in .leetplus/plans/ when .leetplus/data/ is absent", () => {
+    const plansDir = path.join(tmpDir, ".leetplus", "plans");
+    fs.mkdirSync(plansDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(plansDir, "neetcode-150.json"),
+      JSON.stringify({ "Arrays & Hashing": ["two-sum", "contains-duplicate"] }),
+      "utf-8"
+    );
+
+    const seeds = loadSeedsFromLocalDataFile(tmpDir, "neetcode-150");
+
+    expect(seeds).toBeTruthy();
+    expect(seeds?.length).toBe(2);
+    expect(seeds?.[0].titleSlug).toBe("two-sum");
+    expect(seeds?.[0].topicTags).toEqual(["Arrays & Hashing"]);
+  });
+
+  it("loadSeedsFromLocalDataFile should prefer .leetplus/data/ over .leetplus/plans/", () => {
+    const dataDir = path.join(tmpDir, ".leetplus", "data");
+    const plansDir = path.join(tmpDir, ".leetplus", "plans");
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.mkdirSync(plansDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dataDir, "my-plan.json"),
+      JSON.stringify({ "From Data": ["data-problem"] }),
+      "utf-8"
+    );
+    fs.writeFileSync(
+      path.join(plansDir, "my-plan.json"),
+      JSON.stringify({ "From Plans": ["plans-problem"] }),
+      "utf-8"
+    );
+
+    const seeds = loadSeedsFromLocalDataFile(tmpDir, "my-plan");
+
+    expect(seeds).toBeTruthy();
+    expect(seeds?.[0].topicTags).toEqual(["From Data"]);
   });
 
   it("loadSeedsFromLocalDataFile should return null when file has invalid JSON", () => {
@@ -283,5 +321,249 @@ describe("DailyPlanGenerator", () => {
     const result = loadSeedsFromLocalDataFile(tmpDir, "bad-plan");
 
     expect(result).toBeNull();
+  });
+
+  it("loadSeedsFromLocalDataFile should parse custom relative localPath correctly", () => {
+    const customRelPath = "custom_plans/my-plan.json";
+    const fullPath = path.join(tmpDir, customRelPath);
+    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+    fs.writeFileSync(
+      fullPath,
+      JSON.stringify({
+        "Arrays & Hashing": ["two-sum", "valid-anagram"],
+        "Two Pointers": ["3sum"]
+      }),
+      "utf-8"
+    );
+
+    const seeds = loadSeedsFromLocalDataFile(tmpDir, "my-plan", customRelPath);
+
+    expect(seeds).toBeTruthy();
+    expect(seeds?.length).toBe(3);
+    expect(seeds?.[0]).toEqual({
+      id: "two-sum",
+      title: "Two Sum",
+      titleSlug: "two-sum",
+      difficulty: "Medium",
+      topicTags: ["Arrays & Hashing"]
+    });
+    expect(seeds?.[2]).toEqual({
+      id: "3sum",
+      title: "3sum",
+      titleSlug: "3sum",
+      difficulty: "Medium",
+      topicTags: ["Two Pointers"]
+    });
+  });
+
+  it("loadSeedsFromLocalDataFile should parse absolute localPath correctly", () => {
+    const absPath = path.join(tmpDir, "abs-plan.json");
+    fs.writeFileSync(
+      absPath,
+      JSON.stringify({ "Stack": ["valid-parentheses"] }),
+      "utf-8"
+    );
+
+    const seeds = loadSeedsFromLocalDataFile(tmpDir, "abs-plan", absPath);
+
+    expect(seeds).toBeTruthy();
+    expect(seeds?.length).toBe(1);
+    expect(seeds?.[0].titleSlug).toBe("valid-parentheses");
+    expect(seeds?.[0].title).toBe("Valid Parentheses");
+  });
+
+  it("loadSeedsFromLocalDataFile should ignore non-array category values and non-string slugs", () => {
+    const dataDir = path.join(tmpDir, ".leetplus", "data");
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dataDir, "mixed-plan.json"),
+      JSON.stringify({
+        "InvalidCategory": "not-an-array",
+        "EmptyCategory": [],
+        "ValidCategory": [123, null, "container-with-most-water", true]
+      }),
+      "utf-8"
+    );
+
+    const seeds = loadSeedsFromLocalDataFile(tmpDir, "mixed-plan");
+
+    expect(seeds).toBeTruthy();
+    expect(seeds?.length).toBe(1);
+    expect(seeds?.[0].titleSlug).toBe("container-with-most-water");
+    expect(seeds?.[0].topicTags).toEqual(["ValidCategory"]);
+  });
+
+  it("loadSeedsFromLocalDataFile should parse problem objects with numeric IDs and rich metadata", () => {
+    const dataDir = path.join(tmpDir, ".leetplus", "data");
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dataDir, "object-plan.json"),
+      JSON.stringify({
+        "Arrays & Hashing": [
+          {
+            id: 217,
+            title: "Contains Duplicate",
+            slug: "contains-duplicate",
+            leetcode_url: "https://leetcode.com/problems/contains-duplicate/",
+            youtube_id: "3OamzN90k_s",
+            hints: ["Hint 1", "Hint 2"],
+            solution: { explanation: "Use a hash set", code: { python: "class Solution..." } }
+          }
+        ]
+      }),
+      "utf-8"
+    );
+
+    const seeds = loadSeedsFromLocalDataFile(tmpDir, "object-plan");
+
+    expect(seeds).toBeTruthy();
+    expect(seeds?.length).toBe(1);
+    expect(seeds?.[0].id).toBe(217);
+    expect(seeds?.[0].title).toBe("Contains Duplicate");
+    expect(seeds?.[0].titleSlug).toBe("contains-duplicate");
+    expect(seeds?.[0].youtubeId).toBe("3OamzN90k_s");
+    expect(seeds?.[0].hints).toEqual(["Hint 1", "Hint 2"]);
+    expect(seeds?.[0].solution?.explanation).toBe("Use a hash set");
+  });
+});
+
+import { topUpDailyPlan } from "../src/modules/DailyPlanGenerator";
+
+describe("topUpDailyPlan", () => {
+  let tmpDir: string;
+  let originalFolders: any;
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const yesterdayStr = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
+
+  /** Build a minimal LPState with a mix of pending and completed problems. */
+  function makeState() {
+    return {
+      planName: "Test Plan",
+      planSlug: "test-plan",
+      problems: [
+        { id: 1, title: "P1", slug: "p1", difficulty: "Easy", category: "Arrays", status: "pending" as const, scheduledDate: todayStr, nextRepetitionDate: null, repetitionLevel: 0, completionHistory: [] },
+        { id: 2, title: "P2", slug: "p2", difficulty: "Easy", category: "Arrays", status: "pending" as const, scheduledDate: todayStr, nextRepetitionDate: null, repetitionLevel: 0, completionHistory: [] },
+        { id: 3, title: "P3", slug: "p3", difficulty: "Medium", category: "Graphs", status: "pending" as const, scheduledDate: todayStr, nextRepetitionDate: null, repetitionLevel: 0, completionHistory: [] },
+        {
+          id: 4, title: "P4", slug: "p4", difficulty: "Hard", category: "DP", status: "completed" as const,
+          scheduledDate: yesterdayStr, nextRepetitionDate: todayStr, repetitionLevel: 1,
+          completionHistory: [{ date: yesterdayStr + "T12:00:00Z", rating: 2, notes: "", timeSpentSeconds: 60, hintsUsed: 0, patternsDetected: [] }]
+        },
+        {
+          id: 5, title: "P5", slug: "p5", difficulty: "Easy", category: "Arrays", status: "completed" as const,
+          scheduledDate: yesterdayStr, nextRepetitionDate: todayStr, repetitionLevel: 1,
+          completionHistory: [{ date: yesterdayStr + "T12:00:00Z", rating: 2, notes: "", timeSpentSeconds: 60, hintsUsed: 0, patternsDetected: [] }]
+        },
+      ],
+      patternMastery: {},
+    };
+  }
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(require("os").tmpdir(), "lcex-topup-"));
+    originalFolders = vscode.workspace.workspaceFolders;
+    vscode.workspace.workspaceFolders = [
+      { uri: { fsPath: tmpDir } as any, name: "TestWorkspace", index: 0 },
+    ];
+    fs.mkdirSync(path.join(tmpDir, ".leetplus", "plans"), { recursive: true });
+  });
+
+  afterEach(() => {
+    vscode.workspace.workspaceFolders = originalFolders;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("appends new problems to an existing plan without duplicating already-scheduled ones", async () => {
+    // Start with problem 1 already in today's plan
+    const initialPlan = { date: todayStr, mode: "interleaved", problems: [{ id: 1, type: "new" }] };
+    fs.writeFileSync(
+      path.join(tmpDir, ".leetplus", "plans", `${todayStr}.json`),
+      JSON.stringify(initialPlan),
+      "utf-8"
+    );
+
+    const state = makeState() as any;
+    const updated = await topUpDailyPlan(tmpDir, state, 3);
+
+    // Should have original 1 plus 3 more, none of which is id=1
+    expect(updated.problems.length).toBe(4);
+    const ids = updated.problems.map((p) => p.id);
+    expect(ids.filter((id) => id === 1).length).toBe(1); // still exactly one copy
+    expect(new Set(ids).size).toBe(ids.length); // no duplicates
+  });
+
+  it("respects the requested count — does not add more than asked", async () => {
+    const state = makeState() as any;
+    const updated = await topUpDailyPlan(tmpDir, state, 2);
+
+    expect(updated.problems.length).toBe(2);
+  });
+
+  it("returns existing plan unchanged when no pending/overdue problems are available", async () => {
+    // All problems already scheduled
+    const allIds = [1, 2, 3, 4, 5].map((id) => ({ id, type: "new" as const }));
+    const initialPlan = { date: todayStr, mode: "push", problems: allIds };
+    fs.writeFileSync(
+      path.join(tmpDir, ".leetplus", "plans", `${todayStr}.json`),
+      JSON.stringify(initialPlan),
+      "utf-8"
+    );
+
+    const state = makeState() as any;
+    const result = await topUpDailyPlan(tmpDir, state, 5);
+
+    // Nothing added — returns the existing plan as-is
+    expect(result.problems.length).toBe(5);
+    expect(result.mode).toBe("push");
+  });
+
+  it("creates today's plan file if it does not exist yet", async () => {
+    const planFile = path.join(tmpDir, ".leetplus", "plans", `${todayStr}.json`);
+    expect(fs.existsSync(planFile)).toBe(false);
+
+    const state = makeState() as any;
+    await topUpDailyPlan(tmpDir, state, 2);
+
+    expect(fs.existsSync(planFile)).toBe(true);
+    const saved = JSON.parse(fs.readFileSync(planFile, "utf-8"));
+    expect(saved.problems.length).toBe(2);
+  });
+
+  it("preserves existing plan mode in the updated plan file", async () => {
+    const initialPlan = { date: todayStr, mode: "review-first", problems: [{ id: 1, type: "new" }] };
+    fs.writeFileSync(
+      path.join(tmpDir, ".leetplus", "plans", `${todayStr}.json`),
+      JSON.stringify(initialPlan),
+      "utf-8"
+    );
+
+    const state = makeState() as any;
+    const updated = await topUpDailyPlan(tmpDir, state, 1);
+
+    expect(updated.mode).toBe("review-first");
+    const saved = JSON.parse(fs.readFileSync(
+      path.join(tmpDir, ".leetplus", "plans", `${todayStr}.json`), "utf-8"
+    ));
+    expect(saved.mode).toBe("review-first");
+  });
+
+  it("includes overdue repetitions (completed problems with nextRepetitionDate <= today)", async () => {
+    // Put only pending problems in the plan already
+    const initialPlan = { date: todayStr, mode: "interleaved", problems: [{ id: 1, type: "new" }, { id: 2, type: "new" }, { id: 3, type: "new" }] };
+    fs.writeFileSync(
+      path.join(tmpDir, ".leetplus", "plans", `${todayStr}.json`),
+      JSON.stringify(initialPlan),
+      "utf-8"
+    );
+
+    const state = makeState() as any;
+    const updated = await topUpDailyPlan(tmpDir, state, 2);
+
+    // Overdue problems (id 4, 5) should be appended as "rep"
+    const addedTypes = updated.problems.slice(3).map((p) => p.type);
+    expect(addedTypes.every((t) => t === "rep")).toBe(true);
+    const addedIds = updated.problems.slice(3).map((p) => p.id);
+    expect(addedIds.every((id) => [4, 5].includes(id))).toBe(true);
   });
 });

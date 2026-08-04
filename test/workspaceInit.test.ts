@@ -141,4 +141,44 @@ describe("Workspace initialization", () => {
     expect(state).toBeTruthy();
     expect(state!.version).toBe("1.0");
   });
+
+  it("creates .gitignore with default python and build patterns on workspace initialization", async () => {
+    const result = await initializeWorkspaceFolder(tmpDir);
+
+    expect(result.gitignoreCreated).toBe(true);
+    const gitignorePath = path.join(tmpDir, ".gitignore");
+    expect(fs.existsSync(gitignorePath)).toBe(true);
+
+    const content = fs.readFileSync(gitignorePath, "utf-8");
+    expect(content).toContain("*.pyc");
+    expect(content).toContain("__pycache__/");
+    expect(content).toContain("*.class");
+    expect(content).toContain(".DS_Store");
+  });
+
+  it("updates existing .gitignore if missing *.pyc or __pycache__/", async () => {
+    const gitignorePath = path.join(tmpDir, ".gitignore");
+    fs.writeFileSync(gitignorePath, "# Custom rules\nnode_modules/\n", "utf-8");
+
+    const result = await initializeWorkspaceFolder(tmpDir);
+
+    expect(result.gitignoreCreated).toBe(true);
+    const content = fs.readFileSync(gitignorePath, "utf-8");
+    expect(content).toContain("node_modules/");
+    expect(content).toContain("*.pyc");
+    expect(content).toContain("__pycache__/");
+  });
+
+  it("leaves existing .gitignore untouched if required patterns are present", async () => {
+    const gitignorePath = path.join(tmpDir, ".gitignore");
+    const initialContent = "node_modules/\n*.pyc\n__pycache__/\n";
+    fs.writeFileSync(gitignorePath, initialContent, "utf-8");
+
+    const result = await initializeWorkspaceFolder(tmpDir);
+
+    expect(result.gitignoreCreated).toBe(false);
+    const content = fs.readFileSync(gitignorePath, "utf-8");
+    expect(content).toBe(initialContent);
+  });
 });
+

@@ -5,6 +5,31 @@ import * as Logger from "./Logger";
 
 const SUBDIRS = ["snapshots", "diffs", "guides", "designs", "behavioral", "plans", "whiteboard"];
 
+export const DEFAULT_GITIGNORE_PATTERNS = [
+  "# Python",
+  "__pycache__/",
+  "*.pyc",
+  "*.pyo",
+  "*.pyd",
+  ".pytest_cache/",
+  ".venv/",
+  "venv/",
+  "",
+  "# Compiled files",
+  "*.class",
+  "*.out",
+  "*.exe",
+  "*.o",
+  "",
+  "# OS & IDE files",
+  ".DS_Store",
+  "Thumbs.db",
+  "",
+  "# LeetPlus temporary files",
+  ".leetplus/*.tmp",
+  ".leetplus/**/*.tmp",
+];
+
 export interface InitResult {
   created: boolean;
   migratedFromLegacy: boolean;
@@ -12,6 +37,51 @@ export interface InitResult {
   configContent: string | null;
   subdirsCreated: string[];
   stateRepaired: boolean;
+  gitignoreCreated: boolean;
+}
+
+/**
+ * Ensures a .gitignore file exists in rootPath and contains standard ignore rules
+ * for Python bytecode (*.pyc, __pycache__/), compiled binaries, OS files, and temp files.
+ * If .gitignore already exists, appends any missing patterns.
+ *
+ * @returns true if .gitignore was created or modified, false if already up-to-date.
+ */
+export function ensureGitignore(rootPath: string): boolean {
+  const gitignorePath = path.join(rootPath, ".gitignore");
+
+  if (!fs.existsSync(gitignorePath)) {
+    try {
+      fs.writeFileSync(gitignorePath, DEFAULT_GITIGNORE_PATTERNS.join("\n") + "\n", "utf-8");
+      Logger.log(`Created .gitignore in ${rootPath}`);
+      return true;
+    } catch (e) {
+      Logger.log(`Failed to create .gitignore in ${rootPath}: ${e}`);
+      return false;
+    }
+  }
+
+  try {
+    const content = fs.readFileSync(gitignorePath, "utf-8");
+    const lines = content.split(/\r?\n/).map((l) => l.trim());
+    const requiredPatterns = ["*.pyc", "__pycache__/"];
+    const missing = requiredPatterns.filter((pat) => !lines.includes(pat));
+
+    if (missing.length > 0) {
+      let updated = content;
+      if (!updated.endsWith("\n")) {
+        updated += "\n";
+      }
+      updated += "\n# Python (added by LeetPlus)\n" + missing.join("\n") + "\n";
+      fs.writeFileSync(gitignorePath, updated, "utf-8");
+      Logger.log(`Updated .gitignore in ${rootPath} with missing patterns: ${missing.join(", ")}`);
+      return true;
+    }
+  } catch (e) {
+    Logger.log(`Failed to update .gitignore in ${rootPath}: ${e}`);
+  }
+
+  return false;
 }
 
 export async function initializeWorkspaceFolder(rootPath: string): Promise<InitResult> {
@@ -20,6 +90,8 @@ export async function initializeWorkspaceFolder(rootPath: string): Promise<InitR
 
   const exists = fs.existsSync(leetplusDir);
   const isFile = exists ? fs.statSync(leetplusDir).isFile() : false;
+
+  const gitignoreCreated = ensureGitignore(rootPath);
 
   if (isFile) {
     let configContent = "{}";
@@ -44,6 +116,7 @@ export async function initializeWorkspaceFolder(rootPath: string): Promise<InitR
       configContent,
       subdirsCreated: [...SUBDIRS],
       stateRepaired: false,
+      gitignoreCreated,
     };
   }
 
@@ -73,6 +146,7 @@ export async function initializeWorkspaceFolder(rootPath: string): Promise<InitR
         configContent,
         subdirsCreated: [...SUBDIRS],
         stateRepaired: false,
+        gitignoreCreated,
       };
     }
 
@@ -96,6 +170,7 @@ export async function initializeWorkspaceFolder(rootPath: string): Promise<InitR
       configContent: JSON.stringify({ language: "typescript" }, null, 2) + "\n",
       subdirsCreated: [...SUBDIRS],
       stateRepaired: false,
+      gitignoreCreated,
     };
   }
 
@@ -127,5 +202,6 @@ export async function initializeWorkspaceFolder(rootPath: string): Promise<InitR
     configContent: null,
     subdirsCreated,
     stateRepaired,
+    gitignoreCreated,
   };
 }
