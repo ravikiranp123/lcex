@@ -3,7 +3,7 @@ import * as path from "path";
 import { initState } from "./StateManager";
 import * as Logger from "./Logger";
 
-const SUBDIRS = ["snapshots", "diffs", "guides", "designs", "behavioral", "plans", "whiteboard"];
+const SUBDIRS = ["snapshots", "diffs", "guides", "designs", "behavioral", "plans", "whiteboard", "archive"];
 
 export const DEFAULT_GITIGNORE_PATTERNS = [
   "# Python",

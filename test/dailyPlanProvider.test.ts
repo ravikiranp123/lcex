@@ -315,8 +315,7 @@ describe("DailyPlanProvider", () => {
       const provider = new DailyPlanProvider(mockContext);
       await provider.getChildren();
 
-      const ext = path.extname(originalPath);
-      const archivePath = originalPath.slice(0, originalPath.length - ext.length) + "." + today + ext;
+      const archivePath = path.join(tmpDir, ".leetplus", "archive", today, path.basename(originalPath));
 
       expect(fs.existsSync(originalPath)).toBe(false);
       expect(fs.existsSync(archivePath)).toBe(true);

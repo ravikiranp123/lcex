@@ -87,8 +87,7 @@ describe("archiveStaleReviewSolutionFile", () => {
   }
 
   function archiveName(filePath: string): string {
-    const ext = path.extname(filePath);
-    return filePath.slice(0, filePath.length - ext.length) + "." + todayStr() + ext;
+    return path.join(tmpDir, ".leetplus", "archive", todayStr(), path.basename(filePath));
   }
 
   it("archives a stale solution file for a completed (review) problem", async () => {
@@ -198,7 +197,9 @@ describe("archiveStaleReviewSolutionFile", () => {
     await seedState("two-sum", 1, "completed");
     const filePath = await solutionPath("two-sum", 1);
     writeStaleFile(filePath);
-    fs.writeFileSync(archiveName(filePath), "EARLIER ARCHIVE", "utf-8");
+    const primaryArchive = archiveName(filePath);
+    fs.mkdirSync(path.dirname(primaryArchive), { recursive: true });
+    fs.writeFileSync(primaryArchive, "EARLIER ARCHIVE", "utf-8");
 
     const result = await archiveStaleReviewSolutionFile(
       makeContext(),
@@ -207,10 +208,12 @@ describe("archiveStaleReviewSolutionFile", () => {
     );
 
     expect(result).toBe(true);
-    expect(fs.existsSync(archiveName(filePath))).toBe(true);
-    expect(fs.readFileSync(archiveName(filePath), "utf-8")).toBe("EARLIER ARCHIVE");
-    const ext = path.extname(filePath);
-    const suffixed = filePath.slice(0, filePath.length - ext.length) + "." + todayStr() + "-2" + ext;
+    expect(fs.existsSync(primaryArchive)).toBe(true);
+    expect(fs.readFileSync(primaryArchive, "utf-8")).toBe("EARLIER ARCHIVE");
+    const originalName = path.basename(filePath);
+    const ext = path.extname(originalName);
+    const base = originalName.slice(0, originalName.length - ext.length);
+    const suffixed = path.join(path.dirname(primaryArchive), `${base}-2${ext}`);
     expect(fs.existsSync(suffixed)).toBe(true);
     expect(fs.readFileSync(suffixed, "utf-8")).toBe("OLD SOLUTION");
   });
@@ -267,8 +270,7 @@ describe("archiveStaleReviewSolutionFilesForPlan", () => {
   }
 
   function archiveName(filePath: string): string {
-    const ext = path.extname(filePath);
-    return filePath.slice(0, filePath.length - ext.length) + "." + todayStr() + ext;
+    return path.join(tmpDir, ".leetplus", "archive", todayStr(), path.basename(filePath));
   }
 
   it("archives only stale rep items", async () => {

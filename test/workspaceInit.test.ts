@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { initializeWorkspaceFolder } from "../src/modules/WorkspaceInitializer";
 import { readState } from "../src/modules/StateManager";
 
-const SUBDIRS = ["snapshots", "diffs", "guides", "designs", "behavioral", "plans", "whiteboard"];
+const SUBDIRS = ["snapshots", "diffs", "guides", "designs", "behavioral", "plans", "whiteboard", "archive"];
 
 function makeTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "lcex-ws-init-"));
@@ -22,7 +22,7 @@ describe("Workspace initialization", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("creates .leetplus/ and all 7 subdirs in a fresh workspace", async () => {
+  it("creates .leetplus/ and all subdirs in a fresh workspace", async () => {
     const result = await initializeWorkspaceFolder(tmpDir);
 
     expect(result.created).toBeTruthy();

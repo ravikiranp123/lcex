@@ -2229,6 +2229,11 @@ export async function restoreProblemPanel(
   }
 }
 
+/**
+ * Archives a solution file if the problem is completed, not in interview mode,
+ * and the file's mtime date is before today. Moves the file into
+ * `.leetplus/archive/<YYYY-MM-DD>/<original-filename>`.
+ */
 export async function archiveStaleReviewSolutionFile(
   context: vscode.ExtensionContext,
   item: { id: string | number; titleSlug: string },
@@ -2274,9 +2279,14 @@ export async function archiveStaleReviewSolutionFile(
     }
     if (mtimeDate >= todayStr) return false;
 
-    const ext = path.extname(filePath);
-    const base = filePath.slice(0, filePath.length - ext.length);
-    let archivePath = `${base}.${todayStr}${ext}`;
+    const archiveDir = path.join(workspaceRoot, ".leetplus", "archive", todayStr);
+    await fs.mkdir(archiveDir, { recursive: true });
+
+    const originalName = path.basename(filePath);
+    const ext = path.extname(originalName);
+    const base = originalName.slice(0, originalName.length - ext.length);
+
+    let archivePath = path.join(archiveDir, originalName);
     let n = 2;
     while (true) {
       let occupied = false;
@@ -2287,7 +2297,7 @@ export async function archiveStaleReviewSolutionFile(
         /* free */
       }
       if (!occupied) break;
-      archivePath = `${base}.${todayStr}-${n}${ext}`;
+      archivePath = path.join(archiveDir, `${base}-${n}${ext}`);
       n++;
       if (n > 20) return false;
     }
