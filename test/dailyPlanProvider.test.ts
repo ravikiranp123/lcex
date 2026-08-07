@@ -4,6 +4,7 @@ import { describe, it, beforeEach, afterEach, expect, vi } from "vitest";
 import * as vscode from "vscode";
 import { DailyPlanProvider } from "../src/modules/DailyPlanProvider";
 import { initState } from "../src/modules/StateManager";
+import * as Database from "../src/modules/Database";
 
 function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(require("os").tmpdir(), "lcex-dailyplan-"));
@@ -244,5 +245,145 @@ describe("DailyPlanProvider", () => {
     provider.refresh(); // default: deleteTodayPlan=false
 
     expect(fs.existsSync(planFile)).toBe(true);
+  });
+
+  describe("auto-archiving of stale review solution files", () => {
+    function todayStr(): string {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function writeConfig() {
+      const configDir = path.join(tmpDir, ".leetplus");
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(configDir, "config.json"),
+        JSON.stringify({ srs: { enabled: true, problemsPerDay: 4, defaultMode: "interleaved" } })
+      );
+    }
+
+    it("auto-archives stale review solution files when generating a new daily plan", async () => {
+      vscode.workspace.workspaceFolders = [
+        { uri: { fsPath: tmpDir } as any, name: "TestWorkspace", index: 0 },
+      ];
+      writeConfig();
+
+      const today = todayStr();
+      await initState(tmpDir, "Test Plan", [
+        {
+          id: 1,
+          title: "Two Sum",
+          slug: "two-sum",
+          difficulty: "Easy",
+          category: "Arrays",
+          status: "completed",
+          scheduledDate: "2026-01-01",
+          nextRepetitionDate: today,
+          repetitionLevel: 1,
+          completionHistory: [
+            {
+              date: "2026-01-01T10:00:00.000Z",
+              rating: 2,
+              notes: "",
+              timeSpentSeconds: 100,
+              hintsUsed: 0,
+              patternsDetected: [],
+            },
+          ],
+        },
+      ] as any);
+
+      const solRes = await Database.resolveSolutionFilePathForOpen(
+        undefined,
+        "1",
+        "two-sum",
+        undefined,
+        undefined,
+        "typescript"
+      );
+      const originalPath = solRes.path;
+      fs.mkdirSync(path.dirname(originalPath), { recursive: true });
+      fs.writeFileSync(originalPath, "OLD STALE SOLUTION", "utf-8");
+      const oldTime = new Date(Date.now() - 3 * 86400_000);
+      fs.utimesSync(originalPath, oldTime, oldTime);
+
+      const mockContext = {
+        subscriptions: [],
+        workspaceState: { get: () => undefined, update: () => Promise.resolve() },
+        globalState: { get: () => undefined, update: () => Promise.resolve() },
+      } as any;
+
+      const provider = new DailyPlanProvider(mockContext);
+      await provider.getChildren();
+
+      const ext = path.extname(originalPath);
+      const archivePath = originalPath.slice(0, originalPath.length - ext.length) + "." + today + ext;
+
+      expect(fs.existsSync(originalPath)).toBe(false);
+      expect(fs.existsSync(archivePath)).toBe(true);
+      expect(fs.readFileSync(archivePath, "utf-8")).toBe("OLD STALE SOLUTION");
+
+      const planFilePath = path.join(tmpDir, ".leetplus", "plans", `${today}.json`);
+      expect(fs.existsSync(planFilePath)).toBe(true);
+    });
+
+    it("does NOT archive completed problem solution files modified today", async () => {
+      vscode.workspace.workspaceFolders = [
+        { uri: { fsPath: tmpDir } as any, name: "TestWorkspace", index: 0 },
+      ];
+      writeConfig();
+
+      const today = todayStr();
+      await initState(tmpDir, "Test Plan", [
+        {
+          id: 1,
+          title: "Two Sum",
+          slug: "two-sum",
+          difficulty: "Easy",
+          category: "Arrays",
+          status: "completed",
+          scheduledDate: "2026-01-01",
+          nextRepetitionDate: today,
+          repetitionLevel: 1,
+          completionHistory: [
+            {
+              date: "2026-01-01T10:00:00.000Z",
+              rating: 2,
+              notes: "",
+              timeSpentSeconds: 100,
+              hintsUsed: 0,
+              patternsDetected: [],
+            },
+          ],
+        },
+      ] as any);
+
+      const solRes = await Database.resolveSolutionFilePathForOpen(
+        undefined,
+        "1",
+        "two-sum",
+        undefined,
+        undefined,
+        "typescript"
+      );
+      const originalPath = solRes.path;
+      fs.mkdirSync(path.dirname(originalPath), { recursive: true });
+      fs.writeFileSync(originalPath, "TODAY SOLUTION", "utf-8");
+      fs.utimesSync(originalPath, new Date(), new Date());
+
+      const mockContext = {
+        subscriptions: [],
+        workspaceState: { get: () => undefined, update: () => Promise.resolve() },
+        globalState: { get: () => undefined, update: () => Promise.resolve() },
+      } as any;
+
+      const provider = new DailyPlanProvider(mockContext);
+      await provider.getChildren();
+
+      const ext = path.extname(originalPath);
+      const archivePath = originalPath.slice(0, originalPath.length - ext.length) + "." + today + ext;
+
+      expect(fs.existsSync(originalPath)).toBe(true);
+      expect(fs.existsSync(archivePath)).toBe(false);
+    });
   });
 });

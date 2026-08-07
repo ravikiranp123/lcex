@@ -53,6 +53,7 @@ import {
   getCachedProblemId,
   openHintFileForProblem,
   tryOpenExistingHintFile,
+  archiveStaleReviewSolutionFile,
   openOrCreateSolution,
   plainProblemSlugFromUri,
   getCachedProblem as getProblemFromViewCache,
@@ -3199,6 +3200,11 @@ Output only the JSON inside one \`\`\`json code block. Save the result as a file
   // Register command to open problem from daily plan TreeView
   context.subscriptions.push(
     vscode.commands.registerCommand("leetplus.showDailyPlanProblem", async (item) => {
+      try {
+        await archiveStaleReviewSolutionFile(context, item);
+      } catch (e) {
+        Logger.logError("showDailyPlanProblem: archive stale review solution failed", e);
+      }
       const getProblemStatus = (slug: string) => getStoredStatus(globalState, slug);
       await openProblemWebview(context, item, getProvider, getProblemStatus, getWebviewOpts());
     })

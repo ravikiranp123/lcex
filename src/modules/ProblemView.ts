@@ -2,6 +2,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 import * as ejs from "ejs";
+import { readState } from "./StateManager";
 import {
   isSupportedLanguage,
   SUPPORTED_LANGUAGES,
@@ -9,6 +10,7 @@ import {
   type Problem,
   type SupportedLanguage,
 } from "./interface/Problem";
+import type { LPState } from "./interface/LPState";
 import {
   LANGUAGE_CHOICES,
   LANGUAGE_SHORT,
@@ -2225,6 +2227,106 @@ export async function restoreProblemPanel(
     Logger.logError("restoreProblemPanel failed", e);
     panel.webview.html = `<p>Could not restore this problem view. Close the tab and open the problem again from the LeetCode sidebar.</p><p>${e instanceof Error ? e.message : String(e)}</p>`;
   }
+}
+
+export async function archiveStaleReviewSolutionFile(
+  context: vscode.ExtensionContext,
+  item: { id: string | number; titleSlug: string },
+  language?: SupportedLanguage
+): Promise<boolean> {
+  try {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) return false;
+    const workspaceRoot = folders[0].uri.fsPath;
+
+    let state;
+    try {
+      state = await readState(workspaceRoot);
+    } catch {
+      return false;
+    }
+    const lp = state?.problems.find(
+      (p) => (p.slug && p.slug === item.titleSlug) || String(p.id) === String(item.id)
+    );
+    if (!lp || lp.status !== "completed") return false;
+
+    const attemptHex = interviewSolutionAttemptHex(context.globalState);
+    if (attemptHex) return false;
+
+    const lang = language ?? getEffectiveChallengePanelLanguage(context);
+    const { path: filePath, exists } = await Database.resolveSolutionFilePathForOpen(
+      undefined,
+      String(item.id),
+      item.titleSlug,
+      interviewSolutionBaseDir(context.globalState),
+      attemptHex,
+      lang
+    );
+    if (!exists) return false;
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let mtimeDate: string;
+    try {
+      const st = await fs.stat(filePath);
+      mtimeDate = new Date(st.mtime).toISOString().slice(0, 10);
+    } catch {
+      return false;
+    }
+    if (mtimeDate >= todayStr) return false;
+
+    const ext = path.extname(filePath);
+    const base = filePath.slice(0, filePath.length - ext.length);
+    let archivePath = `${base}.${todayStr}${ext}`;
+    let n = 2;
+    while (true) {
+      let occupied = false;
+      try {
+        await fs.stat(archivePath);
+        occupied = true;
+      } catch {
+        /* free */
+      }
+      if (!occupied) break;
+      archivePath = `${base}.${todayStr}-${n}${ext}`;
+      n++;
+      if (n > 20) return false;
+    }
+    await fs.rename(filePath, archivePath);
+    Logger.log(`archiveStaleReviewSolutionFile: archived ${filePath} -> ${archivePath}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Archives stale review solution files for every `rep` item in a freshly
+ * generated daily plan. Best-effort: never throws, never fails the plan.
+ * @returns number of files actually archived.
+ */
+export async function archiveStaleReviewSolutionFilesForPlan(
+  context: vscode.ExtensionContext,
+  state: LPState,
+  planItems: Array<{ id: number; type: "rep" | "new" }>
+): Promise<number> {
+  let archived = 0;
+  const seen = new Set<string>();
+  for (const item of planItems) {
+    if (item.type !== "rep") continue;
+    const lp = state.problems.find((p) => p.id === item.id);
+    if (!lp || lp.status !== "completed") continue;
+    const key = `${String(lp.id)}:${lp.slug ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    try {
+      if (await archiveStaleReviewSolutionFile(context, { id: lp.id, titleSlug: lp.slug ?? "" })) {
+        archived++;
+      }
+    } catch {
+      // best-effort per problem
+    }
+  }
+  return archived;
 }
 
 export async function openOrCreateSolution(

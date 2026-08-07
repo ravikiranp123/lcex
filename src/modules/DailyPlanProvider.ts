@@ -5,6 +5,7 @@ import { readState, initState } from "./StateManager";
 import { generateDailyPlan, bootstrapStateFromStudyPlan, loadSeedsFromLocalDataFile, type StudyPlanProblemSeed } from "./DailyPlanGenerator";
 import type { LPProblem, LPState } from "./interface/LPState";
 import { getEffectiveConfig, resolveDefaultStudyPlanSlug } from "./LeetPlusConfig";
+import { archiveStaleReviewSolutionFilesForPlan } from "./ProblemView";
 
 
 export type DailyPlanItemType = "root" | "problem";
@@ -247,6 +248,13 @@ export class DailyPlanProvider implements vscode.TreeDataProvider<DailyPlanItem>
       try {
         const generated = await generateDailyPlan(workspaceRoot, state, this.activeCategoryFilter);
         planProblems = generated.problems;
+        // Auto-archive stale review solution files whenever a new plan is generated,
+        // preserving previous attempts before the review problems are opened today.
+        try {
+          await archiveStaleReviewSolutionFilesForPlan(this.context, state, generated.problems);
+        } catch {
+          // Best-effort — never break the tree view.
+        }
       } catch {
         // Fallback
       }
